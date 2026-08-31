@@ -1,0 +1,520 @@
+openapi: 3.0.3
+info:
+  title: CRM + Call Center SaaS API
+  version: "1.0.0-draft"
+  description: >
+    Contrato de referência entre crm-frontend e crm-backend. Este arquivo é um
+    esqueleto ilustrativo dos endpoints citados em ../01-product/use-cases.md
+    e ../02-business/workflows.md — não é a especificação completa e exaustiva
+    de todos os módulos, que evolui junto com a implementação. Ver diretrizes
+    gerais em api-guidelines.md.
+servers:
+  - url: https://api.{tenant_domain}/v1
+    variables:
+      tenant_domain:
+        default: exemplo.crm.local
+
+security:
+  - bearerAuth: []
+
+paths:
+  /auth/login:
+    post:
+      summary: Autentica um usuário e emite tokens
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string, format: password }
+      responses:
+        "200":
+          description: Login bem-sucedido
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenPair"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /auth/refresh:
+    post:
+      summary: Renova o access token a partir do refresh token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refresh_token]
+              properties:
+                refresh_token: { type: string }
+      responses:
+        "200":
+          description: Novo par de tokens
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenPair"
+
+  /users:
+    get:
+      summary: Lista usuários do tenant
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Lista paginada de usuários
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserList"
+    post:
+      summary: Cria um usuário
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserCreate"
+      responses:
+        "201":
+          description: Usuário criado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+
+  /customers:
+    get:
+      summary: Lista clientes do tenant
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Lista paginada de clientes
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/Customer" }
+                  next_cursor: { type: string, nullable: true }
+    post:
+      summary: Cria um cliente
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CustomerCreate"
+      responses:
+        "201":
+          description: Cliente criado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Customer"
+
+  /customers/{id}:
+    get:
+      summary: Obtém um cliente
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Cliente encontrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Customer"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /customers/{id}/interactions:
+    get:
+      summary: Histórico de interações do cliente (chamadas, mensagens, notas)
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Histórico paginado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/Interaction" }
+                  next_cursor: { type: string, nullable: true }
+
+  /leads:
+    post:
+      summary: Cria um lead
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LeadCreate"
+      responses:
+        "201":
+          description: Lead criado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Lead"
+
+  /leads/{id}/qualify:
+    post:
+      summary: Qualifica um lead
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Lead qualificado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Lead"
+
+  /leads/{id}/disqualify:
+    post:
+      summary: Desqualifica um lead (exige motivo — BR-06)
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason: { type: string }
+      responses:
+        "200":
+          description: Lead desqualificado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Lead"
+
+  /leads/{id}/convert:
+    post:
+      summary: Converte um lead qualificado em oportunidade (BR-04)
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "201":
+          description: Oportunidade criada a partir do lead
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Opportunity"
+        "409":
+          description: Lead já convertido ou em estado inválido para conversão
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /pipelines/{pipelineId}/opportunities:
+    get:
+      summary: Lista oportunidades de um pipeline, opcionalmente por etapa
+      parameters:
+        - name: pipelineId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: stage_id
+          in: query
+          required: false
+          schema: { type: string, format: uuid }
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Lista paginada de oportunidades
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/Opportunity" }
+                  next_cursor: { type: string, nullable: true }
+
+  /opportunities/{id}/move:
+    post:
+      summary: Move a oportunidade para outra etapa (BR-09, BR-10)
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [stage_id]
+              properties:
+                stage_id: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Oportunidade movida
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Opportunity"
+
+  /opportunities/{id}/win:
+    post:
+      summary: Marca a oportunidade como ganha (estado terminal — BR-11)
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Oportunidade ganha
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Opportunity"
+
+  /opportunities/{id}/lose:
+    post:
+      summary: Marca a oportunidade como perdida (exige motivo — BR-12)
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason: { type: string }
+      responses:
+        "200":
+          description: Oportunidade perdida
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Opportunity"
+
+  /calls/click-to-call:
+    post:
+      summary: Origina uma chamada ativa a partir do CRM (MVP de telefonia)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [customer_id, phone]
+              properties:
+                customer_id: { type: string, format: uuid }
+                phone: { type: string }
+      responses:
+        "202":
+          description: Chamada em originação (assíncrona; status via WebSocket/polling)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Call"
+
+  /calls/{id}/disposition:
+    post:
+      summary: Registra a disposição de uma chamada encerrada (BR-15)
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [disposition_id]
+              properties:
+                disposition_id: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Disposição registrada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Call"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    Cursor:
+      name: cursor
+      in: query
+      required: false
+      schema: { type: string }
+    Limit:
+      name: limit
+      in: query
+      required: false
+      schema: { type: integer, default: 20, maximum: 100 }
+
+  responses:
+    Unauthorized:
+      description: Não autenticado
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    NotFound:
+      description: Recurso não encontrado ou fora do escopo do tenant/usuário
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code: { type: string }
+            message: { type: string }
+            details:
+              type: array
+              items:
+                type: object
+                properties:
+                  field: { type: string }
+                  issue: { type: string }
+
+    TokenPair:
+      type: object
+      properties:
+        access_token: { type: string }
+        refresh_token: { type: string }
+        expires_in: { type: integer }
+
+    UserCreate:
+      type: object
+      required: [name, email, password]
+      properties:
+        name: { type: string }
+        email: { type: string, format: email }
+        password: { type: string }
+        role_ids:
+          type: array
+          items: { type: string, format: uuid }
+
+    User:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        email: { type: string, format: email }
+        status: { type: string, enum: [active, inactive] }
+        created_at: { type: string, format: date-time }
+
+    UserList:
+      type: object
+      properties:
+        data:
+          type: array
+          items: { $ref: "#/components/schemas/User" }
+        next_cursor: { type: string, nullable: true }
+
+    CustomerCreate:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string }
+        document: { type: string }
+        primary_phone: { type: string }
+        primary_email: { type: string, format: email }
+
+    Customer:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        document: { type: string, nullable: true }
+        primary_phone: { type: string, nullable: true }
+        primary_email: { type: string, nullable: true }
+        owner_id: { type: string, format: uuid, nullable: true }
+        created_at: { type: string, format: date-time }
+
+    LeadCreate:
+      type: object
+      required: [source_id]
+      properties:
+        source_id: { type: string, format: uuid }
+        customer_id: { type: string, format: uuid, nullable: true }
+        owner_id: { type: string, format: uuid, nullable: true }
+
+    Lead:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        status:
+          type: string
+          enum: [new, in_progress, qualified, disqualified, converted]
+        source_id: { type: string, format: uuid }
+        customer_id: { type: string, format: uuid, nullable: true }
+        owner_id: { type: string, format: uuid, nullable: true }
+        created_at: { type: string, format: date-time }
+
+    Opportunity:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        customer_id: { type: string, format: uuid }
+        pipeline_id: { type: string, format: uuid }
+        stage_id: { type: string, format: uuid }
+        owner_id: { type: string, format: uuid }
+        value: { type: number, nullable: true }
+        status: { type: string, enum: [open, won, lost] }
+        lost_reason: { type: string, nullable: true }
+        created_at: { type: string, format: date-time }
+
+    Call:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        direction: { type: string, enum: [inbound, outbound] }
+        status: { type: string, enum: [ringing, answered, missed, failed] }
+        customer_id: { type: string, format: uuid, nullable: true }
+        agent_id: { type: string, format: uuid, nullable: true }
+        started_at: { type: string, format: date-time }
+
+    Interaction:
+      type: object
+      description: Item de histórico unificado (chamada, mensagem ou nota) do cliente
+      properties:
+        id: { type: string, format: uuid }
+        type: { type: string, enum: [call, message, note] }
+        occurred_at: { type: string, format: date-time }
+        summary: { type: string }
