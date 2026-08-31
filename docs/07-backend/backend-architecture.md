@@ -51,7 +51,7 @@ Cada módulo em `modules/` corresponde a um módulo de negócio de [../03-archit
 - **Controller**: recebe request HTTP, valida via DTO, delega ao Service. Não contém regra de negócio.
 - **Service**: contém a regra de negócio do módulo; orquestra repositórios e emite eventos de domínio.
 - **Repository**: acesso a dado via Prisma, sempre com `tenant_id` aplicado (ver seção 5); nunca chamado diretamente por outro módulo — apenas pelo Service do próprio módulo.
-- **DTO**: contrato de entrada/saída, com `class-validator`/Zod (`[DECISÃO PENDENTE]`: padronizar em um dos dois — recomendação: `class-validator` por integração nativa com NestJS pipes).
+- **DTO**: contrato de entrada/saída, com `class-validator` (padronizado na Fase 1 — ver [ADR-008](../adr/ADR-008.md#2-validação-de-dto-class-validator)).
 - **Guards**: autenticação e resolução de tenant (rodam antes de qualquer handler).
 - **Policies**: autorização (permissão do papel + escopo de dado), aplicadas após os Guards, por ação.
 - **Events**: módulos emitem eventos de domínio (`lead.qualified`, `opportunity.won`, etc.) para desacoplar side effects (notificação, auditoria) — ver [../03-architecture/architecture.md](../03-architecture/architecture.md) seção 7.
@@ -66,7 +66,7 @@ Cada módulo em `modules/` corresponde a um módulo de negócio de [../03-archit
 
 - Todo Repository aplica `tenant_id` a partir de um contexto de requisição (`AsyncLocalStorage` ou equivalente do Nest), nunca a partir de parâmetro explícito passado por controller sem validação.
 - Nenhuma query crua (`$queryRaw`) é permitida sem revisão explícita que garanta o filtro de tenant.
-- `[DECISÃO PENDENTE]`: reforçar com Row Level Security no PostgreSQL como segunda camada de defesa (ver [../03-architecture/security.md](../03-architecture/security.md)).
+- Reforço com Row Level Security no PostgreSQL como segunda camada de defesa foi avaliado e adiado para a Fase 2+ (ver [ADR-008](../adr/ADR-008.md#3-row-level-security-rls-adiado-para-a-fase-2) e [../03-architecture/security.md](../03-architecture/security.md)).
 
 ## 6. Tratamento de erros
 

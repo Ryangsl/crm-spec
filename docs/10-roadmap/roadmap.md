@@ -15,10 +15,12 @@ Cada fase só inicia com a anterior aceita (critérios de aceite cumpridos). Det
 - **Dependências**: Fase 0 aceita.
 - **Critérios de aceite**: backend e frontend sobem localmente via Docker Compose; health check responde; CI roda lint/test vazio com sucesso.
 - **Riscos**: escolha prematura de detalhe de infraestrutura que trave decisão pendente — mitigado adiando o que estiver marcado `[DECISÃO PENDENTE]` até ser necessário.
+- **Status — `crm-backend`**: implementado (além do esqueleto mínimo, já inclui base de autenticação, RBAC inicial e isolamento multi-tenant do grupo "Tenancy e Acesso" — itens que originalmente estavam listados na Fase 2, adiantados porque a fundação de auth/tenant é pré-requisito estrutural, ver `crm-backend/README.md` e `ADR-008`). Build, lint e testes unitários passam; testes de integração/E2E (precisam de Postgres+Redis reais) foram escritos mas **não foram executados** no ambiente onde a Fase 1 foi implementada (sem Docker disponível) — validação local pendente antes de considerar a fase formalmente aceita. `crm-frontend` da Fase 1 (Vite/Tailwind/roteamento) ainda não foi iniciado.
 
 ## FASE 2 — Autenticação + Usuários + Tenants
 - **Objetivo**: multi-tenancy e RBAC funcionando de ponta a ponta.
 - **Funcionalidades**: login/refresh/logout, CRUD de usuários, papéis de fábrica, isolamento de tenant, auditoria básica.
+- **Nota**: login/refresh/logout, papéis de fábrica e isolamento de tenant já foram entregues como parte da Fase 1 estendida do `crm-backend` (ver nota de status na Fase 1 acima e `ADR-008`). O que resta especificamente para a Fase 2: `update`/`delete` de usuários (Fase 1 só tem `create`/`read`), escopo de dado por equipe/filial no RBAC, e auditoria básica (`audit_log`, ainda não modelado).
 - **Dependências**: Fase 1.
 - **Critérios de aceite**: testes automatizados de isolamento entre tenants e de permissão por papel passando (ver [../09-testing/testing-strategy.md](../09-testing/testing-strategy.md)); segundo tenant de teste não consegue, em nenhuma rota, ler dado do primeiro.
 - **Riscos**: vazamento cross-tenant — risco crítico, tratado com testes obrigatórios antes de prosseguir para dados de negócio reais.

@@ -4,7 +4,7 @@ Tecnologia: **PostgreSQL** (ADR-001). Este documento define convenções gerais;
 
 ## 1. Convenções gerais
 
-- **Chave primária**: UUID (v4 ou v7 — `[DECISÃO PENDENTE]`, v7 preferível por ordenação temporal/performance de índice) em todas as tabelas de negócio. Não usar IDs sequenciais expostos publicamente.
+- **Chave primária**: UUID v4 (`gen_random_uuid()` nativo do Postgres/Prisma) em todas as tabelas de negócio — decisão da Fase 1, ver [ADR-008](../adr/ADR-008.md#1-formato-de-uuid-v4-não-v7). Não usar IDs sequenciais expostos publicamente. Migração para v7 é possível no futuro sem mudar o tipo de coluna nem o contrato.
 - **`tenant_id`**: coluna obrigatória (UUID, FK para `tenants`, indexada) em toda tabela de dado de negócio. Tabelas verdadeiramente globais (ex.: `tenants`, `plans`) não têm essa coluna.
 - **Timestamps**: `created_at`, `updated_at` (timestamptz, default now / on update) em todas as tabelas; `deleted_at` (nullable) nas tabelas com soft delete.
 - **Soft delete**: exclusão lógica via `deleted_at`; toda query de aplicação filtra `deleted_at IS NULL` por padrão. Exclusão física não é exposta via API (ver [../02-business/business-rules.md](../02-business/business-rules.md) BR-22).
@@ -21,7 +21,7 @@ Tecnologia: **PostgreSQL** (ADR-001). Este documento define convenções gerais;
 
 ## 3. Paginação, busca e filtros (nível de banco)
 
-- Paginação por cursor (`[DECISÃO PENDENTE]`: cursor vs. offset — cursor é preferível para listas de alto volume/tempo real como `interactions`, offset é aceitável para telas administrativas pequenas). Ver contrato em [../05-api/api-guidelines.md](../05-api/api-guidelines.md).
+- Paginação por cursor como padrão do contrato (ver [../05-api/api-guidelines.md](../05-api/api-guidelines.md) seção 4 e `openapi.yaml`) — cursor opaco codifica `(created_at, id)` para ordenação estável. Offset continua aceitável apenas para telas administrativas pequenas e de baixo volume, como exceção pontual documentada no endpoint, não como padrão.
 - Filtros comuns (status, responsável, período, fila) devem ter índice de suporte antes de ir para produção.
 
 ## 4. Particionamento futuro
@@ -30,7 +30,7 @@ Tabelas de alto volume (`interactions`, `messages`, `calls`, `audit_log`) são c
 
 ## 5. Multi-tenancy no banco
 
-Estratégia adotada: banco compartilhado com `tenant_id` (ADR-004, detalhado em [../03-architecture/security.md](../03-architecture/security.md)). Row Level Security (RLS) como camada adicional é `[DECISÃO PENDENTE]`.
+Estratégia adotada: banco compartilhado com `tenant_id` (ADR-004, detalhado em [../03-architecture/security.md](../03-architecture/security.md)). Row Level Security (RLS) como camada adicional foi adiada para a Fase 2+ — ver [ADR-008](../adr/ADR-008.md#3-row-level-security-rls-adiado-para-a-fase-2).
 
 ## 6. Campos personalizados (custom fields)
 

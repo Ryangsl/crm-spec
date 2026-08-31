@@ -20,13 +20,13 @@ Isso exige tratar isolamento entre tenants como **requisito crítico de seguran�
 
 - Toda tabela de negócio tem coluna `tenant_id` (NOT NULL, indexada, FK para `tenants`).
 - Toda query de leitura/escrita passa por uma camada obrigatória que injeta o filtro de `tenant_id` a partir do contexto autenticado — nunca a partir de parâmetro vindo do cliente.
-- `[DECISÃO PENDENTE]`: uso de Row Level Security (RLS) do PostgreSQL como camada adicional de defesa (defesa em profundidade) além do filtro na aplicação — recomendado para produção, a confirmar com `crm-backend` na Fase 1/2.
+- Row Level Security (RLS) do PostgreSQL como camada adicional de defesa (defesa em profundidade) foi avaliado na Fase 1 e adiado para a Fase 2+ — ver [ADR-008](../adr/ADR-008.md#3-row-level-security-rls-adiado-para-a-fase-2). Até lá, o isolamento depende do filtro obrigatório na aplicação (abaixo) mais testes automatizados de vazamento cross-tenant.
 - Testes automatizados obrigatórios de "vazamento entre tenants" fazem parte da definição de pronto de qualquer endpoint (ver [../09-testing/testing-strategy.md](../09-testing/testing-strategy.md)).
 - Identificadores de recurso não devem ser previsíveis/sequenciais expostos publicamente sem checagem de tenant (usar UUID — ver [../04-database/database.md](../04-database/database.md)).
 
 ## 2. Autenticação e sessão
 
-- **JWT de acesso** de curta duração (`[DECISÃO PENDENTE]`: TTL exato, sugestão inicial 15 min) + **refresh token** de vida mais longa, armazenado com possibilidade de revogação (lista de refresh tokens ativos por usuário/dispositivo).
+- **JWT de acesso** de curta duração (900s / 15 min) + **refresh token** de vida mais longa (30 dias, rotacionado a cada uso), armazenado com possibilidade de revogação (lista de refresh tokens ativos por usuário/dispositivo) — ver [ADR-008](../adr/ADR-008.md#5-ttl-de-tokens).
 - Refresh token é opaco e armazenado com hash no banco (nunca em texto puro), permitindo revogação individual (logout de um dispositivo) e global (logout de todos os dispositivos).
 - Senhas com hash **bcrypt** ou **argon2** (custo configurável), nunca reversível.
 - Rate limiting específico em endpoints de autenticação (login, reset de senha) para mitigar força bruta.
@@ -41,7 +41,7 @@ Isso exige tratar isolamento entre tenants como **requisito crítico de seguran�
 
 - HTTPS/WSS obrigatório em todos os ambientes exceto desenvolvimento local (RNF-07).
 - CORS restrito às origens conhecidas do `crm-frontend` (por ambiente).
-- CSRF: como a API é stateless via Bearer token (não cookie de sessão), o risco de CSRF clássico é reduzido; se refresh token for entregue via cookie httpOnly (`[DECISÃO PENDENTE]`), proteção CSRF (SameSite + token) passa a ser obrigatória.
+- CSRF: refresh token é entregue no corpo da resposta/requisição, não em cookie (ver [ADR-008](../adr/ADR-008.md#4-refresh-token-entregue-no-corpo-da-resposta-não-cookie-httponly)). Como a API é stateless via Bearer token (não cookie de sessão), o risco de CSRF clássico não se aplica. Se essa decisão mudar para cookie httpOnly no futuro, proteção CSRF (SameSite + token) passa a ser obrigatória a partir desse ADR.
 - Validação de entrada em 100% dos endpoints (DTO + schema, ver [../05-api/api-guidelines.md](../05-api/api-guidelines.md)); sanitização de campos livres (notas, mensagens) antes de renderização no frontend (proteção XSS).
 - Rate limiting geral por tenant/usuário/IP para proteger contra abuso.
 

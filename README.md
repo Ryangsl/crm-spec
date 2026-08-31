@@ -36,7 +36,7 @@ Documentação oficial (fonte da verdade) do **CRM + Call Center SaaS**. Este re
 
 ## Estado do projeto
 
-Fase atual: **FASE 0 — Especificação**. Nenhum código de produção foi escrito ainda. Ver [docs/10-roadmap/roadmap.md](docs/10-roadmap/roadmap.md).
+Fase atual: **FASE 1 — Fundação técnica**. `crm-backend` implementa a fundação (NestJS, Prisma, Postgres, Redis/BullMQ, autenticação, RBAC inicial, isolamento multi-tenant) — ver [docs/10-roadmap/roadmap.md](docs/10-roadmap/roadmap.md) e `crm-backend/README.md` para o status detalhado, incluindo o que ainda não foi validado (testes de integração/E2E dependem de Postgres/Redis reais). `crm-frontend` ainda não foi iniciado.
 
 ## Convenções deste repositório
 
