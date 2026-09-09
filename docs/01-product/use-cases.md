@@ -19,7 +19,7 @@ Casos de uso principais, por área. Formato: ator, pré-condição, fluxo princi
 ### UC-03 Condução de oportunidade pelo pipeline
 - **Ator**: Vendedor/Gerente.
 - **Fluxo**: oportunidade avança/retrocede entre etapas configuráveis do pipeline → cada mudança de etapa pode disparar tarefas/notificações → oportunidade é marcada como Ganha ou Perdida (com motivo).
-- **Exceção**: tentativa de mover para etapa fora da ordem permitida — bloqueado ou exige justificativa, conforme configuração do pipeline (`[DECISÃO PENDENTE]`).
+- **Exceção**: tentativa de mover para etapa fora da ordem — comportamento é `[VALIDAÇÃO DE NEGÓCIO NECESSÁRIA]` ([D-032](../00-governance/decision-register.md#d-032--ordem-de-movimentação-entre-etapas-do-pipeline), antes da Fase 3).
 
 ### UC-04 Follow-up e agenda
 - **Ator**: Vendedor.
@@ -27,23 +27,25 @@ Casos de uso principais, por área. Formato: ator, pré-condição, fluxo princi
 
 ## 2. Atendimento / Call Center
 
-### UC-05 Atendimento receptivo (chamada)
+No MVP, o atendimento é **registrado manualmente** (o operador atende por fora e lança a interação, alimentando o histórico unificado). Os casos UC-05 a UC-07 dependem de telefonia integrada (**Fase 5**) e UC-08 de WhatsApp (**Fase 6**) — ver [D-015](../00-governance/decision-register.md#d-015--escopo-oficial-do-mvp).
+
+### UC-05 Atendimento receptivo (chamada) — *Fase 5*
 - **Ator**: Operador.
 - **Pré-condição**: operador logado em uma fila, status "Disponível".
 - **Fluxo**: chamada chega à fila → sistema distribui ao operador disponível (ordem/skill da fila) → tela de atendimento abre com histórico do cliente (se identificado por número) → operador atende → registra disposição → chamada é encerrada e fica associada ao histórico do cliente.
 - **Exceção**: cliente não identificado → operador cria/vincula cadastro durante o atendimento. Fila cheia/SLA estourado → chamada é ofertada callback.
 
-### UC-06 Atendimento ativo (discagem)
+### UC-06 Atendimento ativo (discagem) — *Fase 5*
 - **Ator**: Operador/Vendedor.
 - **Fluxo**: usuário seleciona contato (manualmente ou via lista de discagem) → sistema origina a chamada (click-to-call) → chamada é conectada → operador registra disposição ao final.
 - **Exceção**: número inválido/sem resposta → disposição automática "não atendido", pode gerar tarefa de nova tentativa.
 
-### UC-07 Supervisão em tempo real
+### UC-07 Supervisão em tempo real — *Fase 5*
 - **Ator**: Supervisor.
 - **Fluxo**: supervisor visualiza painel com status de todos os operadores e filas em tempo real → identifica operador em dificuldade/fila com SLA em risco → intervém (escuta, sussurro, transferência ou assume o atendimento).
 - **Exceção**: operador cai (perde conexão) — sistema marca operador como offline e libera fila.
 
-### UC-08 Atendimento via WhatsApp
+### UC-08 Atendimento via WhatsApp — *Fase 6*
 - **Ator**: Operador/Vendedor.
 - **Fluxo**: mensagem recebida de um contato → sistema cria/atualiza uma Conversa vinculada ao Cliente/Lead (por telefone) → mensagem entra na fila do canal → operador responde pela interface unificada → conversa fica no histórico do cliente.
 - **Exceção**: mensagem de número não vinculado a nenhum cadastro → vira lead/atendimento avulso até vinculação manual.

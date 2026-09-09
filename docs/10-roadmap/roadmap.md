@@ -1,26 +1,43 @@
 # Roadmap
 
-Cada fase só inicia com a anterior aceita (critérios de aceite cumpridos). Detalhamento do que compõe o MVP (subconjunto das Fases 0-3) está em [mvp.md](mvp.md).
+Cada fase só inicia com a anterior aceita (critérios de aceite cumpridos). Detalhamento do que compõe o MVP está em [mvp.md](mvp.md).
 
-## FASE 0 — Especificação
+## Regra de bloqueio por decisão
+
+> Nenhuma decisão pendente bloqueia uma fase quando não impacta diretamente seus critérios de aceite ou a arquitetura necessária para ela.
+
+Decisões vivem no [Decision Register](../00-governance/decision-register.md), classificadas como `DECIDIDO`, `PROPOSTO`, `ADIADO`, `VALIDAÇÃO DE NEGÓCIO` ou `BLOQUEADOR`. Apenas `BLOQUEADOR` impede o início da fase correspondente — e **não há nenhum bloqueador aberto hoje**.
+
+| Antes desta fase, resolver | Decisões |
+|---|---|
+| **Fase 1** | Fundação técnica: identificador, validação de DTO, estado global do frontend, E2E, CI, branches, ambiente local. Todas resolvidas. |
+| **Fase 2** | Multi-tenancy, tenant context, JWT, refresh token, RBAC, auditoria (D-002, D-004, D-005, D-016, D-037 resolvidas; D-003 e D-006 a fechar até o fim da fase) |
+| **Fase 3** | CRM, pipeline, campos personalizados, paginação (D-007, D-008 resolvidas; D-031 a fechar; D-032 a D-035 dependem de stakeholders) |
+| **Fase 5** | Provedor de telefonia (D-010), WebSocket (D-013), secrets (D-025), circuit breaker (D-039) |
+| **Fase 6** | Provedor de WhatsApp (D-011) |
+| **Antes do 1º cliente em produção** | Staging (D-027), retenção de backup (D-028), teste de restore (D-029), paleta de marca (D-043), fluxo LGPD (D-047) |
+
+Fases 1 a 4 **não dependem** de telefonia, WhatsApp, IA, escalabilidade avançada, Kubernetes, microsserviços ou de qualquer provedor externo futuro.
+
+## FASE 0 — Especificação ✅ *concluída*
 - **Objetivo**: produzir a documentação completa que permita implementar o sistema com segurança (este repositório).
 - **Funcionalidades**: nenhuma (documentação apenas).
 - **Dependências**: nenhuma.
-- **Critérios de aceite**: vision, personas, requisitos, arquitetura, modelo de dados, contrato de API inicial, roadmap e ADRs iniciais existentes e sem contradição entre si; decisões pendentes explicitamente marcadas.
-- **Riscos**: requisitos de negócio presumidos incorretamente por falta de validação com stakeholders reais — mitigado marcando `[DECISÃO PENDENTE]` em vez de inventar.
+- **Critérios de aceite**: vision, personas, requisitos, arquitetura, modelo de dados, contrato de API inicial, roadmap e ADRs iniciais existentes e sem contradição entre si; toda decisão classificada no [Decision Register](../00-governance/decision-register.md), sem bloqueadores abertos para a Fase 1. **Atendidos.**
+- **Riscos**: requisitos de negócio presumidos incorretamente por falta de validação com stakeholders — mitigado marcando `[VALIDAÇÃO DE NEGÓCIO NECESSÁRIA]` em vez de inventar.
 
-## FASE 1 — Fundação técnica
-- **Objetivo**: esqueleto executável dos três repositórios.
-- **Funcionalidades**: setup de `crm-backend` (NestJS, Prisma, estrutura de módulos vazia, health checks, logging), setup de `crm-frontend` (Vite, Tailwind, roteamento, design system inicial), Docker Compose local, CI básico.
-- **Dependências**: Fase 0 aceita.
-- **Critérios de aceite**: backend e frontend sobem localmente via Docker Compose; health check responde; CI roda lint/test vazio com sucesso.
-- **Riscos**: escolha prematura de detalhe de infraestrutura que trave decisão pendente — mitigado adiando o que estiver marcado `[DECISÃO PENDENTE]` até ser necessário.
-- **Status — `crm-backend`**: implementado (além do esqueleto mínimo, já inclui base de autenticação, RBAC inicial e isolamento multi-tenant do grupo "Tenancy e Acesso" — itens que originalmente estavam listados na Fase 2, adiantados porque a fundação de auth/tenant é pré-requisito estrutural, ver `crm-backend/README.md` e `ADR-008`). Build, lint e testes unitários passam; testes de integração/E2E (precisam de Postgres+Redis reais) foram escritos mas **não foram executados** no ambiente onde a Fase 1 foi implementada (sem Docker disponível) — validação local pendente antes de considerar a fase formalmente aceita. `crm-frontend` da Fase 1 (Vite/Tailwind/roteamento) ainda não foi iniciado.
+## FASE 1 — Fundação técnica ✅ *concluída em 2026-09-08*
+- **Objetivo**: esqueleto executável dos repositórios `crm-backend` e `crm-frontend`.
+- **Funcionalidades**: setup de `crm-backend` (NestJS, Prisma com UUID v7, estrutura de módulos, health checks, logging estruturado, Redis/BullMQ disponíveis), setup de `crm-frontend` (Vite, Tailwind, roteamento, design system inicial com paleta placeholder, PWA), Docker Compose local, CI básico.
+- **Não faz parte**: WebSocket ([D-013](../00-governance/decision-register.md#d-013--websocket)), adapters de canal, filas além do necessário ([D-012](../00-governance/decision-register.md#d-012--redis--bullmq)).
+- **Dependências**: Fase 0 aceita. **Nenhuma decisão pendente bloqueia esta fase.**
+- **Critérios de aceite**: backend e frontend sobem localmente (infra via Docker Compose, app via `npm run dev`); health check responde; CI roda lint/test com sucesso.
+- **Riscos**: antecipar infraestrutura de fases futuras (WebSocket, canais, filas) — mitigado pela lista explícita de "não faz parte" acima.
 
-## FASE 2 — Autenticação + Usuários + Tenants
+## FASE 2 — Autenticação + Usuários + Tenants ⬅ *aguarda autorização explícita*
 - **Objetivo**: multi-tenancy e RBAC funcionando de ponta a ponta.
+- **Ponto de partida atípico**: `auth`, `tenants` e `users` já foram construídos durante a Fase 1 (com E2E de isolamento entre tenants passando). Esta fase **começa revisando** esse código contra [personas.md](../01-product/personas.md), [ADR-008](../adr/ADR-008.md) e as regras de [business-rules.md](../02-business/business-rules.md) — não presumir que está pronto.
 - **Funcionalidades**: login/refresh/logout, CRUD de usuários, papéis de fábrica, isolamento de tenant, auditoria básica.
-- **Nota**: login/refresh/logout, papéis de fábrica e isolamento de tenant já foram entregues como parte da Fase 1 estendida do `crm-backend` (ver nota de status na Fase 1 acima e `ADR-008`). O que resta especificamente para a Fase 2: `update`/`delete` de usuários (Fase 1 só tem `create`/`read`), escopo de dado por equipe/filial no RBAC, e auditoria básica (`audit_log`, ainda não modelado).
 - **Dependências**: Fase 1.
 - **Critérios de aceite**: testes automatizados de isolamento entre tenants e de permissão por papel passando (ver [../09-testing/testing-strategy.md](../09-testing/testing-strategy.md)); segundo tenant de teste não consegue, em nenhuma rota, ler dado do primeiro.
 - **Riscos**: vazamento cross-tenant — risco crítico, tratado com testes obrigatórios antes de prosseguir para dados de negócio reais.
@@ -42,16 +59,16 @@ Cada fase só inicia com a anterior aceita (critérios de aceite cumpridos). Det
 ## FASE 5 — Call Center
 - **Objetivo**: telefonia mínima viável.
 - **Funcionalidades**: Filas, status de operador, click-to-call/discagem manual, disposição de chamada, painel de supervisão em tempo real (WebSocket com fallback).
-- **Dependências**: Fase 4; escolha de provedor de telefonia (`[DECISÃO PENDENTE]`, ver [../03-architecture/integrations.md](../03-architecture/integrations.md)).
+- **Dependências**: Fase 4; escolha de provedor de telefonia ([D-010](../00-governance/decision-register.md#d-010--provedor-de-telefonia), `ADIADO` — resolver **antes** desta fase, ver [../03-architecture/integrations.md](../03-architecture/integrations.md)) e implementação de WebSocket ([D-013](../00-governance/decision-register.md#d-013--websocket)).
 - **Critérios de aceite**: fluxo UC-05/UC-06/UC-07 executável; SLA e status de fila visíveis em tempo real; fallback de polling testado com WebSocket desligado.
 - **Riscos**: dependência de provedor externo — mitigado pela camada de abstração `ChannelAdapter` (ver [../03-architecture/architecture.md](../03-architecture/architecture.md)).
 
 ## FASE 6 — Omnichannel
 - **Objetivo**: WhatsApp integrado ao histórico único do cliente.
 - **Funcionalidades**: Conversas, Mensagens, Templates, webhooks de canal, idempotência e reprocessamento.
-- **Dependências**: Fase 5 (reaproveita filas/atendimento); escolha de provedor de WhatsApp (`[DECISÃO PENDENTE]`).
+- **Dependências**: Fase 5 (reaproveita filas/atendimento); escolha do BSP de WhatsApp ([D-011](../00-governance/decision-register.md#d-011--provedor-de-whatsapp), `ADIADO` — resolver antes desta fase; direção já definida: API oficial/BSP).
 - **Critérios de aceite**: UC-08 executável ponta a ponta; teste de reentrega de webhook não duplica mensagem (BR-20).
-- **Riscos**: bloqueio de número pelo provedor não oficial — mitigado pela recomendação de API oficial como canal primário (ver [integrations.md](../03-architecture/integrations.md)).
+- **Riscos**: bloqueio de número por uso de provedor não oficial — mitigado pela decisão de usar API oficial/BSP como canal primário do produto (ver [integrations.md](../03-architecture/integrations.md)).
 
 ## FASE 7 — Dashboard
 - **Objetivo**: indicadores confiáveis para gestores e supervisores.
@@ -76,7 +93,7 @@ Cada fase só inicia com a anterior aceita (critérios de aceite cumpridos). Det
 
 ## FASE 10 — IA como funcionalidade do produto
 - **Objetivo**: recursos de IA voltados ao usuário final (não confundir com uso de IA para desenvolver o software, ver [../../agents/](../../agents/)).
-- **Funcionalidades candidatas**: sugestão de próxima ação em oportunidade, resumo automático de atendimento, transcrição de chamada. Escopo exato é `[DECISÃO PENDENTE]`, a ser detalhado em documento próprio quando esta fase se aproximar.
+- **Funcionalidades candidatas**: sugestão de próxima ação em oportunidade, resumo automático de atendimento, transcrição de chamada. Escopo exato: [D-048](../00-governance/decision-register.md#d-048--escopo-de-ia-como-funcionalidade-do-produto) (`ADIADO`), a detalhar em documento próprio quando esta fase se aproximar.
 - **Dependências**: volume de dado histórico suficiente (interações, chamadas) das fases anteriores.
 - **Critérios de aceite**: a definir na especificação da fase.
 - **Riscos**: custo de inferência, qualidade/alucinação, privacidade de dado de cliente usado em prompt — a tratar com o mesmo rigor de segurança do restante do sistema.

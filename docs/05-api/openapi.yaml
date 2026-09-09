@@ -21,6 +21,10 @@ paths:
   /auth/login:
     post:
       summary: Autentica um usuário e emite tokens
+      description: >
+        O access token (TTL 15 min) volta no corpo. O refresh token (TTL 7 dias,
+        rotacionado a cada uso) é entregue em cookie httpOnly Secure e nunca
+        aparece no corpo da resposta — ver ADR-008 e D-004/D-005.
       security: []
       requestBody:
         required: true
@@ -35,61 +39,44 @@ paths:
       responses:
         "200":
           description: Login bem-sucedido
+          headers:
+            Set-Cookie:
+              description: refresh_token=<opaco>; HttpOnly; Secure; Path=/v1/auth
+              schema: { type: string }
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/TokenPair"
+                $ref: "#/components/schemas/AccessToken"
         "401":
           $ref: "#/components/responses/Unauthorized"
 
   /auth/refresh:
     post:
-      summary: Renova o access token a partir do refresh token
+      summary: Renova o access token a partir do refresh token do cookie
+      description: >
+        Lê o refresh token do cookie httpOnly, rotaciona-o (o anterior é
+        invalidado) e devolve um novo access token. Reuso de um refresh token
+        já rotacionado revoga a família de tokens do dispositivo.
       security: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [refresh_token]
-              properties:
-                refresh_token: { type: string }
       responses:
         "200":
-          description: Novo par de tokens
+          description: Novo access token emitido e refresh token rotacionado
+          headers:
+            Set-Cookie:
+              description: refresh_token=<novo opaco>; HttpOnly; Secure; Path=/v1/auth
+              schema: { type: string }
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/TokenPair"
-
-  /auth/logout:
-    post:
-      summary: Revoga um refresh token (logout de um dispositivo/sessão)
-      description: >
-        Endpoint aditivo introduzido na Fase 1 (fundação técnica) — necessário para
-        revogação explícita de sessão, citado em security.md e api-guidelines.md mas
-        ausente deste esqueleto até então. Idempotente: revogar um token já revogado ou
-        inexistente também retorna 204, para não revelar se o token era válido.
-      security: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [refresh_token]
-              properties:
-                refresh_token: { type: string }
-      responses:
-        "204":
-          description: Sessão encerrada (ou já estava encerrada)
+                $ref: "#/components/schemas/AccessToken"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
 
   /users:
     get:
-      summary: Lista usuários do tenant
+      summary: Lista usuários do tenant (paginação por offset)
       parameters:
-        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Page"
         - $ref: "#/components/parameters/Limit"
       responses:
         "200":
@@ -114,45 +101,11 @@ paths:
               schema:
                 $ref: "#/components/schemas/User"
 
-  /users/me:
-    get:
-      summary: Retorna o usuário autenticado (perfil da sessão atual)
-      description: >
-        Endpoint aditivo introduzido na Fase 1 — necessário para o frontend inicializar a
-        sessão (tela protegida) sem precisar decodificar o token no cliente. Qualquer
-        usuário autenticado pode ler o próprio perfil, independente de ter `users:read`.
-      responses:
-        "200":
-          description: Usuário autenticado
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/User"
-
-  /users/{id}:
-    get:
-      summary: Obtém um usuário do tenant por id
-      description: >
-        Endpoint aditivo introduzido na Fase 1 — necessário para testar isolamento
-        cross-tenant por id conhecido (ver security.md seção 1.3 e testing-strategy.md
-        seção 2). Usuário de outro tenant retorna 404, nunca 403 (BR-26).
-      parameters:
-        - $ref: "#/components/parameters/Id"
-      responses:
-        "200":
-          description: Usuário encontrado
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/User"
-        "404":
-          $ref: "#/components/responses/NotFound"
-
   /customers:
     get:
-      summary: Lista clientes do tenant
+      summary: Lista clientes do tenant (paginação por offset)
       parameters:
-        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Page"
         - $ref: "#/components/parameters/Limit"
       responses:
         "200":
@@ -165,7 +118,9 @@ paths:
                   data:
                     type: array
                     items: { $ref: "#/components/schemas/Customer" }
-                  next_cursor: { type: string, nullable: true }
+                  page: { type: integer }
+                  limit: { type: integer }
+                  total: { type: integer }
     post:
       summary: Cria um cliente
       requestBody:
@@ -199,7 +154,7 @@ paths:
 
   /customers/{id}/interactions:
     get:
-      summary: Histórico de interações do cliente (chamadas, mensagens, notas)
+      summary: Histórico de interações do cliente (cursor — recurso cronológico)
       parameters:
         - $ref: "#/components/parameters/Id"
         - $ref: "#/components/parameters/Cursor"
@@ -300,11 +255,11 @@ paths:
           in: query
           required: false
           schema: { type: string, format: uuid }
-        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Page"
         - $ref: "#/components/parameters/Limit"
       responses:
         "200":
-          description: Lista paginada de oportunidades
+          description: Lista paginada de oportunidades (offset)
           content:
             application/json:
               schema:
@@ -313,7 +268,9 @@ paths:
                   data:
                     type: array
                     items: { $ref: "#/components/schemas/Opportunity" }
-                  next_cursor: { type: string, nullable: true }
+                  page: { type: integer }
+                  limit: { type: integer }
+                  total: { type: integer }
 
   /opportunities/{id}/move:
     post:
@@ -374,7 +331,11 @@ paths:
 
   /calls/click-to-call:
     post:
-      summary: Origina uma chamada ativa a partir do CRM (MVP de telefonia)
+      summary: "[Fase 5] Origina uma chamada ativa a partir do CRM"
+      description: >
+        Fora do MVP. Depende da escolha do provedor de telefonia (D-010,
+        ADIADO até a Fase 5). Documentado aqui apenas como forma esperada do
+        contrato quando a Fase 5 iniciar.
       requestBody:
         required: true
         content:
@@ -432,7 +393,14 @@ components:
       name: cursor
       in: query
       required: false
-      schema: { type: string }
+      description: UUID v7 do último item da página anterior (recursos cronológicos)
+      schema: { type: string, format: uuid }
+    Page:
+      name: page
+      in: query
+      required: false
+      description: Número da página, base 1 (recursos administrativos)
+      schema: { type: integer, default: 1, minimum: 1 }
     Limit:
       name: limit
       in: query
@@ -468,12 +436,14 @@ components:
                   field: { type: string }
                   issue: { type: string }
 
-    TokenPair:
+    AccessToken:
       type: object
+      description: >
+        O refresh token não aparece aqui — ele trafega exclusivamente em cookie
+        httpOnly (ADR-008 / D-005).
       properties:
         access_token: { type: string }
-        refresh_token: { type: string }
-        expires_in: { type: integer }
+        expires_in: { type: integer, example: 900 }
 
     UserCreate:
       type: object
@@ -501,7 +471,9 @@ components:
         data:
           type: array
           items: { $ref: "#/components/schemas/User" }
-        next_cursor: { type: string, nullable: true }
+        page: { type: integer }
+        limit: { type: integer }
+        total: { type: integer }
 
     CustomerCreate:
       type: object

@@ -7,7 +7,7 @@
 | Unit | Função/service isolado, dependências mockadas | Jest (backend), Vitest (frontend) | A cada commit (CI) |
 | Integration | Módulo do backend + banco real (via container de teste) | Jest + Testcontainers/DB de teste | A cada PR |
 | API/E2E backend | Requisição HTTP completa contra a API | Jest + Supertest | A cada PR |
-| E2E frontend | Fluxo completo simulando usuário no navegador | Playwright (`[DECISÃO PENDENTE]`: confirmar vs. Cypress) | A cada PR (fluxos críticos) / nightly (suíte completa) |
+| E2E frontend | Fluxo completo simulando usuário no navegador | **Playwright** ([D-020](../00-governance/decision-register.md#d-020--ferramenta-de-e2e-de-frontend), `DECIDIDO`) | A cada PR (fluxos críticos) / nightly (suíte completa) |
 | Frontend component | Componente isolado | Vitest + Testing Library | A cada commit (CI) |
 
 ## 2. Cobertura obrigatória (não negociável)
@@ -34,9 +34,9 @@ Telas puramente administrativas de configuração com baixo risco de regra de ne
 
 - Testes unitários e de componente rodam em todo push.
 - Testes de integração/API rodam em todo PR contra `main`.
-- E2E de frontend: subconjunto de fluxos críticos (login, criar lead, converter em oportunidade, registrar atendimento) roda em todo PR; suíte completa roda em pipeline agendado (nightly) — `[DECISÃO PENDENTE]`: ferramenta de CI (GitHub Actions assumido como padrão, a confirmar).
+- E2E de frontend: subconjunto de fluxos críticos (login, criar lead, converter em oportunidade, registrar atendimento) roda em todo PR; suíte completa roda em pipeline agendado (nightly). Plataforma de CI: **GitHub Actions** ([D-021](../00-governance/decision-register.md#d-021--plataforma-de-ci), `PROPOSTO` — confirmar no início da Fase 1 conforme a hospedagem escolhida para os repositórios; trocar de plataforma altera o pipeline, não esta estratégia).
 - PR não é mesclado com suíte quebrada; falha de teste de tenant/permissão bloqueia merge sem exceção.
 
 ## 6. Testes de carga/performance
 
-Fora do MVP como processo automatizado contínuo, mas RNF-01 (latência p95) deve ser validado manualmente antes de releases que alterem endpoints de alto volume (listagens, dashboard). `[DECISÃO PENDENTE]`: ferramenta (k6/Artillery) e cadência formal, a definir quando houver tráfego real para calibrar.
+Fora do MVP como processo automatizado contínuo, mas RNF-01 (latência p95) deve ser validado manualmente antes de releases que alterem endpoints de alto volume (listagens, dashboard). Ferramenta (k6/Artillery) e cadência formal: [D-049](../00-governance/decision-register.md#d-049--ferramenta-de-teste-de-carga) (`ADIADO` — Fase 9, ou quando houver tráfego real para calibrar).

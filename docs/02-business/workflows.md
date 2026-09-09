@@ -18,7 +18,7 @@ Lead recebido
 
 Regras associadas: [../02-business/business-rules.md](../02-business/business-rules.md) BR-03 a BR-13.
 
-## 2. Fluxo de atendimento receptivo (Call Center)
+## 2. Fluxo de atendimento receptivo (Call Center) — *Fase 5*
 
 ```
 Chamada/mensagem chega ao canal
@@ -33,7 +33,7 @@ Chamada/mensagem chega ao canal
   → atendimento encerrado, associado ao histórico do cliente
 ```
 
-## 3. Fluxo de atendimento ativo (discagem)
+## 3. Fluxo de atendimento ativo (discagem) — *Fase 5*
 
 ```
 Operador/vendedor seleciona contato (manual ou lista de discagem)
@@ -44,9 +44,9 @@ Operador/vendedor seleciona contato (manual ou lista de discagem)
        └─ disposição "retornar depois" pode gerar tarefa de nova tentativa automaticamente
 ```
 
-MVP de telefonia = discagem manual/click-to-call (ver [../03-architecture/architecture.md](../03-architecture/architecture.md) seção Call Center e [ADR pendente sobre discador]).
+Este fluxo é da **Fase 5**. No MVP não há telefonia integrada: o operador liga por fora e registra a interação, que alimenta o mesmo histórico unificado ([D-015](../00-governance/decision-register.md#d-015--escopo-oficial-do-mvp)). Quando a Fase 5 iniciar, o MVP de telefonia é discagem manual/click-to-call, com o provedor ainda a definir ([D-010](../00-governance/decision-register.md#d-010--provedor-de-telefonia), `ADIADO`) — ver [../03-architecture/architecture.md](../03-architecture/architecture.md) seção 3.
 
-## 4. Fluxo de supervisão em tempo real
+## 4. Fluxo de supervisão em tempo real — *Fase 5*
 
 ```
 Supervisor abre painel de monitoramento
@@ -59,7 +59,7 @@ Supervisor abre painel de monitoramento
   → falha de WebSocket → painel cai para polling periódico (fallback)
 ```
 
-## 5. Fluxo de mensageria (WhatsApp/omnichannel)
+## 5. Fluxo de mensageria (WhatsApp/omnichannel) — *Fase 6*
 
 ```
 Provedor de canal envia webhook de mensagem recebida
@@ -79,7 +79,7 @@ Idempotência e reprocessamento: [../02-business/business-rules.md](../02-busine
 ## 6. Fluxo de configuração inicial de um tenant
 
 ```
-Tenant provisionado (Super Admin / self-service - [DECISÃO PENDENTE] sobre self-service no MVP)
+Tenant provisionado manualmente pelo Super Admin (sem self-service no MVP — D-037)
   → admin da empresa faz primeiro login
   → cadastra filiais e equipes
   → cadastra usuários e atribui papéis

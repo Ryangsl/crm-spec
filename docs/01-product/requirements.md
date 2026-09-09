@@ -3,8 +3,8 @@
 ## 1. Requisitos Funcionais (RF)
 
 ### Autenticação e Usuários
-- RF-01: O sistema deve permitir login com e-mail/senha, emitindo JWT de acesso e refresh token.
-- RF-02: O sistema deve permitir logout com revogação de refresh token.
+- RF-01: O sistema deve permitir login com e-mail/senha, emitindo access token JWT (TTL 15 min) e refresh token (TTL 7 dias, em cookie httpOnly) — ver [ADR-008](../adr/ADR-008.md).
+- RF-02: O sistema deve permitir logout com revogação de refresh token, individual (um dispositivo) e global (todos).
 - RF-03: O sistema deve permitir redefinição de senha.
 - RF-04: O sistema deve suportar múltiplos usuários por tenant, cada um com um ou mais papéis.
 
@@ -20,9 +20,11 @@
 - RF-11: O sistema deve permitir marcar oportunidade como Ganha ou Perdida, exigindo motivo no caso de perda.
 - RF-12: O sistema deve permitir distribuição automática de leads (round-robin no MVP).
 - RF-13: O sistema deve permitir registrar tarefas, notas e agendamentos vinculados a lead/oportunidade/cliente.
-- RF-14: O sistema deve permitir tags e campos personalizados em Clientes/Leads (`[DECISÃO PENDENTE]`: campos personalizados no MVP ou pós-MVP — ver [../10-roadmap/mvp.md](../10-roadmap/mvp.md)).
+- RF-14: O sistema deve permitir tags e campos personalizados em Clientes/Leads. No MVP, campos personalizados são suportados **estruturalmente** via `JSONB` ([D-008](../00-governance/decision-register.md#d-008--campos-personalizados-mvp), `DECIDIDO`); a gestão visual de campos (criação pelo usuário, permissões por campo, validação configurável) fica fora do MVP ([D-009](../00-governance/decision-register.md#d-009--sistema-completo-de-campos-personalizados), `ADIADO`).
 
 ### Atendimento / Call Center
+*(RF-15, RF-16, RF-19 e RF-20 são da Fase 5 — fora do MVP, ver [D-015](../00-governance/decision-register.md#d-015--escopo-oficial-do-mvp). RF-17 e RF-18 já valem no MVP, aplicados ao registro manual de atendimento.)*
+
 - RF-15: O sistema deve permitir que um operador entre/saia de uma ou mais filas e altere seu status (Disponível, Ocupado, Pausa, Offline).
 - RF-16: O sistema deve distribuir chamadas/atendimentos de uma fila entre operadores disponíveis.
 - RF-17: O sistema deve permitir registrar a disposição (resultado) de um atendimento.
@@ -31,15 +33,21 @@
 - RF-20: O sistema deve permitir click-to-call (originar chamada a partir da tela de CRM).
 
 ### Omnichannel
+*(Fase 6 — fora do MVP. A abstração de canal exigida por RF-22 já orienta o desenho desde a Fase 1.)*
+
 - RF-21: O sistema deve permitir receber e enviar mensagens via WhatsApp associadas ao histórico do cliente.
 - RF-22: O sistema deve suportar múltiplos canais de comunicação através de uma camada de abstração, sem acoplamento direto do CRM a um provedor específico.
 - RF-23: O sistema deve tratar webhooks de canais de forma idempotente.
 
 ### Relatórios e Dashboard
+*(Fase 7 — fora do MVP.)*
+
 - RF-24: O sistema deve fornecer dashboard com indicadores de vendas (funil, conversão) e de atendimento (volume, SLA, produtividade), filtrável por período/equipe.
-- RF-25: O sistema deve permitir exportação de relatórios (`[DECISÃO PENDENTE]`: formatos suportados no MVP).
+- RF-25: O sistema deve permitir exportação de relatórios (Fase 7; formatos suportados: [D-038](../00-governance/decision-register.md#d-038--formatos-de-exportação-de-relatórios), `ADIADO` até lá).
 
 ### Notificações
+*(Primeira versão na Fase 4, dentro do MVP; regras de gatilho mais elaboradas só na Fase 8.)*
+
 - RF-26: O sistema deve notificar usuários sobre eventos relevantes (lead atribuído, tarefa vencendo, oportunidade parada há X dias).
 
 ### Auditoria
@@ -54,7 +62,7 @@
 
 ### Disponibilidade e Confiabilidade
 - RNF-04: Falha de WebSocket não deve impedir o uso do sistema — deve haver fallback (polling) para dados críticos.
-- RNF-05: Falhas de integração com provedores externos (telefonia/WhatsApp) não devem derrubar o restante do sistema (isolamento de falhas, circuit breaker `[DECISÃO PENDENTE]` para quais integrações).
+- RNF-05: Falhas de integração com provedores externos (telefonia/WhatsApp) não devem derrubar o restante do sistema — timeout curto é obrigatório desde a primeira integração; circuit breaker é [D-039](../00-governance/decision-register.md#d-039--circuit-breaker-para-provedores-externos) (`ADIADO` para a Fase 5). Sem integração externa no MVP, este RNF só passa a ser exercitado na Fase 5.
 - RNF-06: Filas assíncronas devem ter retry com backoff e dead-letter queue.
 
 ### Segurança

@@ -30,7 +30,7 @@ volumes:
   pgdata:
 ```
 
-O backend/frontend em si podem rodar via `npm run dev` fora de container durante desenvolvimento ativo (hot reload mais simples), com container reservado para infraestrutura (Postgres/Redis) — `[DECISÃO PENDENTE]`: containerizar também app em dev, avaliado quando o setup de cada repositório for criado.
+[D-023](../00-governance/decision-register.md#d-023--ambiente-de-desenvolvimento-local) (`DECIDIDO`): backend e frontend rodam via `npm run dev` **fora** de container durante o desenvolvimento ativo (hot reload mais simples e rápido), com Docker reservado à infraestrutura (Postgres/Redis). A aplicação só é containerizada para build/deploy.
 
 ## 3. Variáveis de ambiente
 
@@ -45,7 +45,7 @@ JWT_ACCESS_TTL=900
 NODE_ENV=development
 ```
 
-Segredos de provedores externos (telefonia/WhatsApp) seguem o mesmo padrão, com nomes prefixados por provedor (`[DECISÃO PENDENTE]`: convenção exata, definida quando o provedor for escolhido — ver [../03-architecture/integrations.md](../03-architecture/integrations.md)).
+Segredos de provedores externos (telefonia/WhatsApp) só existem a partir da Fase 5. A convenção é prefixar por **capacidade, não por marca** (`TELEPHONY_*`, `WHATSAPP_*`), para que trocar de provedor não exija renomear configuração ([D-024](../00-governance/decision-register.md#d-024--convenção-de-variáveis-de-ambiente-de-provedores), `PROPOSTO`) — coerente com a abstração de canal em [../03-architecture/integrations.md](../03-architecture/integrations.md).
 
 ## 4. Migrations e seeds
 

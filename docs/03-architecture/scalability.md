@@ -7,11 +7,11 @@ O sistema deve poder crescer de uma operação pequena para uma operação grand
 ## 2. Backend stateless
 
 - Nenhum estado de sessão/negócio vive na memória do processo do backend (sessão via JWT/refresh token no banco/Redis, não em memória local).
-- Isso permite rodar múltiplas instâncias do backend atrás de um load balancer sem sticky session, exceto para conexões WebSocket, que exigem afinidade ou um adaptador compartilhado (`[DECISÃO PENDENTE]`: adapter Redis para Socket.IO/WS quando houver mais de uma instância — necessário a partir do momento em que o backend escalar horizontalmente).
+- Isso permite rodar múltiplas instâncias do backend atrás de um load balancer sem sticky session, exceto para conexões WebSocket, que exigem afinidade ou um adaptador compartilhado ([D-046](../00-governance/decision-register.md#d-046--adapter-redis-para-websocket-multi-instância), `ADIADO`: adapter Redis só é necessário quando houver mais de uma instância **e** WebSocket em uso — ou seja, não antes da Fase 5).
 
 ## 3. Banco de dados
 
-- PostgreSQL único no início; escalabilidade vertical (mais CPU/RAM) e read replicas para relatórios/dashboard cobrem o crescimento inicial.
+- PostgreSQL único, sem réplica, é o suficiente para o crescimento inicial — escalabilidade vertical (mais CPU/RAM) é o primeiro recurso. Réplica de leitura para relatórios/dashboard é um mecanismo **previsto para a Fase 9**, não para agora ([D-014](../00-governance/decision-register.md#d-014--escalabilidade-avançada), ver seção 8).
 - Índices desde o modelo inicial em `tenant_id` + colunas de filtro comuns (ver [../04-database/database.md](../04-database/database.md)).
 - Particionamento (ex.: por `tenant_id` ou por período em tabelas de alto volume como `interactions`/`messages`/`audit_log`) é um mecanismo previsto, mas **não implementado no MVP** — a modelagem deve evitar decisões que impeçam particionar depois (ex.: chave primária compatível, evitar FKs que dificultem partição).
 - Tenants com volume desproporcional podem, no futuro, migrar para schema/banco dedicado sem mudança de aplicação, graças ao uso consistente de `tenant_id` (ver [security.md](security.md)).
@@ -37,9 +37,11 @@ Não é possível escalar com segurança sem visibilidade — ver [../03-archite
 
 ## 8. O que é explicitamente adiado
 
-- Kubernetes/orquestração avançada — Docker Compose/VPS cobre a fase inicial (ver [ADR pendente sobre infraestrutura de deploy]).
-- Microsserviços — permanece monólito modular até haver evidência real de necessidade de escalar um módulo isoladamente (ADR-003).
-- Particionamento de banco e sharding — adiado até volume real justificar.
-- Multi-região — fora de escopo inicial.
+[D-014](../00-governance/decision-register.md#d-014--escalabilidade-avançada) (`DECIDIDO`: não implementar agora). A arquitetura inicial é monólito modular + NestJS + PostgreSQL + Redis + BullMQ. Ficam de fora até haver evidência real:
 
-Essas decisões devem ser revisitadas com um novo ADR quando houver evidência (métrica real, não suposição) de necessidade.
+- Kubernetes/orquestração avançada — Docker Compose/VPS cobre a fase inicial.
+- Microsserviços — permanece monólito modular até haver evidência de necessidade de escalar um módulo isoladamente ([ADR-003](../adr/ADR-003.md)).
+- Réplicas de leitura, particionamento de banco e sharding — adiados até o volume real justificar.
+- Multi-região e sistemas distribuídos — fora de escopo inicial.
+
+"Evidência real" significa métrica observada de volume, gargalo ou necessidade operacional — não suposição, não antecipação. Cada uma dessas decisões, quando revisitada, exige um novo ADR.

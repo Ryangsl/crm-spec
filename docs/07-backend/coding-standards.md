@@ -8,8 +8,9 @@
 
 ## 2. Convenção de commits e branches
 
-Ver estratégia de Git completa em [../adr/](../adr/) (a definir em ADR específico) e no fluxo geral do projeto — resumo:
-- Branches: `feature/*`, `fix/*`, `refactor/*`, a partir de `main` (ou `develop`, se adotado — `[DECISÃO PENDENTE]`).
+[D-022](../00-governance/decision-register.md#d-022--estratégia-de-branches) (`DECIDIDO`): **trunk-based**.
+- `main` é a única branch de longa duração. **Sem `develop`** — não há times/ambientes paralelos que justifiquem o custo do fluxo duplo.
+- Branches curtas a partir de `main`: `feature/*`, `fix/*`, `refactor/*`, mescladas via PR e removidas depois.
 - Commits descrevem o "porquê", não apenas o "o quê".
 
 ## 3. Regras específicas do domínio (obrigatórias em code review)

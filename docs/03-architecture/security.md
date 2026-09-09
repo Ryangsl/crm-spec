@@ -19,15 +19,25 @@ Isso exige tratar isolamento entre tenants como **requisito crítico de seguran�
 ### 1.3 Mecanismos de isolamento
 
 - Toda tabela de negócio tem coluna `tenant_id` (NOT NULL, indexada, FK para `tenants`).
-- Toda query de leitura/escrita passa por uma camada obrigatória que injeta o filtro de `tenant_id` a partir do contexto autenticado — nunca a partir de parâmetro vindo do cliente.
-- Row Level Security (RLS) do PostgreSQL como camada adicional de defesa (defesa em profundidade) foi avaliado na Fase 1 e adiado para a Fase 2+ — ver [ADR-008](../adr/ADR-008.md#3-row-level-security-rls-adiado-para-a-fase-2). Até lá, o isolamento depende do filtro obrigatório na aplicação (abaixo) mais testes automatizados de vazamento cross-tenant.
+- Toda query de leitura/escrita passa por uma camada obrigatória que injeta o filtro de `tenant_id` a partir do contexto autenticado — **nunca** a partir de parâmetro vindo do cliente. A cadeia é fixa:
+
+```
+Request → JWT → Auth Guard → Tenant Context → Service → Repository/Prisma → filtro obrigatório por tenant_id
+```
+
+- **Proibido**: qualquer rota em que o usuário escolha o tenant acessado (ex.: `GET /customers?tenant_id=123`). O `tenant_id` recebido do frontend nunca é fonte confiável.
+- Row Level Security (RLS) do PostgreSQL como camada adicional de defesa em profundidade: [D-003](../00-governance/decision-register.md#d-003--postgresql-row-level-security) (`PROPOSTO`, avaliar até o fim da Fase 2). RLS **não substitui** o filtro na aplicação nem os testes de isolamento — é reforço, não troca.
 - Testes automatizados obrigatórios de "vazamento entre tenants" fazem parte da definição de pronto de qualquer endpoint (ver [../09-testing/testing-strategy.md](../09-testing/testing-strategy.md)).
 - Identificadores de recurso não devem ser previsíveis/sequenciais expostos publicamente sem checagem de tenant (usar UUID — ver [../04-database/database.md](../04-database/database.md)).
 
 ## 2. Autenticação e sessão
 
-- **JWT de acesso** de curta duração (900s / 15 min) + **refresh token** de vida mais longa (30 dias, rotacionado a cada uso), armazenado com possibilidade de revogação (lista de refresh tokens ativos por usuário/dispositivo) — ver [ADR-008](../adr/ADR-008.md#5-ttl-de-tokens).
-- Refresh token é opaco e armazenado com hash no banco (nunca em texto puro), permitindo revogação individual (logout de um dispositivo) e global (logout de todos os dispositivos).
+Decisão completa em [ADR-008](../adr/ADR-008.md) ([D-004](../00-governance/decision-register.md#d-004--estratégia-de-jwt) e [D-005](../00-governance/decision-register.md#d-005--armazenamento-do-refresh-token), `DECIDIDO`).
+
+- **Access token**: JWT com TTL de **15 minutos**, mantido apenas em memória pelo frontend — nunca em `localStorage`/`sessionStorage`.
+- **Refresh token**: TTL de **7 dias**, opaco, entregue em **cookie httpOnly** (`Secure: true` em produção) e armazenado com hash no banco (nunca em texto puro).
+- **Rotação**: cada uso emite um novo refresh token e invalida o anterior; reuso de um token já rotacionado é tratado como indício de comprometimento e revoga a família de tokens daquele dispositivo.
+- **Revogação**: individual (logout de um dispositivo) e global (logout de todos os dispositivos).
 - Senhas com hash **bcrypt** ou **argon2** (custo configurável), nunca reversível.
 - Rate limiting específico em endpoints de autenticação (login, reset de senha) para mitigar força bruta.
 
@@ -41,13 +51,13 @@ Isso exige tratar isolamento entre tenants como **requisito crítico de seguran�
 
 - HTTPS/WSS obrigatório em todos os ambientes exceto desenvolvimento local (RNF-07).
 - CORS restrito às origens conhecidas do `crm-frontend` (por ambiente).
-- CSRF: refresh token é entregue no corpo da resposta/requisição, não em cookie (ver [ADR-008](../adr/ADR-008.md#4-refresh-token-entregue-no-corpo-da-resposta-não-cookie-httponly)). Como a API é stateless via Bearer token (não cookie de sessão), o risco de CSRF clássico não se aplica. Se essa decisão mudar para cookie httpOnly no futuro, proteção CSRF (SameSite + token) passa a ser obrigatória a partir desse ADR.
+- CSRF: as chamadas de API autenticadas usam Bearer token (não cookie), o que mantém o risco de CSRF baixo na maior parte da superfície. Porém, como o refresh token vai em cookie httpOnly ([D-005](../00-governance/decision-register.md#d-005--armazenamento-do-refresh-token)), a rota `/auth/refresh` é uma superfície CSRF real: o valor de `SameSite` e a necessidade de token anti-CSRF dependem da topologia final de domínio ([D-006](../00-governance/decision-register.md#d-006--topologia-de-domínio-samesite-e-csrf), `PROPOSTO`, resolver até o fim da Fase 2). Se o deploy for cross-site, proteção CSRF explícita é **obrigatória**.
 - Validação de entrada em 100% dos endpoints (DTO + schema, ver [../05-api/api-guidelines.md](../05-api/api-guidelines.md)); sanitização de campos livres (notas, mensagens) antes de renderização no frontend (proteção XSS).
 - Rate limiting geral por tenant/usuário/IP para proteger contra abuso.
 
 ## 5. Dados sensíveis e criptografia
 
-- Segredos (credenciais de provedores de telefonia/WhatsApp, chaves) nunca em texto puro no banco — criptografados em repouso ou armazenados em cofre de segredos (`[DECISÃO PENDENTE]`: solução de secrets management por ambiente, ver [../08-devops/deployment.md](../08-devops/deployment.md)).
+- Segredos (credenciais de provedores de telefonia/WhatsApp, chaves) nunca em texto puro no banco — criptografados em repouso ou armazenados em cofre de segredos ([D-025](../00-governance/decision-register.md#d-025--secrets-management-em-produção), `PROPOSTO`: variáveis de ambiente da plataforma de deploy no início, cofre dedicado quando as integrações crescerem — resolver antes da Fase 5, ver [../08-devops/deployment.md](../08-devops/deployment.md)).
 - Dados pessoais sensíveis (quando aplicável) tratados conforme LGPD — ver seção 7.
 - Backups seguem a mesma política de isolamento e criptografia dos dados originais.
 
@@ -72,7 +82,7 @@ Isso exige tratar isolamento entre tenants como **requisito crítico de seguran�
 
 - O sistema deve ser capaz de, por titular de dado (contato/cliente): consultar quais dados existem, corrigir, e processar solicitação de exclusão (respeitando obrigações legais de retenção, ex. fiscais).
 - Exclusão de titular é sempre auditada e, quando não puder ser física por obrigação legal, é anonimizada.
-- `[DECISÃO PENDENTE]`: fluxo operacional completo de atendimento a solicitações LGPD (self-service vs. processo manual assistido) fica para uma fase específica, não bloqueia o MVP, mas o modelo de dados já deve suportar (soft delete + auditoria cobrem a base).
+- O fluxo operacional de atendimento a solicitações de titular (self-service vs. processo manual assistido) é `[VALIDAÇÃO DE NEGÓCIO NECESSÁRIA]` — [D-047](../00-governance/decision-register.md#d-047--fluxo-operacional-de-lgpd-titular-de-dados), a resolver antes do primeiro cliente em produção. Não bloqueia o MVP: o modelo de dados (soft delete + auditoria) já suporta ambos os caminhos.
 
 ## 10. Princípio geral
 

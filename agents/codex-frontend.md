@@ -11,6 +11,7 @@ Este documento é a fonte para o `CLAUDE.md`/`AGENTS.md` que será criado em `cr
 Não decide arquitetura de produto/backend nem regra de negócio — isso vem definido em `crm-spec`.
 
 ## Antes de implementar qualquer coisa
+0. Consulte o [Decision Register](../docs/00-governance/decision-register.md) — o que está decidido (Context API sem store externa, Playwright, paginação híbrida, offline só de leitura), o que está adiado (WebSocket até a Fase 5) e o que depende de stakeholders (paleta de marca).
 1. Leia [../docs/06-frontend/frontend-architecture.md](../docs/06-frontend/frontend-architecture.md), [../docs/06-frontend/design-system.md](../docs/06-frontend/design-system.md) e [../docs/06-frontend/responsive.md](../docs/06-frontend/responsive.md).
 2. Consulte o contrato real em [../docs/05-api/openapi.yaml](../docs/05-api/openapi.yaml) e [../docs/05-api/api-guidelines.md](../docs/05-api/api-guidelines.md) — nunca invente um endpoint ou formato de resposta.
 3. Verifique se já existe um componente de design system equivalente antes de criar um novo estilo ad-hoc.

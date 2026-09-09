@@ -11,7 +11,9 @@ Nenhum módulo de negócio (CRM, Atendimento) conhece detalhes de um provedor es
 | Provedor de voz via SIP/tronco + gateway (ex. Asterisk/FreeSWITCH próprio) | Auto-hospedado | Mais controle, mais complexidade operacional |
 | Provedor de voz em nuvem (CPaaS, ex. Twilio-like) | Terceirizado | Mais rápido de integrar, custo por uso, menos controle sobre telefonia legada |
 
-`[DECISÃO PENDENTE]`: provedor específico de telefonia para o MVP. Critério de escolha: suportar click-to-call, webhooks de eventos de chamada (iniciada/atendida/encerrada) e gravação. A escolha vira um ADR específico quando definida — a arquitetura não depende de qual for escolhido, apenas exige que ele se encaixe no `ChannelAdapter`.
+[D-010](../00-governance/decision-register.md#d-010--provedor-de-telefonia) (`ADIADO` — decidir antes da **Fase 5**). Não bloqueia as Fases 1, 2, 3 e 4: o MVP não integra telefonia ([D-015](../00-governance/decision-register.md#d-015--escopo-oficial-do-mvp)), apenas registra atendimentos manualmente.
+
+O que a arquitetura precisa garantir desde já é apenas a abstração `TelephonyAdapter`, com implementações plugáveis (`AsteriskAdapter`, `TwilioAdapter`, `ProviderXAdapter`). Critério de escolha quando a Fase 5 chegar: suportar click-to-call, webhooks de eventos de chamada (iniciada/atendida/encerrada) e gravação. A escolha vira um ADR específico. Não integrar nenhum provedor antes da Fase 5 sem necessidade de negócio validada.
 
 Eventos mínimos exigidos do provedor: `call.ringing`, `call.answered`, `call.ended` (com duração e disposição/motivo de encerramento quando disponível), `call.recording.available`.
 
@@ -22,13 +24,15 @@ Eventos mínimos exigidos do provedor: `call.ringing`, `call.answered`, `call.en
 | WhatsApp Business Platform (API oficial, via BSP) | Oficial | Compliance, templates aprovados, mais estável para produção, custo por conversa |
 | Evolution API (ou similar não-oficial) | Não oficial | Mais barato/flexível para começar, risco de bloqueio pelo WhatsApp, não recomendado como única via em produção para operação crítica |
 
-Recomendação: iniciar com a API oficial (via BSP) como canal primário assim que o módulo WhatsApp entrar no roadmap (Fase 6); Evolution API pode ser um adapter alternativo para ambientes de teste/POC, nunca a única opção em produção, dado o risco de bloqueio. `[DECISÃO PENDENTE]`: confirmar BSP e se Evolution API entra como adapter suportado oficialmente ou fica apenas como referência de compatibilidade da abstração.
+[D-011](../00-governance/decision-register.md#d-011--provedor-de-whatsapp) (`ADIADO` — decidir antes da **Fase 6**; não bloqueia o MVP). **Direção já definida**: o produto SaaS comercial usa **WhatsApp Business Platform oficial ou BSP oficial** como canal primário. O produto principal não pode depender de solução não oficial — Evolution API e similares, se usados, ficam restritos a ambiente de teste/POC, nunca como única via em produção, dado o risco de bloqueio do número.
+
+O que falta decidir é apenas *qual* BSP, o que exige cotação comercial. A abstração `ChannelAdapter` cobre as operações necessárias: `sendMessage()`, `receiveWebhook()`, `sendTemplate()`, `getMedia()`.
 
 Elementos modelados: Mensagens, Conversas, Anexos, Áudios, Templates (para mensagens ativas fora da janela de 24h, exigido pela política do WhatsApp), Webhooks (recebimento e status de entrega), Falhas e Reprocessamento, Idempotência (ver [../02-business/business-rules.md](../02-business/business-rules.md) BR-19 a BR-21).
 
 ## 4. E-mail e SMS
 
-Fora do MVP como canal de atendimento em tempo real; a abstração de canal já contempla que possam ser adicionados como mais um `ChannelAdapter` no futuro sem mudança estrutural. `[DECISÃO PENDENTE]`: provedor de e-mail/SMS quando entrar em roadmap.
+Fora do MVP como canal de atendimento em tempo real; a abstração de canal já contempla que possam ser adicionados como mais um `ChannelAdapter` no futuro sem mudança estrutural. Provedor: [D-040](../00-governance/decision-register.md#d-040--provedor-de-e-mailsms) (`ADIADO` — quando esses canais entrarem no roadmap, pós-Fase 6).
 
 ## 5. Padrão de tratamento de webhook (todos os provedores)
 
@@ -40,5 +44,5 @@ Fora do MVP como canal de atendimento em tempo real; a abstração de canal já 
 
 ## 6. Falhas de integração externa
 
-- Indisponibilidade de um provedor não deve derrubar o restante do sistema — chamadas a provedores externos passam por timeout curto e, quando aplicável, circuit breaker (`[DECISÃO PENDENTE]`: biblioteca/abordagem, avaliar na Fase 6/backend).
+- Indisponibilidade de um provedor não deve derrubar o restante do sistema — chamadas a provedores externos passam por timeout curto desde a primeira integração e, quando aplicável, circuit breaker ([D-039](../00-governance/decision-register.md#d-039--circuit-breaker-para-provedores-externos), `ADIADO`: biblioteca/abordagem se decide na Fase 5, com um provedor real em mãos).
 - Falhas de envio (mensagem/chamada) ficam visíveis ao usuário com status claro ("Falha no envio"), nunca falham silenciosamente.

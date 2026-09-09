@@ -4,7 +4,7 @@ Tecnologia: **PostgreSQL** (ADR-001). Este documento define convenções gerais;
 
 ## 1. Convenções gerais
 
-- **Chave primária**: UUID v4 (`gen_random_uuid()` nativo do Postgres/Prisma) em todas as tabelas de negócio — decisão da Fase 1, ver [ADR-008](../adr/ADR-008.md#1-formato-de-uuid-v4-não-v7). Não usar IDs sequenciais expostos publicamente. Migração para v7 é possível no futuro sem mudar o tipo de coluna nem o contrato.
+- **Chave primária**: **UUID v7** em todas as tabelas de negócio ([D-001](../00-governance/decision-register.md#d-001--estratégia-de-identificador-primário), `DECIDIDO` — ver [ADR-009](../adr/ADR-009.md)). Nunca usar ID autoincremental como identificador público.
 - **`tenant_id`**: coluna obrigatória (UUID, FK para `tenants`, indexada) em toda tabela de dado de negócio. Tabelas verdadeiramente globais (ex.: `tenants`, `plans`) não têm essa coluna.
 - **Timestamps**: `created_at`, `updated_at` (timestamptz, default now / on update) em todas as tabelas; `deleted_at` (nullable) nas tabelas com soft delete.
 - **Soft delete**: exclusão lógica via `deleted_at`; toda query de aplicação filtra `deleted_at IS NULL` por padrão. Exclusão física não é exposta via API (ver [../02-business/business-rules.md](../02-business/business-rules.md) BR-22).
@@ -21,7 +21,7 @@ Tecnologia: **PostgreSQL** (ADR-001). Este documento define convenções gerais;
 
 ## 3. Paginação, busca e filtros (nível de banco)
 
-- Paginação por cursor como padrão do contrato (ver [../05-api/api-guidelines.md](../05-api/api-guidelines.md) seção 4 e `openapi.yaml`) — cursor opaco codifica `(created_at, id)` para ordenação estável. Offset continua aceitável apenas para telas administrativas pequenas e de baixo volume, como exceção pontual documentada no endpoint, não como padrão.
+- Paginação **híbrida** ([D-007](../00-governance/decision-register.md#d-007--estratégia-de-paginação), `DECIDIDO`): **offset** para recursos administrativos de volume moderado (usuários, clientes, leads, oportunidades, pipelines, configurações) e **cursor** para recursos cronológicos/volumosos (mensagens, interações, eventos, chamadas, logs, histórico). O UUID v7 ([D-001](../00-governance/decision-register.md#d-001--estratégia-de-identificador-primário)) serve como cursor por ser monotonicamente crescente. Ver contrato em [../05-api/api-guidelines.md](../05-api/api-guidelines.md).
 - Filtros comuns (status, responsável, período, fila) devem ter índice de suporte antes de ir para produção.
 
 ## 4. Particionamento futuro
@@ -30,8 +30,14 @@ Tabelas de alto volume (`interactions`, `messages`, `calls`, `audit_log`) são c
 
 ## 5. Multi-tenancy no banco
 
-Estratégia adotada: banco compartilhado com `tenant_id` (ADR-004, detalhado em [../03-architecture/security.md](../03-architecture/security.md)). Row Level Security (RLS) como camada adicional foi adiada para a Fase 2+ — ver [ADR-008](../adr/ADR-008.md#3-row-level-security-rls-adiado-para-a-fase-2).
+Estratégia adotada: banco compartilhado com `tenant_id` ([ADR-004](../adr/ADR-004.md), [D-002](../00-governance/decision-register.md#d-002--estratégia-de-multi-tenancy), `DECIDIDO`, detalhado em [../03-architecture/security.md](../03-architecture/security.md)). Row Level Security (RLS) como camada adicional: [D-003](../00-governance/decision-register.md#d-003--postgresql-row-level-security) (`PROPOSTO`, avaliar até o fim da Fase 2) — não substitui o filtro na aplicação nem os testes de isolamento.
 
 ## 6. Campos personalizados (custom fields)
 
-`[DECISÃO PENDENTE]`: representação de campos personalizados por tenant em Leads/Clientes — opções em avaliação: coluna `JSONB` (`custom_fields`) por entidade (mais simples, sem migração por tenant, busca mais limitada) vs. tabela EAV dedicada (mais flexível para filtros/relatórios, mais complexa). Recomendação inicial: `JSONB`, revisitar se a necessidade de filtro/relatório sobre campos customizados crescer.
+Coluna **`JSONB`** (`custom_fields`) nas entidades que precisarem, começando por Clientes e Leads ([D-008](../00-governance/decision-register.md#d-008--campos-personalizados-mvp), `DECIDIDO`). Exemplo do conteúdo esperado:
+
+```json
+{ "interesse": "Consórcio", "origem": "Instagram", "renda": 5000 }
+```
+
+A estrutura permite evolução futura para definições de campo por tenant. Fora do MVP ([D-009](../00-governance/decision-register.md#d-009--sistema-completo-de-campos-personalizados), `ADIADO`): criação visual de campos, permissões por campo, validação complexa, workflows baseados em campos e engine EAV. O objetivo é preparar a arquitetura sem construir uma plataforma de customização prematuramente.

@@ -79,13 +79,14 @@ Status de operador (`Disponível`, `Ocupado`, `Pausa`, `Offline`), tempos (pausa
 
 | Modo | Descrição | Complexidade | Decisão |
 |---|---|---|---|
-| Manual | Operador disca número a partir da tela | Baixa | **MVP** |
-| Click-to-call | Discagem originada por um clique no CRM, sem digitar número | Baixa/Média | **MVP** |
-| Preview Dialer | Sistema mostra o registro antes de discar, operador confirma | Média | Pós-MVP (Fase 6+) |
-| Power Dialer | Sistema disca automaticamente o próximo da lista ao encerrar o atual | Média/Alta | Pós-MVP |
-| Predictive Dialer | Sistema disca múltiplos números antecipando disponibilidade de operador (pacing algorítmico) | Alta (+ requisitos legais de abandono de chamada) | Fora do roadmap inicial; `[DECISÃO PENDENTE]` se e quando entra |
+| Registro manual de atendimento | Operador liga por fora e registra a interação no sistema | Nenhuma (não há telefonia) | **MVP** ([D-015](../00-governance/decision-register.md#d-015--escopo-oficial-do-mvp)) |
+| Manual | Operador disca número a partir da tela | Baixa | **Fase 5** |
+| Click-to-call | Discagem originada por um clique no CRM, sem digitar número | Baixa/Média | **Fase 5** |
+| Preview Dialer | Sistema mostra o registro antes de discar, operador confirma | Média | Pós-Fase 5 |
+| Power Dialer | Sistema disca automaticamente o próximo da lista ao encerrar o atual | Média/Alta | Pós-Fase 5 |
+| Predictive Dialer | Sistema disca múltiplos números antecipando disponibilidade de operador (pacing algorítmico) | Alta (+ requisitos legais de abandono de chamada) | Fora do roadmap inicial ([D-045](../00-governance/decision-register.md#d-045--discador-preditivo), `ADIADO` — pós-Fase 5, mediante validação de negócio) |
 
-**Justificativa do MVP**: manual + click-to-call cobrem o caso de uso essencial (atendimento receptivo em fila + discagem ativa individual) sem exigir motor de pacing, o que reduz drasticamente risco técnico e de compliance no primeiro lançamento.
+**Justificativa**: o MVP do produto não integra telefonia — entrega o histórico unificado do cliente com registro manual de atendimento, sem depender de nenhum provedor externo ([D-015](../00-governance/decision-register.md#d-015--escopo-oficial-do-mvp)). Quando a Fase 5 iniciar, o MVP *de telefonia* é manual + click-to-call: cobre atendimento receptivo em fila e discagem ativa individual sem exigir motor de pacing, reduzindo risco técnico e de compliance. A escolha do provedor ([D-010](../00-governance/decision-register.md#d-010--provedor-de-telefonia)) está `ADIADO` até a Fase 5 e não bloqueia as Fases 1 a 4.
 
 ## 4. Omnichannel — camada de abstração
 
@@ -98,18 +99,22 @@ interface ChannelAdapter {
 }
 ```
 
-Cada provedor (WhatsApp Business Platform, Evolution API, e-mail, SMS) implementa esse contrato. O restante do sistema (Conversas, Mensagens, filas de atendimento) trabalha apenas com o modelo normalizado interno. Isso permite trocar/adicionar provedor sem alterar regras de negócio. Ver [integrations.md](integrations.md) para detalhes por provedor.
+Cada provedor implementa esse contrato. Para telefonia, a mesma ideia se aplica sob o nome `TelephonyAdapter` (`ProviderAAdapter`, `AsteriskAdapter`, etc.). O restante do sistema (Conversas, Mensagens, filas de atendimento) trabalha apenas com o modelo normalizado interno, o que permite trocar/adicionar provedor sem alterar regras de negócio. Nenhum provedor concreto é escolhido agora ([D-010](../00-governance/decision-register.md#d-010--provedor-de-telefonia) e [D-011](../00-governance/decision-register.md#d-011--provedor-de-whatsapp), `ADIADO`) — ver [integrations.md](integrations.md).
 
 ## 5. Tempo real (WebSocket)
 
-Casos que exigem tempo real: status de operadores, tamanho/estado de filas, chamada em andamento, notificações, mensagens de conversa ativa, atualizações de dashboard operacional.
+[D-013](../00-governance/decision-register.md#d-013--websocket) (`ADIADO` para a **Fase 5**): WebSocket não é implementado na Fase 1. Os casos que o exigem — status de operadores, estado de filas, chamada em andamento, supervisão em tempo real — só existem a partir da Fase 5. O MVP não depende de tempo real.
+
+Quando a Fase 5 chegar, a forma é:
 
 - Canal: WebSocket (namespace por tenant), autenticado via token de curta duração emitido após autenticação HTTP.
-- **Fallback obrigatório**: se a conexão WebSocket cair ou não for suportada, o frontend deve recorrer a polling do mesmo recurso (intervalo maior, ex. 5-10s) — nenhuma funcionalidade crítica pode depender exclusivamente de WebSocket (RNF-04).
+- **Fallback obrigatório**: se a conexão cair ou não for suportada, o frontend recorre a polling do mesmo recurso (intervalo maior, ex. 5-10s) — nenhuma funcionalidade crítica depende exclusivamente de WebSocket (RNF-04).
 
 ## 6. Processamento assíncrono (filas)
 
-Processos assíncronos (Redis + BullMQ, ADR-006): envio de mensagens, importação de leads, processamento de gravação, geração de relatórios pesados, notificações, entrega/consumo de webhooks, integrações externas, e futuramente processamento de IA.
+Redis + BullMQ é a solução padrão de fila ([ADR-006](../adr/ADR-006.md), [D-012](../00-governance/decision-register.md#d-012--redis--bullmq), `DECIDIDO`). Candidatos naturais a processamento assíncrono: envio de mensagens, importação de leads, processamento de gravação, relatórios pesados, notificações, consumo de webhooks, integrações externas e futuramente IA.
+
+**Regra de contenção**: não criar filas desnecessárias no MVP. A infraestrutura existe desde a Fase 1, mas cada fila só é criada quando houver necessidade real — a operação permanece síncrona enquanto o processamento couber na requisição sem prejudicar a experiência. No MVP, o caso concreto que justifica fila é a importação de leads em lote (CSV).
 
 - **Retry**: backoff exponencial, limite de tentativas configurável por tipo de job.
 - **Dead-letter**: jobs que esgotam tentativas vão para uma fila de falhas, visível para operação/observabilidade — nunca descartados silenciosamente.

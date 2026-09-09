@@ -7,13 +7,16 @@ Este documento define o contrato entre `crm-frontend` e `crm-backend`. O fronten
 - **REST** sobre HTTPS, payloads JSON.
 - Especificação formal em [openapi.yaml](openapi.yaml) (OpenAPI 3.0) — fonte da verdade do contrato, deve ser mantida atualizada junto com qualquer mudança de endpoint.
 - Versionamento por prefixo de URL: `/v1/...`. Uma mudança **incompatível** (remoção de campo, mudança de tipo, mudança de comportamento) exige `/v2`; uma mudança **aditiva** (novo campo opcional) não exige nova versão.
-- Nenhum endpoint em produção é alterado de forma incompatível sem nova versão convivendo com a anterior por um período de transição (`[DECISÃO PENDENTE]`: política formal de deprecação/tempo mínimo de convivência).
+- Nenhum endpoint em produção é alterado de forma incompatível sem nova versão convivendo com a anterior por um período de transição ([D-030](../00-governance/decision-register.md#d-030--política-de-deprecação-de-versão-de-api), `ADIADO`: o tempo mínimo formal de convivência se define antes da primeira `/v2`; não há consumidor externo nem segunda versão no horizonte).
 
 ## 2. Autenticação
 
-- `Authorization: Bearer <access_token>` em toda rota autenticada.
-- Renovação via `POST /v1/auth/refresh` com o refresh token.
+Ver [ADR-008](../adr/ADR-008.md) para a decisão completa.
+
+- `Authorization: Bearer <access_token>` em toda rota autenticada. Access token com TTL de **15 minutos**, mantido apenas em memória pelo frontend — nunca em `localStorage`.
+- Renovação via `POST /v1/auth/refresh`: o refresh token trafega em **cookie httpOnly** (`Secure` em produção), não no corpo da requisição. TTL de 7 dias, com rotação a cada uso.
 - Rotas de autenticação (`/v1/auth/*`) não exigem token de acesso, mas têm rate limiting dedicado.
+- Se o deploy final for cross-site (frontend e API em sites diferentes), proteção CSRF explícita passa a ser obrigatória ([D-006](../00-governance/decision-register.md#d-006--topologia-de-domínio-samesite-e-csrf), `PROPOSTO`).
 
 ## 3. Multi-tenancy no contrato
 
@@ -22,7 +25,14 @@ Este documento define o contrato entre `crm-frontend` e `crm-backend`. O fronten
 
 ## 4. Paginação, filtros e ordenação
 
-- Listagens usam paginação por cursor: query params `?cursor=<opaco>&limit=<n>` (limit padrão e máximo definidos por endpoint). Resposta inclui `next_cursor` (null quando não há mais páginas).
+Paginação **híbrida** ([D-007](../00-governance/decision-register.md#d-007--estratégia-de-paginação), `DECIDIDO`) — a estratégia é escolhida por recurso, não por endpoint individual:
+
+| Estratégia | Recursos | Contrato |
+|---|---|---|
+| **Offset** | Administrativos de volume moderado: usuários, clientes, leads, oportunidades, pipelines, configurações | `?page=1&limit=20` → resposta com `data`, `page`, `limit`, `total` |
+| **Cursor** | Cronológicos ou potencialmente volumosos: mensagens, interações, eventos, chamadas, logs, histórico de atividades | `?cursor=<uuid>&limit=20` → resposta com `data` e `next_cursor` (null na última página) |
+
+O cursor é o UUID v7 do último item da página ([D-001](../00-governance/decision-register.md#d-001--estratégia-de-identificador-primário)), que é monotonicamente crescente e dispensa cursor opaco codificado. `limit` tem padrão 20 e máximo 100. Não construir abstração genérica que unifique as duas estratégias antes de haver necessidade real.
 - Filtros via query params nomeados (`?status=open&owner_id=...`); múltiplos filtros são combinados com AND.
 - Ordenação via `?sort=field` / `?sort=-field` (prefixo `-` = descendente); campos ordenáveis são explícitos por endpoint (não qualquer campo).
 
@@ -75,15 +85,16 @@ Este documento define o contrato entre `crm-frontend` e `crm-backend`. O fronten
 ```json
 // Request
 { "email": "user@empresa.com", "password": "•••••" }
-// Response 200
-{ "access_token": "...", "refresh_token": "...", "expires_in": 900 }
+// Response 200 — refresh token vai em cookie httpOnly, nunca no corpo
+{ "access_token": "...", "expires_in": 900 }
 ```
 
-### Usuários
-`GET /v1/users?cursor=...&limit=20`
+### Usuários (offset — recurso administrativo)
+`GET /v1/users?page=1&limit=20`
 `POST /v1/users` → 201 com o usuário criado.
 
-### Clientes
+### Clientes (offset)
+`GET /v1/customers?page=1&limit=20`
 `GET /v1/customers/{id}`
 `POST /v1/customers`
 
@@ -100,9 +111,9 @@ Este documento define o contrato entre `crm-frontend` e `crm-backend`. O fronten
 `POST /v1/opportunities/{id}/lose` `{ "reason": "..." }`
 
 ### Atendimentos / Ligações
-`POST /v1/calls/click-to-call` `{ "customer_id": "...", "phone": "..." }`
+`GET /v1/customers/{id}/interactions?cursor=...&limit=20` (cursor — recurso cronológico)
 `POST /v1/calls/{id}/disposition` `{ "disposition_id": "..." }`
-`GET /v1/customers/{id}/interactions?cursor=...`
+`POST /v1/calls/click-to-call` `{ "customer_id": "...", "phone": "..." }` — **Fase 5**, depende do provedor de telefonia ([D-010](../00-governance/decision-register.md#d-010--provedor-de-telefonia), `ADIADO`); não faz parte do MVP.
 
 ## 10. O que o frontend nunca faz
 

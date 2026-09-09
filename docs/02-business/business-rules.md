@@ -8,18 +8,18 @@
 - BR-03: Um lead sempre tem uma origem (`source`) registrada no momento da criação (formulário, importação, atendimento receptivo, manual, integração).
 - BR-04: Um lead não pode ser convertido em oportunidade sem estar vinculado a um Cliente (novo ou existente, resolvido por deduplicação — ver BR-08).
 - BR-05: Distribuição automática de leads (round-robin) só considera vendedores ativos e dentro do horário de atendimento configurado do tenant.
-- BR-06: Lead desqualificado exige motivo de desqualificação (lista configurável pelo tenant) e não pode ser reaberto como o mesmo lead — gera um novo registro se o contato retornar (`[DECISÃO PENDENTE]`: permitir reabertura direta como alternativa mais simples).
+- BR-06: Lead desqualificado exige motivo de desqualificação (lista configurável pelo tenant). O que acontece quando o contato retorna — novo lead ou reabertura do anterior — é `[VALIDAÇÃO DE NEGÓCIO NECESSÁRIA]` ([D-033](../00-governance/decision-register.md#d-033--reabertura-de-lead-desqualificado-br-06), resolver antes da Fase 3). Não presumir nenhum dos dois comportamentos na implementação antes da validação.
 
 ## 3. Clientes / Deduplicação
 - BR-07: Um Cliente é identificado unicamente, dentro do tenant, por documento (CPF/CNPJ) quando disponível; na ausência, por telefone normalizado (E.164) ou e-mail.
 - BR-08: Ao criar um lead/atendimento com dado de contato já existente no tenant, o sistema deve sugerir vínculo ao cliente existente em vez de duplicar.
 
 ## 4. Oportunidades / Pipeline
-- BR-09: Toda oportunidade pertence a um único Pipeline e está em exatamente uma Etapa a cada momento.
+- BR-09: Toda oportunidade pertence a um único Pipeline e está em exatamente uma Etapa a cada momento. Se mover para uma etapa fora da ordem é livre, bloqueado ou permitido com justificativa é `[VALIDAÇÃO DE NEGÓCIO NECESSÁRIA]` ([D-032](../00-governance/decision-register.md#d-032--ordem-de-movimentação-entre-etapas-do-pipeline), resolver antes da Fase 3).
 - BR-10: Mudança de etapa gera um registro de histórico imutável (etapa anterior, etapa nova, usuário, timestamp).
 - BR-11: Oportunidade Ganha ou Perdida é um estado terminal — não pode retornar ao pipeline; uma nova negociação com o mesmo cliente é uma nova Oportunidade.
 - BR-12: Oportunidade Perdida exige um motivo de perda, de uma lista configurável pelo tenant.
-- BR-13: Valor monetário de oportunidade é obrigatório apenas quando o tenant configurar o pipeline como "com previsão de receita" (`[DECISÃO PENDENTE]`: obrigatoriedade padrão).
+- BR-13: A obrigatoriedade do valor monetário da oportunidade (sempre obrigatório, sempre opcional, ou configurável por pipeline) é `[VALIDAÇÃO DE NEGÓCIO NECESSÁRIA]` ([D-034](../00-governance/decision-register.md#d-034--obrigatoriedade-de-valor-em-oportunidade-br-13), resolver antes da Fase 3). O campo existe no modelo desde já; o que falta é a regra.
 
 ## 5. Atendimento / Call Center
 - BR-14: Um operador só recebe atendimentos de filas às quais está associado e enquanto seu status é "Disponível".

@@ -58,7 +58,7 @@ Fluxos críticos detalhados estão em [use-cases.md](use-cases.md) e [../02-busi
 - Integrações de e-mail marketing/automação de marketing completa (fora de campanhas básicas).
 - Módulo de Billing/cobrança de clientes finais do tenant (billing é para cobrar o próprio tenant da plataforma, e mesmo esse é pós-MVP).
 - IA como funcionalidade voltada ao usuário final (sugestões, resumo de atendimento, transcrição) — está no roadmap (Fase 10), mas não no MVP. Não confundir com uso de IA para *desenvolver* o software (ver [../../agents/](../../agents/)).
-- Aplicativo mobile nativo (iOS/Android via loja) — o caminho inicial é PWA. Nativo é `[DECISÃO PENDENTE]` para fases futuras.
+- Aplicativo mobile nativo (iOS/Android via loja) — o caminho inicial é PWA ([ADR-007](../adr/ADR-007.md)); nativo é [D-044](../00-governance/decision-register.md#d-044--aplicativo-mobile-nativo) (`ADIADO`, pós-MVP mediante evidência).
 - Multi-idioma além de pt-BR no MVP.
 
 ## 8. Visão de crescimento

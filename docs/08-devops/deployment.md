@@ -13,7 +13,7 @@ O sistema deve funcionar em: desenvolvimento local (Windows/Linux), ambiente Lin
 ## 3. Variáveis de ambiente e segredos
 
 - Mesmo conjunto de variáveis do [ambiente local](local-development.md), com valores reais nunca versionados.
-- `[DECISÃO PENDENTE]`: mecanismo de secrets management em produção (variáveis de ambiente do orquestrador vs. cofre dedicado tipo Vault/Doppler) — recomendação inicial: variáveis de ambiente gerenciadas pela plataforma de deploy, com rotação manual documentada, evoluindo para cofre dedicado quando o número de integrações crescer.
+- Secrets management ([D-025](../00-governance/decision-register.md#d-025--secrets-management-em-produção), `PROPOSTO`, resolver antes da Fase 5): variáveis de ambiente gerenciadas pela plataforma de deploy, com rotação manual documentada; evoluir para cofre dedicado (Vault/Doppler) quando o número de integrações crescer. Até a Fase 5 não há segredo de provedor externo para guardar.
 
 ## 4. Migrations em produção
 
@@ -22,8 +22,8 @@ O sistema deve funcionar em: desenvolvimento local (Windows/Linux), ambiente Lin
 
 ## 5. Backup e restore
 
-- Backup automático diário do PostgreSQL, com retenção mínima definida por política (`[DECISÃO PENDENTE]`: período exato, considerar exigência contratual/LGPD).
-- Restore testado periodicamente (não apenas assumido funcional) — `[DECISÃO PENDENTE]`: cadência do teste de restore.
+- Backup automático diário do PostgreSQL. O **período de retenção** é `[VALIDAÇÃO DE NEGÓCIO NECESSÁRIA]` ([D-028](../00-governance/decision-register.md#d-028--retenção-de-backup), antes do primeiro cliente em produção) — depende de exigência contratual e de LGPD.
+- Restore testado a cada release relevante de infraestrutura e no mínimo trimestralmente ([D-029](../00-governance/decision-register.md#d-029--cadência-de-teste-de-restore), `PROPOSTO`). Backup cujo restore nunca foi testado não conta como backup.
 - Backups seguem a mesma política de criptografia/isolamento dos dados originais (ver [../03-architecture/security.md](../03-architecture/security.md)).
 
 ## 6. Health checks e observabilidade
@@ -42,6 +42,6 @@ Nenhuma ferramenta é adicionada sem necessidade concreta (RNF de observabilidad
 
 ## 7. Estratégia de release
 
-- Deploy por versão de imagem/artefato (`[DECISÃO PENDENTE]`: registry de imagens Docker a usar).
+- Deploy por versão de imagem/artefato ([D-026](../00-governance/decision-register.md#d-026--registry-de-imagens-docker), `ADIADO`: o registry se escolhe antes do primeiro deploy real — não bloqueia a Fase 1).
 - Rollback = subir a versão anterior da imagem; por isso migrations aditivas (seção 4) são um requisito, não uma preferência.
-- Ambientes: `production` desde já; `staging` recomendado assim que houver mais de um desenvolvedor ativo simultaneamente — `[DECISÃO PENDENTE]` sobre quando introduzir.
+- Ambientes: `production` desde já; `staging` a introduzir quando houver mais de um desenvolvedor/agente atuando em paralelo, ou antes do primeiro cliente real — o que vier primeiro ([D-027](../00-governance/decision-register.md#d-027--ambiente-de-staging), `PROPOSTO`).

@@ -16,9 +16,9 @@ Este documento define os perfis de acesso iniciais do sistema. O RBAC é **exten
 - **Objetivo**: operar a plataforma SaaS (não a operação comercial de nenhum tenant específico).
 - **Responsabilidades**: provisionar/suspender tenants, monitorar saúde da plataforma, suporte de segundo nível, gestão de planos.
 - **Funcionalidades**: painel de administração da plataforma (fora do produto principal do tenant).
-- **Visualiza**: metadados de todos os tenants (nome, plano, uso, status); **não** acessa dados de clientes/leads de um tenant por padrão (exceção via processo de suporte auditado — `[DECISÃO PENDENTE]` sobre esse fluxo).
+- **Visualiza**: metadados de todos os tenants (nome, plano, uso, status); **não** acessa dados de clientes/leads de um tenant. O fluxo de exceção para suporte (consentimento, janela temporal, auditoria) é `[VALIDAÇÃO DE NEGÓCIO NECESSÁRIA]` — [D-036](../00-governance/decision-register.md#d-036--acesso-de-suporte-do-super-admin-a-dados-de-tenant), a definir antes do painel de plataforma (pós-MVP). Enquanto não definido, o acesso simplesmente não existe.
 - **Cria/edita/exclui**: tenants, planos, limites.
-- **Restrições**: sem acesso operacional aos dados de negócio do tenant sem trilha de auditoria explícita.
+- **Restrições**: **nenhum** acesso operacional aos dados de negócio do tenant — não existe hoje um caminho autorizado, nem com auditoria. Um eventual "Support Access Controlado" (motivo obrigatório, acesso temporário, auditoria, expiração automática, preferência por read-only) só existirá se e quando [D-036](../00-governance/decision-register.md#d-036--acesso-de-suporte-do-super-admin-a-dados-de-tenant) for aprovada, com ADR próprio.
 
 ### 2.2 Administrador da empresa (tenant admin)
 - **Objetivo**: configurar e administrar a conta da empresa no sistema.
@@ -67,7 +67,7 @@ Este documento define os perfis de acesso iniciais do sistema. O RBAC é **exten
 - **Visualiza**: seus próprios leads/oportunidades/clientes e, se configurado, os da equipe.
 - **Cria**: leads, oportunidades, clientes, tarefas, notas, agendamentos.
 - **Edita**: os registros dos quais é responsável (dono).
-- **Exclui**: rascunhos próprios (leads não convertidos); demais exclusões são soft delete com regra de aprovação `[DECISÃO PENDENTE]`.
+- **Exclui**: rascunhos próprios (leads não convertidos); para as demais exclusões (sempre soft delete), se há ou não necessidade de aprovação do gerente é `[VALIDAÇÃO DE NEGÓCIO NECESSÁRIA]` — [D-035](../00-governance/decision-register.md#d-035--regra-de-aprovação-para-exclusão-por-vendedor), a resolver antes da Fase 3.
 - **Restrições**: sem acesso a registros de outros vendedores fora de sua equipe, salvo liberação do gerente; sem acesso a configurações administrativas.
 
 ### 2.7 Operador de Call Center
@@ -125,8 +125,8 @@ Além do papel (o que a tela permite fazer), todo acesso a um registro passa por
 - **Filial** — registros de qualquer equipe dentro da mesma filial.
 - **Tenant** — todos os registros do tenant.
 
-`[DECISÃO PENDENTE]`: se o escopo "equipe"/"filial" é resolvido por hierarquia dinâmica (árvore de gerência) ou por atribuição estática de usuário→equipe→filial no MVP. Recomendação inicial: atribuição estática (mais simples), evoluindo para hierarquia dinâmica se necessário.
+[D-016](../00-governance/decision-register.md#d-016--escopo-de-dados-por-equipefilial) (`DECIDIDO`, Fase 2): o escopo é resolvido por **atribuição estática** usuário → equipe → filial. Hierarquia dinâmica (árvore de gerência com profundidade arbitrária) fica adiada até haver necessidade real validada — o modelo de dados suporta a evolução sem migração destrutiva.
 
 ## 5. Papéis customizados (extensibilidade)
 
-A partir do MVP, o admin do tenant pode criar papéis customizados combinando permissões atômicas existentes. Não é permitido, no MVP, criar novas permissões atômicas via UI — isso é definido no backend a cada módulo novo. Ver [../04-database/entities.md](../04-database/entities.md) para o modelo de dados de `roles` e `permissions`.
+O modelo de dados (`roles` + `permissions`, ver [../04-database/entities.md](../04-database/entities.md)) suporta papéis customizados desde o início, mas a **UI de criação de papéis fica fora do MVP** ([D-050](../00-governance/decision-register.md#d-050--papéis-customizados-via-ui), `ADIADO` — pós-MVP, mediante demanda real): os papéis de fábrica atendem o MVP. Criar novas *permissões atômicas* nunca é feito via UI — isso é definido no backend a cada módulo novo.

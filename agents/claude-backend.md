@@ -9,6 +9,7 @@ Este documento é a fonte para o `CLAUDE.md`/`AGENTS.md` que será criado em `cr
 - Code review complexo (regra de negócio, segurança, multi-tenancy).
 
 ## Antes de implementar qualquer coisa
+0. Consulte o [Decision Register](../docs/00-governance/decision-register.md): ele diz o que já está decidido (não rediscuta), o que está adiado (não antecipe) e o que depende de stakeholders (não invente). Decisão `ADIADO`/`PROPOSTO` de outra fase **não** é motivo para parar o trabalho da fase atual.
 1. Leia [../docs/01-product/vision.md](../docs/01-product/vision.md) e [../docs/01-product/personas.md](../docs/01-product/personas.md) se a tarefa envolve regra de acesso.
 2. Verifique se a entidade/regra já existe em [../docs/04-database/entities.md](../docs/04-database/entities.md) e [../docs/02-business/business-rules.md](../docs/02-business/business-rules.md) antes de criar algo novo.
 3. Verifique se o endpoint já existe em [../docs/05-api/openapi.yaml](../docs/05-api/openapi.yaml).

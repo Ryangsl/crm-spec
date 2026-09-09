@@ -9,9 +9,9 @@ Repositório: `crm-frontend`. Consome exclusivamente os contratos definidos em [
 | Build | Vite | Necessário — dev server rápido, essencial para produtividade Mobile First (HMR) |
 | UI | React + TypeScript | Necessário — ecossistema maduro, tipagem compartilhável com contratos gerados do OpenAPI |
 | Estilo | Tailwind CSS | Necessário para consistência de design system utilitário e velocidade em telas mobile |
-| Estado de servidor | TanStack Query | Necessário — cache, revalidação e paginação por cursor exigidas pela API tornam isso não-trivial sem uma lib dedicada |
+| Estado de servidor | TanStack Query | Necessário — cache, revalidação e as duas estratégias de paginação da API ([D-007](../00-governance/decision-register.md#d-007--estratégia-de-paginação)) tornam isso não-trivial sem uma lib dedicada |
 | Formulários | React Hook Form + Zod | Necessário — formulários são o núcleo da UI (cadastro de lead, cliente, disposição de chamada); Zod compartilha validação com os DTOs do contrato |
-| Estado global de UI | Context API / store leve (`[DECISÃO PENDENTE]`: Zustand vs. Context puro) | Necessário apenas para estado de UI cross-cutting (sessão, tema, status de conexão realtime) — não para estado de servidor, que é do TanStack Query |
+| Estado global de UI | **Context API + hooks** ([D-018](../00-governance/decision-register.md#d-018--estado-global-no-frontend), `DECIDIDO` — sem Zustand no MVP) | Necessário apenas para estado de UI cross-cutting (sessão, tema, status de conexão realtime) — não para estado de servidor, que é do TanStack Query. O volume é pequeno demais para justificar uma store |
 | PWA | Plugin PWA do Vite (service worker, manifest) | Necessário — requisito explícito de Mobile First/instalável |
 
 ## 2. Estrutura de pastas (conceitual)
@@ -45,7 +45,7 @@ Cada `feature` corresponde, em geral, a um módulo do backend (ver [../03-archit
 
 - Todo formulário usa React Hook Form + schema Zod.
 - Validação client-side é UX (feedback imediato), nunca a autoridade — o backend sempre revalida (ver [../05-api/api-guidelines.md](../05-api/api-guidelines.md)).
-- Schemas Zod devem espelhar os DTOs do [openapi.yaml](../05-api/openapi.yaml); `[DECISÃO PENDENTE]`: geração automática de tipos/schemas a partir do OpenAPI vs. manutenção manual — geração automática é a direção recomendada assim que o contrato estabilizar.
+- Schemas Zod devem espelhar os DTOs do [openapi.yaml](../05-api/openapi.yaml). Geração automática de tipos a partir do OpenAPI é a direção definida ([D-019](../00-governance/decision-register.md#d-019--geração-de-tipos-a-partir-do-openapi), `PROPOSTO`), a adotar quando o contrato estabilizar (Fase 2/3); até lá, tipos manuais alinhados ao contrato.
 
 ## 5. Tratamento de loading, empty e error states
 
@@ -60,7 +60,9 @@ Todo componente que consome dado assíncrono trata explicitamente três estados,
 - Modais para confirmações e formulários curtos; nunca navegação principal dentro de modal.
 - Notificações em tempo real (novo lead atribuído, mensagem recebida) chegam via `realtime/` e populam tanto um centro de notificações quanto invalidam queries relevantes do TanStack Query.
 
-## 7. Tempo real no frontend
+## 7. Tempo real no frontend — *Fase 5*
+
+Não implementar na Fase 1 ([D-013](../00-governance/decision-register.md#d-013--websocket), `ADIADO`). A pasta `realtime/` só passa a existir quando a Fase 5 iniciar. Forma prevista:
 
 - Um único cliente WebSocket por sessão, com reconexão automática.
 - Ao desconectar, o app degrada para polling nos recursos que dependem de tempo real (status de fila/operador, conversa ativa) — nunca trava a tela nem exige reload manual (RNF-04).

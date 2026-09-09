@@ -22,7 +22,7 @@ Tablets são o dispositivo de maior uso esperado para vendedores em campo e supe
 
 - **Listagens**: lista/cards empilhados em `xs`/`sm`; tabela ou lista+detalhe lado a lado a partir de `md`/`lg`.
 - **Formulários**: campo único por linha em `xs`; múltiplas colunas a partir de `md` quando o formulário for longo (ex.: cadastro de cliente).
-- **Navegação**: bottom navigation até `md`; sidebar a partir de `lg` (ver [design-system.md](design-system.md) seção 4). Faixa `md` é o ponto de transição avaliado por dispositivo/orientação — `[DECISÃO PENDENTE]`: usar apenas largura ou também orientação (tablet retrato pode preferir bottom navigation mesmo em `md`).
+- **Navegação**: bottom navigation até `md`; sidebar a partir de `lg` (ver [design-system.md](design-system.md) seção 4). O critério de transição é **apenas largura de viewport** ([D-042](../00-governance/decision-register.md#d-042--breakpoint-de-transição-da-navegação), `PROPOSTO`); considerar orientação apenas se o teste em tablet real, na Fase 3, mostrar problema.
 - **Tela de atendimento (call center)**: em `xs`/`sm`, histórico e ações de disposição em abas; a partir de `md`, histórico e ações lado a lado sem necessidade de troca de aba.
 
 ## 4. Área de toque e ergonomia
@@ -40,4 +40,4 @@ Tablets são o dispositivo de maior uso esperado para vendedores em campo e supe
 ## 6. PWA e uso offline parcial
 
 - Instalável (manifest + service worker), com ícone e splash screen.
-- `[DECISÃO PENDENTE]`: escopo de funcionamento offline no MVP — recomendação inicial é apenas cache de assets estáticos e leitura de últimos dados carregados (sem fila de escrita offline), dado o risco de conflito de dados em operação de call center em tempo real. Escrita offline com sincronização fica para fase futura, se houver demanda real.
+- Escopo offline ([D-041](../00-governance/decision-register.md#d-041--escopo-de-funcionamento-offline-do-pwa), `DECIDIDO`): apenas cache de assets estáticos e leitura dos últimos dados carregados. **Sem** fila de escrita offline com sincronização — o risco de conflito de dados em operação de atendimento não se justifica no MVP. Escrita offline fica para fase futura, se houver demanda real.

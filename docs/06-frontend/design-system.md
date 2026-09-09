@@ -9,7 +9,7 @@
 ## 2. Fundamentos (tokens)
 
 - Cores, espaçamento, tipografia e raio de borda definidos como tokens Tailwind (`tailwind.config`), nunca valores mágicos no componente.
-- `[DECISÃO PENDENTE]`: paleta de marca definitiva — este documento assume uma paleta neutra de placeholder até a definição visual da marca.
+- Paleta de marca definitiva: `[VALIDAÇÃO DE NEGÓCIO NECESSÁRIA]` ([D-043](../00-governance/decision-register.md#d-043--paleta-de-marca), antes do primeiro cliente/piloto). **Não bloqueia a Fase 1**: o design system usa uma paleta neutra de placeholder e todas as cores são tokens — trocar a paleta depois é alterar tokens, não componentes.
 - Escala de espaçamento e tipografia segue a escala padrão do Tailwind, evitando valores arbitrários fora da escala.
 
 ## 3. Componentes base

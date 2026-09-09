@@ -2,7 +2,7 @@
 
 ## 1. Objetivo do MVP
 
-Um produto pequeno o suficiente para ser desenvolvido, testado e colocado em produção rapidamente, mas que já entrega o núcleo do diferencial do produto: CRM e atendimento no mesmo lugar, com histórico único do cliente, multi-tenant e Mobile First desde o primeiro dia. Corresponde às **Fases 0 a 4** do roadmap, mais um recorte mínimo de Call Center (parte inicial da Fase 5), suficiente para validar a proposta de valor completa — CRM **e** atendimento — sem esperar pela Fase 5 inteira.
+Um produto pequeno o suficiente para ser desenvolvido, testado e colocado em produção rapidamente, mas que já entrega o núcleo do diferencial: CRM e atendimento no mesmo lugar, com histórico único do cliente, multi-tenant e Mobile First desde o primeiro dia. Corresponde às **Fases 0 a 4** do roadmap ([D-015](../00-governance/decision-register.md#d-015--escopo-oficial-do-mvp), `DECIDIDO`). Nada da Fase 5 entra no MVP — o atendimento é registrado manualmente, sem telefonia integrada.
 
 ## 2. Entra no MVP
 
@@ -15,17 +15,18 @@ Um produto pequeno o suficiente para ser desenvolvido, testado e colocado em pro
 - Notas, Tarefas, Agenda básica.
 - Histórico único de interação por cliente (linha do tempo).
 
-**Atendimento (recorte mínimo de Call Center)**
-- Registro manual de atendimento (o operador registra que atendeu, por qual canal, com qual resultado) — **sem** integração de telefonia real ainda.
-- Click-to-call **é avaliado como stretch goal do MVP**, não bloqueador: `[DECISÃO PENDENTE]` se entra na primeira release ou logo em seguida, dependendo da definição do provedor de telefonia (ver [../03-architecture/integrations.md](../03-architecture/integrations.md)).
-- Filas e status de operador ficam para a Fase 5 completa (painel de supervisão em tempo real não é MVP).
+**Atendimento**
+- Registro manual de atendimento (o operador registra que atendeu, por qual canal, com qual resultado) alimentando o histórico unificado do cliente — **sem** integração de telefonia.
+- Click-to-call **não** entra no MVP: é Fase 5, e depende do provedor de telefonia ([D-010](../00-governance/decision-register.md#d-010--provedor-de-telefonia), `ADIADO`).
+- Filas, status de operador e painel de supervisão em tempo real são Fase 5.
 
 **Frontend**
 - Mobile First/PWA, com os fluxos acima cobertos em `xs` a `xl` (ver [../06-frontend/responsive.md](../06-frontend/responsive.md)).
 
 **Plataforma técnica**
-- Filas assíncronas (BullMQ) para o que já existir de processamento em background (ex.: notificações, importação simples de leads via CSV).
-- Observabilidade mínima: logs estruturados + captura de erro (Sentry).
+- Redis + BullMQ disponíveis como infraestrutura, mas **sem criar filas desnecessárias** ([D-012](../00-governance/decision-register.md#d-012--redis--bullmq)): no MVP, a única fila justificada é a importação de leads em lote (CSV). O restante permanece síncrono até haver necessidade real.
+- Observabilidade mínima: logs estruturados (Pino) + captura de erro (Sentry).
+- **Sem WebSocket** ([D-013](../00-governance/decision-register.md#d-013--websocket)) — nenhuma funcionalidade do MVP depende de tempo real.
 
 ## 3. NÃO entra no MVP
 
@@ -35,7 +36,8 @@ Um produto pequeno o suficiente para ser desenvolvido, testado e colocado em pro
 - Campanhas e automações — Fase 8.
 - Particionamento de banco, múltiplas instâncias de backend, Kubernetes — Fase 9 (sem evidência de necessidade ainda).
 - IA como funcionalidade de produto — Fase 10.
-- Campos personalizados avançados, papéis customizados via UI (papéis de fábrica são suficientes no MVP) — `[DECISÃO PENDENTE]` se entram logo após o MVP ou ficam para quando houver demanda de cliente real.
+- Sistema completo de campos personalizados — criação visual, permissões por campo, validação configurável, engine EAV ([D-009](../00-governance/decision-register.md#d-009--sistema-completo-de-campos-personalizados), `ADIADO`). O suporte estrutural via `JSONB` ([D-008](../00-governance/decision-register.md#d-008--campos-personalizados-mvp)) entra; a plataforma de customização, não.
+- Papéis customizados via UI ([D-050](../00-governance/decision-register.md#d-050--papéis-customizados-via-ui), `ADIADO`) — papéis de fábrica são suficientes no MVP; o modelo de dados já suporta a evolução.
 - Aplicativo nativo de loja (iOS/Android) — PWA cobre o MVP.
 - Self-service de criação de tenant — provisionamento inicial é manual/assistido.
 

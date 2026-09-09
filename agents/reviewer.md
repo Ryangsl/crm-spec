@@ -39,6 +39,12 @@ Antes de aprovar qualquer mudança, o agente revisor confere:
 
 Uma mudança que falha em qualquer um dos pontos acima não deve ser aprovada apenas por "funcionar" — funcionar não é o critério de qualidade deste projeto (ver [../README.md](../README.md) critério de qualidade).
 
-## 4. Quando o revisor deve marcar `[DECISÃO PENDENTE]` em vez de decidir sozinho
+## 4. Quando o revisor não deve decidir sozinho
 
-Se a mudança expõe uma lacuna de decisão de produto/negócio ainda não definida na documentação (não uma decisão técnica de implementação), o revisor não deve inventar a resposta — deve pausar a aprovação, registrar a lacuna como `[DECISÃO PENDENTE]` no documento relevante, e sinalizar explicitamente para decisão humana.
+Se a mudança expõe uma lacuna de **produto/negócio** ainda não definida (não uma decisão técnica de implementação), o revisor não inventa a resposta. Ele registra uma entrada nova no [Decision Register](../docs/00-governance/decision-register.md) com status `VALIDAÇÃO DE NEGÓCIO`, marca o ponto no documento relevante como `[VALIDAÇÃO DE NEGÓCIO NECESSÁRIA]` e sinaliza para decisão humana.
+
+Decisões **técnicas** de implementação são diferentes: o revisor pode e deve decidi-las, registrando como `DECIDIDO` ou `PROPOSTO` conforme a maturidade.
+
+## 5. O que não é motivo para bloquear um PR
+
+Uma decisão com status `ADIADO`, `PROPOSTO` ou `VALIDAÇÃO DE NEGÓCIO` **não bloqueia** trabalho de uma fase que não depende dela. Só `BLOQUEADOR` bloqueia, e apenas a fase correspondente. Bloquear um PR da Fase 2 porque o provedor de telefonia (Fase 5) ainda não foi escolhido é um erro de revisão — ver a tabela de portões por fase em [../docs/10-roadmap/roadmap.md](../docs/10-roadmap/roadmap.md).
