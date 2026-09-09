@@ -35,7 +35,7 @@ Ao mudar uma decisão: atualize a entrada no register, atualize os documentos qu
 | [crm-backend](https://github.com/Ryangsl/crm-backend) | `611cd4f` | privado | ✅ sucesso — install, prisma generate, lint, test, build |
 | [crm-frontend](https://github.com/Ryangsl/crm-frontend) | `be436d3` | público | ✅ sucesso — install, lint, test, build |
 | [crm-workspace](https://github.com/Ryangsl/crm-workspace) | `7976937` | privado | (sem CI — repositório de infraestrutura) |
-| [crm-spec](https://github.com/Ryangsl/crm-spec) | este commit | público | (sem CI — documentação) |
+| [crm-spec](https://github.com/Ryangsl/crm-spec) | `8b0f564` | público | (sem CI — documentação) |
 
 O CI remoto rodou automaticamente no push e **passou em todos os passos** nos dois repositórios de código, resolvendo a única ressalva aberta no aceite da Fase 1.
 
