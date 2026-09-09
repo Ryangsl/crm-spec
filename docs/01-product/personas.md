@@ -127,6 +127,11 @@ Além do papel (o que a tela permite fazer), todo acesso a um registro passa por
 
 [D-016](../00-governance/decision-register.md#d-016--escopo-de-dados-por-equipefilial) (`DECIDIDO`, Fase 2): o escopo é resolvido por **atribuição estática** usuário → equipe → filial. Hierarquia dinâmica (árvore de gerência com profundidade arbitrária) fica adiada até haver necessidade real validada — o modelo de dados suporta a evolução sem migração destrutiva.
 
+**Fronteira de implementação explícita** ([D-058](../00-governance/decision-register.md#d-058--escopo-de-rbac-na-fase-2-apenas-tenant), `DECIDIDO`):
+- **Fase 2**: RBAC aplicado apenas no escopo **Tenant** — uma permissão concedida (ex.: `users:read`) dá acesso a todos os registros do tenant, sem filtro adicional. As colunas "R (equipe)" da matriz acima (Gerente, Supervisor) **ainda não são aplicadas** nesta fase; na prática, esses papéis leem o tenant inteiro até a Fase 3+.
+- **Fase 3+**: filtro por Equipe e Filial passa a valer de fato, quando os módulos `Team`/`Branch` tiverem CRUD e regra de negócio ativa.
+- Não simular escopo de equipe/filial parcialmente antes da Fase 3+ — a ausência do filtro é deliberada e documentada, não um bug a mascarar.
+
 ## 5. Papéis customizados (extensibilidade)
 
 O modelo de dados (`roles` + `permissions`, ver [../04-database/entities.md](../04-database/entities.md)) suporta papéis customizados desde o início, mas a **UI de criação de papéis fica fora do MVP** ([D-050](../00-governance/decision-register.md#d-050--papéis-customizados-via-ui), `ADIADO` — pós-MVP, mediante demanda real): os papéis de fábrica atendem o MVP. Criar novas *permissões atômicas* nunca é feito via UI — isso é definido no backend a cada módulo novo.

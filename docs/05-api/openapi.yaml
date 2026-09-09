@@ -54,9 +54,12 @@ paths:
     post:
       summary: Renova o access token a partir do refresh token do cookie
       description: >
-        Lê o refresh token do cookie httpOnly, rotaciona-o (o anterior é
-        invalidado) e devolve um novo access token. Reuso de um refresh token
-        já rotacionado revoga a família de tokens do dispositivo.
+        Lê o refresh token do cookie httpOnly, rotaciona-o (o anterior fica
+        marcado como revogado por rotação) e devolve um novo access token.
+        Reapresentar um token já rotacionado é reuso comprovado (D-056) e
+        revoga TODAS as sessões ativas do usuário, não só a reutilizada — a
+        granularidade é por usuário, não por dispositivo (o modelo de dados
+        não distingue dispositivo ainda).
       security: []
       responses:
         "200":
@@ -71,6 +74,37 @@ paths:
                 $ref: "#/components/schemas/AccessToken"
         "401":
           $ref: "#/components/responses/Unauthorized"
+
+  /auth/logout:
+    post:
+      summary: Encerra a sessão atual (revoga só o refresh token do cookie)
+      description: >
+        Idempotente — token já inválido/inexistente não é erro. Não exige
+        access token válido (funciona com ele já expirado).
+      security: []
+      responses:
+        "204":
+          description: Sessão encerrada (cookie limpo)
+          headers:
+            Set-Cookie:
+              description: refresh_token=; Path=/v1/auth; Expires=<epoch> (limpa o cookie)
+              schema: { type: string }
+
+  /auth/logout-all:
+    post:
+      summary: Encerra todas as sessões do usuário (D-057)
+      description: >
+        Identifica o usuário pelo próprio refresh token do cookie (prova de
+        posse via hash — nunca pelo id sozinho) e revoga todos os refresh
+        tokens ativos daquele usuário. Não exige access token válido.
+      security: []
+      responses:
+        "204":
+          description: Todas as sessões do usuário foram encerradas
+          headers:
+            Set-Cookie:
+              description: refresh_token=; Path=/v1/auth; Expires=<epoch> (limpa o cookie)
+              schema: { type: string }
 
   /users:
     get:
@@ -100,6 +134,65 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/User"
+
+  /users/me:
+    get:
+      summary: Retorna o próprio usuário (sempre o do token, nunca outro tenant)
+      responses:
+        "200":
+          description: Usuário autenticado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/User" }
+
+  /users/{id}:
+    get:
+      summary: Obtém um usuário do tenant
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Usuário encontrado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/User" }
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      summary: Atualiza nome e/ou papéis de um usuário do tenant
+      description: >
+        Escopo deliberadamente restrito a nome e role_ids — e-mail e senha
+        ficam fora de um PATCH genérico. role_ids ausente no corpo não altera
+        os papéis atuais; role_ids presente SUBSTITUI o conjunto inteiro.
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserUpdate"
+      responses:
+        "200":
+          description: Usuário atualizado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/User" }
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      summary: Desativa um usuário do tenant (não remove o registro)
+      description: >
+        "Exclusão" de usuário é desativação lógica (status=inactive) —
+        distinta do soft delete via deletedAt usado em dados de negócio
+        (Cliente/Lead/Oportunidade/Atendimento).
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "204":
+          description: Usuário desativado
+        "404":
+          $ref: "#/components/responses/NotFound"
 
   /customers:
     get:
@@ -452,6 +545,18 @@ components:
         name: { type: string }
         email: { type: string, format: email }
         password: { type: string }
+        role_ids:
+          type: array
+          items: { type: string, format: uuid }
+
+    UserUpdate:
+      type: object
+      description: >
+        Nenhum campo obrigatório — envie só o que quer mudar. role_ids
+        ausente = não mexe nos papéis; role_ids presente = substitui o
+        conjunto inteiro (mesmo `[]`, que remove todos os papéis).
+      properties:
+        name: { type: string }
         role_ids:
           type: array
           items: { type: string, format: uuid }

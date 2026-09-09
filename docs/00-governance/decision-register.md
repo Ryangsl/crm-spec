@@ -23,7 +23,7 @@ Cada decisão tem um **status**:
 | Fase | Decisões que precisam estar resolvidas antes |
 |---|---|
 | Fase 1 — Fundação técnica | D-001, D-012, D-017, D-018, D-020, D-021, D-022, D-023 — todas `DECIDIDO`/`PROPOSTO`. Nada pendente. |
-| Fase 2 — Auth/Usuários/Tenants | D-002, D-004, D-005, D-016, D-037 (`DECIDIDO`); D-003, D-006 (`PROPOSTO`, resolver até o fim da fase) |
+| Fase 2 — Auth/Usuários/Tenants | D-002, D-004, D-005, D-006, D-016, D-037, D-056 a D-062 (`DECIDIDO`); D-003 (`PROPOSTO`, resolver até o fim da fase) |
 | Fase 3 — CRM | D-007, D-008 (`DECIDIDO`); D-031 (`PROPOSTO`); D-032, D-033, D-034, D-035 (`VALIDAÇÃO DE NEGÓCIO`) |
 | Fase 5 — Call Center | D-010, D-013, D-024, D-025, D-039 |
 | Fase 6 — Omnichannel | D-011 |
@@ -107,9 +107,15 @@ Avaliar RLS como **camada adicional** de defesa. O isolamento primário continua
 Cookie **httpOnly**, `Secure: true` em produção. O access token não é persistido permanentemente no navegador (mantido em memória da aplicação).
 
 ### D-006 — Topologia de domínio, SameSite e CSRF
-**Status**: `PROPOSTO` · **Prazo**: antes da conclusão da Fase 2
+**Status**: `DECIDIDO` · **Fase**: 2
 
-O valor de `SameSite` do cookie de refresh depende da arquitetura final de domínio (frontend e API no mesmo site vs. cross-site). Se o deploy for cross-site, proteção CSRF (token anti-CSRF além de `SameSite`) passa a ser **obrigatória**. Decidir junto com a definição de domínios em [../08-devops/deployment.md](../08-devops/deployment.md).
+[../08-devops/deployment.md](../08-devops/deployment.md) §2 já fixa a topologia de produção: um único host com Nginx como proxy reverso na frente de backend e frontend — **mesmo site** (mesmo domínio registrável), possivelmente até mesma origem via roteamento por path. Ambiente local também é mesmo site (`localhost`, portas diferentes — SameSite ignora porta).
+
+Com base nisso:
+- Cookie de refresh com **`SameSite=Lax`**, sem atributo `Domain` explícito (host-only — mais restritivo que compartilhar entre subdomínios), `Path=/v1/auth` (o cookie só é enviado para os endpoints de auth, nunca para o resto da API), `httpOnly=true`, `Secure=true` apenas quando `NODE_ENV=production`.
+- **Token anti-CSRF explícito não é adotado agora** — `SameSite=Lax` já bloqueia o vetor clássico de CSRF (requisição simples disparada por outro site) numa topologia same-site como a definida acima.
+
+**Gatilho de revisão**: se a topologia de deploy mudar para cross-site (frontend e API em domínios registráveis diferentes), este ADR/decisão precisa ser reaberto — `SameSite=Lax` deixa de bastar e um token anti-CSRF passa a ser obrigatório, conforme já antecipado no ADR-008.
 
 ### D-016 — Escopo de dados por equipe/filial
 **Status**: `DECIDIDO` · **Fase**: 2
@@ -351,6 +357,53 @@ Opções descartadas: mover os arquivos para `crm-spec` (misturaria documentaç�
 **Status**: `DECIDIDO` · **Fase**: 1
 
 Com `core.autocrlf=true` no Windows, o checkout é CRLF enquanto o repositório guarda LF; o Prettier (padrão `lf`) acusava mais de 2000 erros e o lint nunca passava localmente. `endOfLine: "auto"` no `.prettierrc` mais `.gitattributes` com `* text=auto eol=lf` fazem o lint passar no Windows e no Linux sem reescrever nenhum arquivo.
+
+## Decisões da Fase 2 (auth, tenants, users)
+
+Todas resultam da auditoria formal do código que já existia como adiantamento da Fase 1 — ver `crm-spec/CLAUDE.md` e `crm-backend/CLAUDE.md`.
+
+### D-056 — Política de reuso de refresh token (família de sessões)
+**Status**: `DECIDIDO` · **Fase**: 2 · **Implementa**: ADR-008
+
+ADR-008 já definia "reuso revoga a família de tokens", mas nunca detalhou o que é "família" nem o que a API deve responder — sem isso, a auditoria da Fase 2 encontrou o método pronto (`revokeAllForUser`) mas nunca chamado. Fechando a lacuna:
+
+- **Família de sessões** = todos os refresh tokens do mesmo `userId`, independentemente de dispositivo/IP (o modelo de dados não distingue dispositivo hoje — granularidade por dispositivo fica para quando houver necessidade real, ex. tela de "sessões ativas").
+- **Reuso "comprovado"** — a coluna `revoked_reason` (`rotated` / `logout` / `reuse_detected`) distingue *por que* um token foi revogado. Só reapresentar um token cujo motivo é **`rotated`** conta como reuso de um token já rotacionado (ADR-008) e dispara a varredura da família. Reapresentar um token revogado por **`logout`** é apenas "sessão já encerrada" — comportamento esperado (ex.: uma aba antiga tentando renovar depois que o usuário saiu deliberadamente), não evidência de comprometimento, e **não** varre as demais sessões.
+  - Achado durante a implementação: sem essa distinção, um `logout` seguido de qualquer reuso do token (retry de rede, aba duplicada) varria também sessões saudáveis do mesmo usuário em outros dispositivos — falso positivo. Coberto por teste e2e dedicado.
+- **Resposta ao cliente**: idêntica a qualquer outro refresh token inválido (401, mesmo código de erro padronizado) — não expõe ao chamador que um reuso foi detectado (isso seria informação útil a um atacante testando o comportamento da API).
+- **Registro do evento de segurança**: fica pendente do módulo de auditoria (L1/D-058-adjacent — ver seção "auditoria básica" no roadmap da Fase 2). Até lá, o evento fica implícito no efeito (todas as sessões caem), sem log estruturado dedicado.
+
+### D-057 — Logout global
+**Status**: `DECIDIDO` · **Fase**: 2 · **Implementa**: ADR-008/D-004
+
+Novo endpoint `POST /v1/auth/logout-all`, público (não exige access token válido — útil quando ele já expirou), identifica o usuário pelo refresh token apresentado (cookie) e revoga todos os refresh tokens ativos daquele `userId`. Mesmo mecanismo de revogação usado pela resposta a reuso (D-056).
+
+### D-058 — Escopo de RBAC na Fase 2: apenas tenant
+**Status**: `DECIDIDO` · **Fase**: 2
+
+A Fase 2 implementa e valida **RBAC com escopo de tenant apenas**: uma permissão concedida (ex.: `users:read`) dá acesso a todos os recursos daquele tenant, sem filtro adicional por equipe/filial. `teamId`/`branchId` continuam existindo no schema (suporte de D-016), mas nenhum código de autorização os utiliza ainda.
+
+Escopo por equipe/filial (a coluna "R (equipe)" da matriz de [../01-product/personas.md](../01-product/personas.md) §3 para Gerente/Supervisor) fica **confirmado para a Fase 3+**, quando os módulos `Team`/`Branch` tiverem CRUD e regra de negócio ativa. Não simular esse escopo parcialmente nesta fase — `personas.md` §3 e §4 devem deixar essa fronteira explícita, não ambígua.
+
+### D-059 — Provisionamento de tenant permanece manual (Fase 2)
+**Status**: `DECIDIDO` · **Fase**: 2
+
+Nenhuma ferramenta nova de provisionamento nesta fase — sem self-service, painel, API pública de criação de tenant, billing ou planos (consistente com [D-037](#d-037--self-service-de-criação-de-tenant)). O procedimento atual (`prisma/seed.ts` editado à mão / acesso direto ao banco) permanece documentado como o caminho oficial para desenvolvimento/testes. Uma melhoria futura, se necessária, é um script administrativo interno (CLI local, não exposto como funcionalidade do produto) — não abre escopo arquitetural novo.
+
+### D-060 — Auditoria básica: write-only nesta fase
+**Status**: `DECIDIDO` · **Fase**: 2
+
+BR-23/BR-24 exigem que toda criação/edição/exclusão de dado sensível gere entrada de auditoria imutável — não exigem um endpoint de leitura. A Fase 2 entrega o modelo `audit_log` (com `tenant_id`, corrigido em [entities.md](../04-database/entities.md)) e a gravação, em transação atômica com a mutação que a origina, para `users` (create/update/deactivate). Não há endpoint de consulta ainda — ler via banco. Tela/API de auditoria fica para quando houver demanda real (mais módulos gerando eventos, necessidade de investigação por usuários não-técnicos).
+
+### D-061 — Paginação de `/users` corrigida para offset
+**Status**: `DECIDIDO` · **Fase**: 2
+
+Achado na Fase 2: `GET /users` usava paginação por **cursor**, contradizendo [D-007](#d-007--estratégia-de-paginação) (usuários estão na lista de recursos administrativos → offset) e o próprio `openapi.yaml`/`api-guidelines.md`, que já documentavam `?page=&limit=` desde a Fase 0. Corrigido para offset (`{data, page, limit, total}`); `cursor.util.ts` permanece no código para os recursos cronológicos que D-007 atribui a cursor (mensagens, interações, chamadas — ainda não implementados).
+
+### D-062 — Validação de UUID nos DTOs deve aceitar v7, não v4
+**Status**: `DECIDIDO` · **Fase**: 2
+
+Achado na Fase 2: `CreateUserDto.role_ids` e (na primeira versão) `UpdateUserDto.role_ids` usavam `@IsUUID('4', { each: true })`, rejeitando qualquer UUID v7 — ou seja, **todo** `role_ids` enviado via API real falharia com 400, já que D-001/ADR-009 usam v7 em todo o sistema. Nunca foi detectado porque os testes existentes inseriam papéis direto no banco (bypassando a validação da API). Corrigido para `@IsUUID('7', { each: true })` nos dois DTOs; adicionado teste e2e que envia `role_ids` via API de verdade. Ao adicionar `IsUUID` em qualquer DTO novo, usar `'7'`, nunca `'4'` (ou a versão-padrão do sistema, se um dia mudar — mas hoje é v7 em tudo).
 
 ## Regras de negócio aguardando stakeholders
 

@@ -70,6 +70,7 @@ Convenções gerais (UUID, `tenant_id`, timestamps, soft delete) em [database.md
 | token_hash | string | sim | Nunca texto puro |
 | expires_at | timestamptz | sim | |
 | revoked_at | timestamptz | não | |
+| revoked_reason | enum(`rotated`, `logout`, `reuse_detected`) | não | Distingue *por que* foi revogado — só `rotated` conta como reuso comprovado para a política de revogação de família (D-056) |
 
 ## Grupo: CRM Core
 
@@ -287,12 +288,15 @@ Convenções gerais (UUID, `tenant_id`, timestamps, soft delete) em [database.md
 ### `audit_log` *(imutável, sem soft delete, sem update)*
 | Campo | Tipo | Obrigatório |
 |---|---|---|
+| tenant_id | UUID (FK tenants) | sim |
 | user_id | UUID (FK users) | não |
 | action | string | sim |
 | entity_type | string | sim |
 | entity_id | UUID | não |
 | payload | jsonb | não |
 | created_at | timestamptz | sim |
+
+`tenant_id` estava ausente na versão original desta tabela — corrigido: toda tabela de negócio tem `tenant_id` por convenção ([database.md](database.md) seção 1), e um log de auditoria sem isolamento por tenant contradiria BR-02 diretamente. Sem endpoint de leitura no MVP (só escrita) — ver [D-060](../00-governance/decision-register.md#d-060--auditoria-básica-write-only-nesta-fase).
 
 ### `tenant_settings`
 | Campo | Tipo | Obrigatório |

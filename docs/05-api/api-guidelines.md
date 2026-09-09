@@ -14,9 +14,10 @@ Este documento define o contrato entre `crm-frontend` e `crm-backend`. O fronten
 Ver [ADR-008](../adr/ADR-008.md) para a decisão completa.
 
 - `Authorization: Bearer <access_token>` em toda rota autenticada. Access token com TTL de **15 minutos**, mantido apenas em memória pelo frontend — nunca em `localStorage`.
-- Renovação via `POST /v1/auth/refresh`: o refresh token trafega em **cookie httpOnly** (`Secure` em produção), não no corpo da requisição. TTL de 7 dias, com rotação a cada uso.
+- Renovação via `POST /v1/auth/refresh`: o refresh token trafega em **cookie httpOnly** (`Path=/v1/auth`, `Secure` em produção), não no corpo da requisição. TTL de 7 dias, com rotação a cada uso. Reapresentar um token já rotacionado revoga todas as sessões do usuário (D-056).
+- `POST /v1/auth/logout` encerra só a sessão atual; `POST /v1/auth/logout-all` encerra todas (D-057). Nenhum dos dois exige access token válido — identificam o usuário pelo próprio refresh token do cookie.
 - Rotas de autenticação (`/v1/auth/*`) não exigem token de acesso, mas têm rate limiting dedicado.
-- Se o deploy final for cross-site (frontend e API em sites diferentes), proteção CSRF explícita passa a ser obrigatória ([D-006](../00-governance/decision-register.md#d-006--topologia-de-domínio-samesite-e-csrf), `PROPOSTO`).
+- Topologia de deploy é same-site (proxy único na frente de API e frontend — [deployment.md](../08-devops/deployment.md) §2), então `SameSite=Lax` já mitiga CSRF sem token adicional ([D-006](../00-governance/decision-register.md#d-006--topologia-de-domínio-samesite-e-csrf), `DECIDIDO`).
 
 ## 3. Multi-tenancy no contrato
 
@@ -91,7 +92,10 @@ O cursor é o UUID v7 do último item da página ([D-001](../00-governance/decis
 
 ### Usuários (offset — recurso administrativo)
 `GET /v1/users?page=1&limit=20`
+`GET /v1/users/{id}` · `GET /v1/users/me`
 `POST /v1/users` → 201 com o usuário criado.
+`PATCH /v1/users/{id}` → nome e/ou `role_ids` (ausente = não mexe; presente = substitui o conjunto inteiro).
+`DELETE /v1/users/{id}` → 204, desativação lógica (`status=inactive`), não remove o registro.
 
 ### Clientes (offset)
 `GET /v1/customers?page=1&limit=20`
