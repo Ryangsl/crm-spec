@@ -9,6 +9,14 @@
 | API/E2E backend | Requisição HTTP completa contra a API | Jest + Supertest | A cada PR |
 | E2E frontend | Fluxo completo simulando usuário no navegador | **Playwright** ([D-020](../00-governance/decision-register.md#d-020--ferramenta-de-e2e-de-frontend), `DECIDIDO`) | A cada PR (fluxos críticos) / nightly (suíte completa) |
 | Frontend component | Componente isolado | Vitest + Testing Library | A cada commit (CI) |
+| **Manual Acceptance Test (MAT)** | Comportamento observável contra a spec de produto — não o código, o contrato | Roteiro escrito (`docs/09-testing/manual-acceptance/`) executado por humano ou agente revisor | No fechamento de cada fase; ao mudar um fluxo já coberto por um MAT existente |
+
+Automatizado verde ≠ aceito manualmente: um teste automatizado prova que o código faz o que o
+autor do teste esperava, não que a spec foi lida certo nem que ninguém esqueceu um cenário. O
+MAT é a checagem independente disso — ver
+[manual-acceptance/README.md](manual-acceptance/README.md) para o padrão obrigatório de cada
+roteiro e [phase-acceptance/README.md](phase-acceptance/README.md) para o registro de aceite
+por fase.
 
 ## 2. Cobertura obrigatória (não negociável)
 

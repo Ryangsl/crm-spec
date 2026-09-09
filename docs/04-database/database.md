@@ -30,7 +30,7 @@ Tabelas de alto volume (`interactions`, `messages`, `calls`, `audit_log`) são c
 
 ## 5. Multi-tenancy no banco
 
-Estratégia adotada: banco compartilhado com `tenant_id` ([ADR-004](../adr/ADR-004.md), [D-002](../00-governance/decision-register.md#d-002--estratégia-de-multi-tenancy), `DECIDIDO`, detalhado em [../03-architecture/security.md](../03-architecture/security.md)). Row Level Security (RLS) como camada adicional: [D-003](../00-governance/decision-register.md#d-003--postgresql-row-level-security) (`PROPOSTO`, avaliar até o fim da Fase 2) — não substitui o filtro na aplicação nem os testes de isolamento.
+Estratégia adotada: banco compartilhado com `tenant_id` ([ADR-004](../adr/ADR-004.md), [D-002](../00-governance/decision-register.md#d-002--estratégia-de-multi-tenancy), `DECIDIDO`, detalhado em [../03-architecture/security.md](../03-architecture/security.md)). Row Level Security (RLS) foi avaliado e **não adotado**: [D-003](../00-governance/decision-register.md#d-003--postgresql-row-level-security) (`DECIDIDO — opção B`) — com Prisma, RLS seguro exigiria envolver toda leitura tenant-scoped em transação (pool de conexões), custo e risco maiores que o ganho dado que o filtro na aplicação já é testado.
 
 ## 6. Campos personalizados (custom fields)
 

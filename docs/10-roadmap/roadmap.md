@@ -34,15 +34,16 @@ Fases 1 a 4 **não dependem** de telefonia, WhatsApp, IA, escalabilidade avança
 - **Critérios de aceite**: backend e frontend sobem localmente (infra via Docker Compose, app via `npm run dev`); health check responde; CI roda lint/test com sucesso.
 - **Riscos**: antecipar infraestrutura de fases futuras (WebSocket, canais, filas) — mitigado pela lista explícita de "não faz parte" acima.
 
-## FASE 2 — Autenticação + Usuários + Tenants ⬅ *aguarda autorização explícita*
+## FASE 2 — Autenticação + Usuários + Tenants ✅ *fechada em 2026-09-09 — 🟡 apta com ressalvas*
 - **Objetivo**: multi-tenancy e RBAC funcionando de ponta a ponta.
-- **Ponto de partida atípico**: `auth`, `tenants` e `users` já foram construídos durante a Fase 1 (com E2E de isolamento entre tenants passando). Esta fase **começa revisando** esse código contra [personas.md](../01-product/personas.md), [ADR-008](../adr/ADR-008.md) e as regras de [business-rules.md](../02-business/business-rules.md) — não presumir que está pronto.
-- **Funcionalidades**: login/refresh/logout, CRUD de usuários, papéis de fábrica, isolamento de tenant, auditoria básica.
+- **Ponto de partida atípico**: `auth`, `tenants` e `users` já foram construídos durante a Fase 1 (com E2E de isolamento entre tenants passando). Esta fase **começou revisando** esse código contra [personas.md](../01-product/personas.md), [ADR-008](../adr/ADR-008.md) e as regras de [business-rules.md](../02-business/business-rules.md) — não presumiu que estava pronto, e encontrou 3 divergências de segurança (corrigidas).
+- **Funcionalidades**: login/refresh/logout/logout-all, CRUD de usuários, papéis de fábrica, isolamento de tenant, auditoria básica.
 - **Dependências**: Fase 1.
-- **Critérios de aceite**: testes automatizados de isolamento entre tenants e de permissão por papel passando (ver [../09-testing/testing-strategy.md](../09-testing/testing-strategy.md)); segundo tenant de teste não consegue, em nenhuma rota, ler dado do primeiro.
-- **Riscos**: vazamento cross-tenant — risco crítico, tratado com testes obrigatórios antes de prosseguir para dados de negócio reais.
+- **Critérios de aceite**: testes automatizados de isolamento entre tenants e de permissão por papel passando (ver [../09-testing/testing-strategy.md](../09-testing/testing-strategy.md)); segundo tenant de teste não consegue, em nenhuma rota, ler dado do primeiro. **Atendidos** — relatório completo em [../09-testing/phase-acceptance/phase-02.md](../09-testing/phase-acceptance/phase-02.md).
+- **Riscos**: vazamento cross-tenant — risco crítico, tratado com testes obrigatórios (13 casos e2e + MAT-007) antes de prosseguir para dados de negócio reais.
+- **Ressalvas não bloqueantes**: RF-03 (redefinição de senha) e RF-07 (provisionamento de tenant pelo Super Admin) de [requirements.md](../01-product/requirements.md) não têm implementação nem fase declarada — não eram critério de aceite desta fase, mas precisam de dono antes de virarem dívida esquecida.
 
-## FASE 3 — CRM
+## FASE 3 — CRM ⬅ *aguarda autorização explícita*
 - **Objetivo**: ciclo Lead → Oportunidade → Pipeline funcionando.
 - **Funcionalidades**: Clientes, Leads (com distribuição round-robin), Oportunidades, Pipeline configurável, Tarefas, Notas, Agenda básica.
 - **Dependências**: Fase 2.

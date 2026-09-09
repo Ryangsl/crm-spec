@@ -5,13 +5,13 @@
 ### Autenticação e Usuários
 - RF-01: O sistema deve permitir login com e-mail/senha, emitindo access token JWT (TTL 15 min) e refresh token (TTL 7 dias, em cookie httpOnly) — ver [ADR-008](../adr/ADR-008.md).
 - RF-02: O sistema deve permitir logout com revogação de refresh token, individual (um dispositivo) e global (todos).
-- RF-03: O sistema deve permitir redefinição de senha.
+- RF-03: O sistema deve permitir redefinição de senha. **Sem fase declarada no roadmap e sem implementação** — achado na revisão de fechamento da Fase 2 ([phase-02.md](../09-testing/phase-acceptance/phase-02.md) seção 4); `[VALIDAÇÃO DE NEGÓCIO NECESSÁRIA]` sobre qual fluxo (admin reseta/usuário troca a própria/"esqueci minha senha" por e-mail — este último depende de D-040, provedor de e-mail, ainda `ADIADO`) e em qual fase entra.
 - RF-04: O sistema deve suportar múltiplos usuários por tenant, cada um com um ou mais papéis.
 
 ### Multi-tenancy
 - RF-05: Todo dado de negócio deve pertencer a exatamente um tenant.
 - RF-06: Um usuário autenticado só deve conseguir ler/escrever dados do(s) tenant(s) ao qual pertence.
-- RF-07: O Super Admin da plataforma deve conseguir provisionar e suspender tenants sem acessar dados de negócio do tenant.
+- RF-07: O Super Admin da plataforma deve conseguir provisionar e suspender tenants sem acessar dados de negócio do tenant. Provisionamento hoje é manual (edição direta de seed/banco — [D-059](../00-governance/decision-register.md#d-059--provisionamento-de-tenant-permanece-manual-fase-2), `DECIDIDO`); nenhuma ferramenta, nem interna, existe ainda para isso — RF-07 fica satisfeito só parcialmente (a restrição de não acessar dado de negócio já vale, por não haver acesso nenhum — ver [D-036](../00-governance/decision-register.md#d-036--acesso-de-suporte-do-super-admin-a-dados-de-tenant)) até D-059 ser revisitado.
 
 ### CRM
 - RF-08: O sistema deve permitir cadastro, edição, visualização e (soft) exclusão de Clientes, Leads, Contatos e Oportunidades.

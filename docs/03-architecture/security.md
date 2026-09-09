@@ -26,7 +26,7 @@ Request → JWT → Auth Guard → Tenant Context → Service → Repository/Pri
 ```
 
 - **Proibido**: qualquer rota em que o usuário escolha o tenant acessado (ex.: `GET /customers?tenant_id=123`). O `tenant_id` recebido do frontend nunca é fonte confiável.
-- Row Level Security (RLS) do PostgreSQL como camada adicional de defesa em profundidade: [D-003](../00-governance/decision-register.md#d-003--postgresql-row-level-security) (`PROPOSTO`, avaliar até o fim da Fase 2). RLS **não substitui** o filtro na aplicação nem os testes de isolamento — é reforço, não troca.
+- Row Level Security (RLS) do PostgreSQL foi avaliado formalmente e **não adotado**: [D-003](../00-governance/decision-register.md#d-003--postgresql-row-level-security) (`DECIDIDO — opção B`). Com Prisma (pool de conexões), RLS seguro exigiria envolver toda leitura tenant-scoped em transação — custo de arquitetura e risco de implementação incorreta maiores que o ganho, dado que o filtro obrigatório abaixo já é testado. Reabrir só com evidência nova (ver critério de reavaliação em D-003).
 - Testes automatizados obrigatórios de "vazamento entre tenants" fazem parte da definição de pronto de qualquer endpoint (ver [../09-testing/testing-strategy.md](../09-testing/testing-strategy.md)).
 - Identificadores de recurso não devem ser previsíveis/sequenciais expostos publicamente sem checagem de tenant (usar UUID — ver [../04-database/database.md](../04-database/database.md)).
 
@@ -51,7 +51,7 @@ Decisão completa em [ADR-008](../adr/ADR-008.md) ([D-004](../00-governance/deci
 
 - HTTPS/WSS obrigatório em todos os ambientes exceto desenvolvimento local (RNF-07).
 - CORS restrito às origens conhecidas do `crm-frontend` (por ambiente).
-- CSRF: as chamadas de API autenticadas usam Bearer token (não cookie), o que mantém o risco de CSRF baixo na maior parte da superfície. Porém, como o refresh token vai em cookie httpOnly ([D-005](../00-governance/decision-register.md#d-005--armazenamento-do-refresh-token)), a rota `/auth/refresh` é uma superfície CSRF real: o valor de `SameSite` e a necessidade de token anti-CSRF dependem da topologia final de domínio ([D-006](../00-governance/decision-register.md#d-006--topologia-de-domínio-samesite-e-csrf), `PROPOSTO`, resolver até o fim da Fase 2). Se o deploy for cross-site, proteção CSRF explícita é **obrigatória**.
+- CSRF: as chamadas de API autenticadas usam Bearer token (não cookie), o que mantém o risco de CSRF baixo na maior parte da superfície. O refresh token vai em cookie httpOnly ([D-005](../00-governance/decision-register.md#d-005--armazenamento-do-refresh-token)), então `/auth/refresh` é a única rota exposta a CSRF — coberta com `SameSite=Lax` e sem token anti-CSRF adicional, justificado pela topologia same-site já definida em [deployment.md](../08-devops/deployment.md) ([D-006](../00-governance/decision-register.md#d-006--topologia-de-domínio-samesite-e-csrf), `DECIDIDO`). Se o deploy migrar para cross-site no futuro, essa decisão precisa ser reaberta e proteção CSRF explícita passa a ser **obrigatória**.
 - Validação de entrada em 100% dos endpoints (DTO + schema, ver [../05-api/api-guidelines.md](../05-api/api-guidelines.md)); sanitização de campos livres (notas, mensagens) antes de renderização no frontend (proteção XSS).
 - Rate limiting geral por tenant/usuário/IP para proteger contra abuso.
 

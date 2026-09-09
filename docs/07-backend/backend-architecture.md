@@ -74,7 +74,7 @@ Request → JWT → Auth Guard → Tenant Context → Service → Repository/Pri
 
 - Todo Repository aplica `tenant_id` a partir do contexto de requisição (`AsyncLocalStorage` ou equivalente do Nest), **nunca** a partir de parâmetro vindo do cliente. Endpoints que aceitem `tenant_id` como entrada do usuário são proibidos.
 - Nenhuma query crua (`$queryRaw`) é permitida sem revisão explícita que garanta o filtro de tenant.
-- Row Level Security no PostgreSQL como segunda camada: [D-003](../00-governance/decision-register.md#d-003--postgresql-row-level-security) (`PROPOSTO`, avaliar até o fim da Fase 2). Adotar RLS não dispensa nada acima nem os testes de isolamento.
+- Row Level Security no PostgreSQL foi avaliado e **não adotado** como segunda camada: [D-003](../00-governance/decision-register.md#d-003--postgresql-row-level-security) (`DECIDIDO — opção B`, análise completa no Decision Register). O que protege de fato é a cadeia acima (Guard → Tenant Context → filtro obrigatório no Repository) + os testes de isolamento — trate como o mecanismo real, não um substituto provisório de algo "melhor" que ainda vai chegar.
 
 ## 6. Tratamento de erros
 

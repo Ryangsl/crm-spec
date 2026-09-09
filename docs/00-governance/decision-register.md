@@ -23,7 +23,7 @@ Cada decisão tem um **status**:
 | Fase | Decisões que precisam estar resolvidas antes |
 |---|---|
 | Fase 1 — Fundação técnica | D-001, D-012, D-017, D-018, D-020, D-021, D-022, D-023 — todas `DECIDIDO`/`PROPOSTO`. Nada pendente. |
-| Fase 2 — Auth/Usuários/Tenants | D-002, D-004, D-005, D-006, D-016, D-037, D-056 a D-062 (`DECIDIDO`); D-003 (`PROPOSTO`, resolver até o fim da fase) |
+| Fase 2 — Auth/Usuários/Tenants | D-002, D-003, D-004, D-005, D-006, D-016, D-037, D-056 a D-063 — todas `DECIDIDO`. Nada pendente. |
 | Fase 3 — CRM | D-007, D-008 (`DECIDIDO`); D-031 (`PROPOSTO`); D-032, D-033, D-034, D-035 (`VALIDAÇÃO DE NEGÓCIO`) |
 | Fase 5 — Call Center | D-010, D-013, D-024, D-025, D-039 |
 | Fase 6 — Omnichannel | D-011 |
@@ -89,11 +89,26 @@ Request → JWT → Auth Guard → Tenant Context → Service → Repository/Pri
 Rotas como `GET /customers?tenant_id=123`, ou qualquer mecanismo em que o usuário escolha livremente o tenant acessado, são proibidas.
 
 ### D-003 — PostgreSQL Row Level Security
-**Status**: `PROPOSTO` · **Prazo**: antes da conclusão da Fase 2
+**Status**: `DECIDIDO` — **opção B: não implementar no MVP** · **Fase**: 2 (fechado em 2026-09-09) · **Gatilho de reavaliação**: ver seção "Quando reabrir"
 
-Avaliar RLS como **camada adicional** de defesa. O isolamento primário continua sendo responsabilidade da aplicação (Tenant Context, Guards, Services, filtro obrigatório no Repository).
+Análise formal feita ao fechar a Fase 2 (prazo original: "até o fim da Fase 2"). Avaliada nas dez dimensões pedidas:
 
-**Regra**: RLS não substitui os testes automatizados de isolamento cross-tenant, que permanecem obrigatórios independentemente da adoção.
+1. **Benefício de isolamento**: defesa em profundidade — se um Repository novo esquecer o filtro de `tenant_id`, o banco ainda barraria o vazamento.
+2. **Complexidade operacional com Prisma, especificamente**: **alta**. Prisma não tem `@@rls` nem qualquer suporte declarativo — RLS exige SQL raw nas migrations (`ENABLE ROW LEVEL SECURITY` + `CREATE POLICY`) e, mais importante, um mecanismo para o Postgres saber qual é o tenant da sessão atual (`current_setting('app.tenant_id')`).
+3. **Compatibilidade com Prisma**: aqui mora o risco real. Prisma gerencia um **pool de conexões** — duas queries seguidas do mesmo request não têm garantia de usar a mesma conexão física, exceto dentro de um `$transaction`. Isso significa que, para RLS funcionar corretamente, **toda query tenant-scoped precisaria rodar dentro de uma transação** que abre com `SET LOCAL app.tenant_id = '...'` (a própria documentação do Prisma recomenda exatamente isso, pelo mesmo motivo). Hoje só as mutações que gravam auditoria usam `$transaction` (ver `UsersService.create/update/deactivate`); leituras não. Envolver **toda** leitura em uma transação é uma mudança de arquitetura grande, com custo de performance (conexão presa por request) desproporcional ao ganho atual.
+4. **Risco de consultas administrativas**: o Super Admin da plataforma precisa de queries **sem** filtro de tenant (listar todos os tenants). RLS bem feito exigiria um role de banco à parte com bypass, mais uma superfície para acertar.
+5. **Impacto em migrations**: cada tabela tenant-scoped precisaria de uma migration própria habilitando RLS + política. Hoje são ~10 tabelas; na Fase 3+ serão dezenas — o custo de manutenção cresce proporcionalmente ao número de tabelas, não é um investimento único.
+6. **Impacto em testes**: os testes de integração/e2e criam fixtures via Prisma direto, fora do fluxo de aplicação (`test/e2e/utils/fixtures.ts`) — com RLS ativo, cada fixture precisaria rodar sob um contexto de tenant ou usar um role de bypass, adicionando fricção em toda a suíte existente (52 testes).
+7. **Impacto em manutenção**: um módulo/tabela novo precisaria **lembrar** de habilitar RLS + criar a política — isso é, na prática, **mais** um lugar para esquecer, não menos. A "camada adicional" só protege se ninguém esquecer de configurá-la em cada tabela nova, o que é o mesmo tipo de disciplina manual que o filtro no Repository já exige hoje.
+8. **Aumenta a segurança de forma relevante na arquitetura atual?** Marginalmente. O filtro central no Repository já é obrigatório, documentado (`backend-architecture.md` seção 5) e **testado**: todo endpoint tenant-scoped exige teste e2e de vazamento cross-tenant (`testing-strategy.md` seção 2) — mecanismo simples, já validado por 13 testes de isolamento passando (`tenant-isolation.e2e-spec.ts`).
+9. **Risco de falsa sensação de segurança — sim, e é o ponto decisivo**: implementar RLS incorretamente com Prisma (ex.: usar `SET` em vez de `SET LOCAL` dentro de transação, dado o pool de conexões) pode **vazar** o `tenant_id` de uma sessão para a próxima requisição que reusar a mesma conexão física — um vazamento cross-tenant **pior** do que não ter RLS. E a presença de RLS tende a relaxar a disciplina de testes/filtros na aplicação, que é o mecanismo que hoje comprovadamente funciona.
+10. **Alternativas já em uso**: `TenantContextStorage` (AsyncLocalStorage) derivado só do JWT + filtro obrigatório em todo Repository + teste e2e de vazamento obrigatório para todo endpoint novo (regra já em `testing-strategy.md` e nos `CLAUDE.md` dos dois repositórios de código).
+
+**Decisão**: **B) não implementar no MVP.** O custo operacional (rearquitetar toda leitura para rodar em transação) e o risco de introduzir um vazamento por implementação incorreta superam o ganho de defesa em profundidade, dado que o isolamento primário já é testado e validado.
+
+**Regra que permanece inalterada**: os testes automatizados de isolamento cross-tenant continuam obrigatórios para todo endpoint novo, independentemente desta decisão.
+
+**Quando reabrir**: antes de aceitar um cliente com exigência contratual de isolamento reforçado a nível de banco; ou se o número de pessoas/agentes tocando código de Repository crescer a ponto de a disciplina de filtro manual deixar de ser confiável só com revisão de código e teste automatizado. Reabrir com um ADR próprio (não editar esta entrada silenciosamente).
 
 ### D-004 — Estratégia de JWT
 **Status**: `DECIDIDO` · **Fase**: 2 · **ADR**: [ADR-008](../adr/ADR-008.md)
@@ -389,6 +404,15 @@ Escopo por equipe/filial (a coluna "R (equipe)" da matriz de [../01-product/pers
 **Status**: `DECIDIDO` · **Fase**: 2
 
 Nenhuma ferramenta nova de provisionamento nesta fase — sem self-service, painel, API pública de criação de tenant, billing ou planos (consistente com [D-037](#d-037--self-service-de-criação-de-tenant)). O procedimento atual (`prisma/seed.ts` editado à mão / acesso direto ao banco) permanece documentado como o caminho oficial para desenvolvimento/testes. Uma melhoria futura, se necessária, é um script administrativo interno (CLI local, não exposto como funcionalidade do produto) — não abre escopo arquitetural novo.
+
+### D-063 — Fase 2 não exige interface mínima (opção B)
+**Status**: `DECIDIDO — opção B` · **Fase**: 2 (fechado em 2026-09-09)
+
+Analisado formalmente: `roadmap.md` define os critérios de aceite da Fase 2 inteiramente em termos de API/testes automatizados ("testes automatizados de isolamento entre tenants e de permissão por papel passando... segundo tenant de teste não consegue, em nenhuma rota, ler dado do primeiro") — nenhuma menção a UI. Nenhum caso de uso em `use-cases.md` amarra login/CRUD de usuários a uma tela específica desta fase. `requirements.md` RF-01/02/04 são satisfeitos pela existência da capacidade via API, não por uma interface.
+
+**Decisão**: **B) Fase 2 é validada por API; a UI de login/sessão/gestão de usuários entra em fase posterior** (quando o frontend também tratar dessas telas — não necessariamente amarrado a uma fase numerada específica do roadmap atual, que é organizado por capacidade de backend). Não é uma lacuna da Fase 2, é escopo que nunca foi dela.
+
+O único preparo já feito no frontend (`credentials: 'include'` no cliente HTTP) é forward-compatible, não antecipação de UI.
 
 ### D-060 — Auditoria básica: write-only nesta fase
 **Status**: `DECIDIDO` · **Fase**: 2

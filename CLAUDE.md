@@ -22,7 +22,25 @@ Ao mudar uma decisão: atualize a entrada no register, atualize os documentos qu
 
 ## Estado atual
 
-**FASE 0 — APROVADA. FASE 1 — APROVADA e operacionalmente fechada em 2026-09-09 (código commitado, publicado e com CI remoto verde). FASE 2 aguarda autorização explícita.**
+**FASE 0 — APROVADA. FASE 1 — APROVADA. FASE 2 — fechada em 2026-09-09, veredito 🟡 APTA COM RESSALVAS (ver [phase-02.md](docs/09-testing/phase-acceptance/phase-02.md)). FASE 3 aguarda autorização explícita.**
+
+---
+
+## Fechamento formal da Fase 2 (2026-09-09)
+
+Relatório completo — matriz de auditoria spec↔código↔teste, divergências, decisões, MATs,
+resultado dos testes, veredito — em
+**[docs/09-testing/phase-acceptance/phase-02.md](docs/09-testing/phase-acceptance/phase-02.md)**.
+Não duplicado aqui. Resumo do que mudou neste repositório:
+
+- Nova camada de teste: **Manual Acceptance Test (MAT)** — `docs/09-testing/{manual-acceptance,phase-acceptance,evidence}/`. 8 MATs de Fase 2 + 1 template reutilizável (`MAT-SEC-TENANT-001`), todos executados de verdade contra o backend real, evidência embutida.
+- D-003 (RLS) fechada: **não implementar no MVP** — análise completa no Decision Register, com risco técnico específico do Prisma (pool de conexões) documentado.
+- D-063 (nova): Fase 2 não exige UI — validada por API.
+- D-056 a D-062: correções de segurança e paginação da Fase 2 (ver `crm-backend/CLAUDE.md` para o histórico técnico).
+- `requirements.md` RF-03/RF-07 marcados com a divergência encontrada (sem implementação, sem fase declarada) — não inventado, não corrigido silenciosamente.
+- `personas.md` §4 ganhou a fronteira explícita Fase 2 (RBAC só tenant) vs. Fase 3+ (equipe/filial).
+
+**Pendência aberta, sem dono ainda**: decidir em que fase entra a redefinição de senha (RF-03) — ver `phase-02.md` seção 15.
 
 ---
 
@@ -57,7 +75,7 @@ Criado o repositório **`crm-workspace`**: a pasta que agrupa os três repositó
 | E2E de frontend com Playwright ([D-020](docs/00-governance/decision-register.md#d-020--ferramenta-de-e2e-de-frontend)) | Fase 2, quando existirem fluxos a cobrir |
 | Provedor de telefonia ([D-010](docs/00-governance/decision-register.md#d-010--provedor-de-telefonia)) | Antes da Fase 5 |
 | Provedor de WhatsApp ([D-011](docs/00-governance/decision-register.md#d-011--provedor-de-whatsapp)) | Antes da Fase 6 |
-| Paleta de marca ([D-043](docs/00-governance/decision-register.md#d-043--paleta-de-marca)) e fluxo LGPD ([D-047](docs/00-governance/decision-register.md#d-047--fluxo-operacional-de-atendimento-a-solicitações-lgpd)) | Antes do primeiro cliente em produção |
+| Paleta de marca ([D-043](docs/00-governance/decision-register.md#d-043--paleta-de-marca)) e fluxo LGPD ([D-047](docs/00-governance/decision-register.md#d-047--fluxo-operacional-de-lgpd-titular-de-dados)) | Antes do primeiro cliente em produção |
 
 ### Observação sobre histórico
 
