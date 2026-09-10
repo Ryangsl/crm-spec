@@ -232,3 +232,21 @@ Não altera o veredito da seção 16 — apenas formaliza e reconfirma o que já
 - Nenhuma contradição documental nova encontrada contra D-003, D-006, D-056 a D-063 nesta rodada.
 - Suíte completa (lint/unit/integration/e2e/build de `crm-backend` e `crm-frontend`, via `crm-workspace/scripts/test-all.sh`) e Docker (`--profile apps up`, `/health` 200, `/api/docs` 200) re-executados sem regressão — resultado consistente com a seção 13.
 - Fase 3 segue **não iniciada**.
+
+## Nota de reestruturação dos MATs (2026-09-10)
+
+Não altera o veredito da seção 16 nem o resultado histórico da seção 9 ("todos: PASSOU") —
+apenas reorganiza a documentação dos 8 MATs para separar explicitamente **execução da IA**
+(evidência de 2026-09-09, preservada sem alteração) de **validação manual do responsável**
+(campo novo, hoje em branco em todos os 8 MATs — ver
+[manual-acceptance/README.md](../manual-acceptance/README.md) "As quatro camadas de um MAT").
+Nenhum teste foi reexecutado nesta rodada; nenhum código foi alterado.
+
+Consequência prática para o aceite formal: os "8/8 PASSOU" da seção 9 continuam válidos como
+**execução da IA**, mas a **validação manual** de cada MAT ainda está pendente — não é a mesma
+coisa, e o aceite formal da Fase 2 pelo responsável do projeto depende da segunda, não apenas
+da primeira. Duas lacunas de reprodutibilidade foram encontradas e registradas nos próprios
+MATs (não corrigidas nesta tarefa, por serem fora do escopo documental): os fixtures "MAT
+Tenant B" e "MAT Tenant Suspenso" (usados em MAT-006, MAT-007, MAT-008) não fazem parte do seed
+versionado (`crm-backend/prisma/seed.ts`) — precisam ser recriados manualmente por quem for
+validar esses três MATs.

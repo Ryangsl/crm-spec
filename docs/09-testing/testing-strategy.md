@@ -18,6 +18,14 @@ MAT é a checagem independente disso — ver
 roteiro e [phase-acceptance/README.md](phase-acceptance/README.md) para o registro de aceite
 por fase.
 
+Dentro do próprio MAT, desde 2026-09-10, "executado" e "aceito" também não são a mesma coisa:
+cada MAT distingue a **execução da IA/agente** (evidência de que o comportamento foi verificado
+pelo menos uma vez, contra um ambiente real) da **validação manual do responsável** (uma pessoa
+seguiu o tutorial e confirmou o mesmo comportamento de forma independente) — só a segunda fecha
+o critério de aceite do MAT. Cadeia completa: teste automatizado → execução da IA → validação
+manual → aceite. Ver "As quatro camadas de um MAT" em
+[manual-acceptance/README.md](manual-acceptance/README.md).
+
 ## 2. Cobertura obrigatória (não negociável)
 
 Toda mudança que toque as áreas abaixo exige teste automatizado cobrindo o caminho feliz **e** ao menos um caso de violação de regra:
