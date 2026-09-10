@@ -220,3 +220,15 @@ redefinição de senha) seja tomada antes de a Fase 3 avançar o suficiente para
 fique mais cara de fechar.
 
 Fase 3 **não foi iniciada** por esta tarefa.
+
+---
+
+## Nota de validação de pré-fechamento (2026-09-10)
+
+Não altera o veredito da seção 16 — apenas formaliza e reconfirma o que já estava registrado:
+
+- **RF-03** (seção 15): pendência formalizada no Decision Register como [D-064](../../00-governance/decision-register.md#d-064--rf-03-redefinição-de-senha-fase-e-fluxo-indefinidos) (`VALIDAÇÃO DE NEGÓCIO`, prazo: antes do primeiro cliente em produção), para que nenhum agente futuro decida silenciosamente o fluxo ou a fase. `requirements.md` atualizado para apontar para lá.
+- **RF-07** (seção 15): texto de `requirements.md` reforçado para deixar explícito que o escopo manual/assistido de [D-059](../../00-governance/decision-register.md#d-059--provisionamento-de-tenant-permanece-manual-fase-2) não bloqueia o aceite técnico da Fase 2 e que automatizar é evolução futura em aberto, não obrigação desta fase.
+- Nenhuma contradição documental nova encontrada contra D-003, D-006, D-056 a D-063 nesta rodada.
+- Suíte completa (lint/unit/integration/e2e/build de `crm-backend` e `crm-frontend`, via `crm-workspace/scripts/test-all.sh`) e Docker (`--profile apps up`, `/health` 200, `/api/docs` 200) re-executados sem regressão — resultado consistente com a seção 13.
+- Fase 3 segue **não iniciada**.

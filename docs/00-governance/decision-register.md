@@ -28,7 +28,7 @@ Cada decisão tem um **status**:
 | Fase 5 — Call Center | D-010, D-013, D-024, D-025, D-039 |
 | Fase 6 — Omnichannel | D-011 |
 | Fase 7+ | D-038, D-040, D-046, D-049 |
-| Antes do primeiro cliente em produção | D-027, D-028, D-029, D-043, D-047 |
+| Antes do primeiro cliente em produção | D-027, D-028, D-029, D-043, D-047, D-064 |
 
 ---
 
@@ -428,6 +428,18 @@ Achado na Fase 2: `GET /users` usava paginação por **cursor**, contradizendo [
 **Status**: `DECIDIDO` · **Fase**: 2
 
 Achado na Fase 2: `CreateUserDto.role_ids` e (na primeira versão) `UpdateUserDto.role_ids` usavam `@IsUUID('4', { each: true })`, rejeitando qualquer UUID v7 — ou seja, **todo** `role_ids` enviado via API real falharia com 400, já que D-001/ADR-009 usam v7 em todo o sistema. Nunca foi detectado porque os testes existentes inseriam papéis direto no banco (bypassando a validação da API). Corrigido para `@IsUUID('7', { each: true })` nos dois DTOs; adicionado teste e2e que envia `role_ids` via API de verdade. Ao adicionar `IsUUID` em qualquer DTO novo, usar `'7'`, nunca `'4'` (ou a versão-padrão do sistema, se um dia mudar — mas hoje é v7 em tudo).
+
+### D-064 — RF-03 (redefinição de senha): fase e fluxo indefinidos
+**Status**: `VALIDAÇÃO DE NEGÓCIO` · **Prazo**: antes do primeiro cliente em produção
+
+Achado no fechamento da Fase 2 ([phase-02.md](../09-testing/phase-acceptance/phase-02.md)) e confirmado na validação de pré-fechamento seguinte: [requirements.md](../01-product/requirements.md) RF-03 exige que o sistema permita redefinição de senha, mas nunca recebeu fase, dono ou critério de aceite no roadmap — não é `PROPOSTO` nem `ADIADO`, simplesmente nunca foi decidido. Não bloqueia nenhuma fase hoje (não é critério de aceite de nenhuma fase declarada em [roadmap.md](../10-roadmap/roadmap.md)), mas não pode ficar indefinido indefinidamente sob risco de virar dívida esquecida.
+
+Depende de decisão de produto sobre qual(is) fluxo(s) suportar — não mutuamente exclusivos:
+- **admin reseta a senha de um usuário do próprio tenant** — não depende de provedor de e-mail, poderia entrar em qualquer fase que já tenha CRUD de usuários (ou seja, já poderia ser hoje, se decidido);
+- **usuário autenticado troca a própria senha** — idem, não depende de e-mail;
+- **"esqueci minha senha" via e-mail** — depende de [D-040](#d-040--provedor-de-e-mailsms) (provedor de e-mail/SMS, `ADIADO` até Fase 7+).
+
+Nenhum dos três fluxos está implementado. Este registro existe para que nenhum agente futuro decida silenciosamente qual construir ou em qual fase — a decisão é de produto, não de arquitetura.
 
 ## Regras de negócio aguardando stakeholders
 
