@@ -368,6 +368,10 @@ paths:
   /opportunities/{id}/move:
     post:
       summary: Move a oportunidade para outra etapa (BR-09, BR-10)
+      description: >
+        Movimentação entre etapas é livre, inclusive pulando etapas. `justification` é
+        obrigatório quando a movimentação pula uma ou mais etapas (D-032); a obrigatoriedade
+        condicional é validada no backend, não expressável neste schema.
       parameters:
         - $ref: "#/components/parameters/Id"
       requestBody:
@@ -379,6 +383,10 @@ paths:
               required: [stage_id]
               properties:
                 stage_id: { type: string, format: uuid }
+                justification:
+                  type: string
+                  nullable: true
+                  description: Obrigatório quando a movimentação pula uma ou mais etapas (D-032).
       responses:
         "200":
           description: Oportunidade movida

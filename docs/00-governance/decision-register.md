@@ -24,7 +24,7 @@ Cada decisão tem um **status**:
 |---|---|
 | Fase 1 — Fundação técnica | D-001, D-012, D-017, D-018, D-020, D-021, D-022, D-023 — todas `DECIDIDO`/`PROPOSTO`. Nada pendente. |
 | Fase 2 — Auth/Usuários/Tenants | D-002, D-003, D-004, D-005, D-006, D-016, D-037, D-056 a D-063 — todas `DECIDIDO`. Nada pendente. |
-| Fase 3 — CRM | D-007, D-008 (`DECIDIDO`); D-031 (`PROPOSTO`); D-032, D-033, D-034, D-035 (`VALIDAÇÃO DE NEGÓCIO`) |
+| Fase 3 — CRM | D-007, D-008, D-031, D-032, D-033, D-034, D-035, D-058, D-065, D-066, D-067, D-068, D-069 — todas `DECIDIDO`. Nada pendente. Decision Gate (2026-09-16) e Implementation Gate (2026-09-16) concluídos. |
 | Fase 5 — Call Center | D-010, D-013, D-024, D-025, D-039 |
 | Fase 6 — Omnichannel | D-011 |
 | Fase 7+ | D-038, D-040, D-046, D-049 |
@@ -182,9 +182,15 @@ Coluna `JSONB` (`custom_fields`) nas entidades que precisarem (Clientes, Leads).
 Ficam fora do MVP: criação visual de campos, permissões por campo, regras complexas de validação, workflows baseados em campos, engine EAV. Objetivo: preparar a arquitetura sem construir uma plataforma de customização prematuramente.
 
 ### D-031 — Modelagem polimórfica de notas/tarefas/compromissos
-**Status**: `PROPOSTO` · **Prazo**: antes da Fase 3
+**Status**: `DECIDIDO` · **Fase**: 3 (fechado em 2026-09-16)
 
-Manter `entity_type` + `entity_id` com integridade validada na aplicação. Revisar antes da Fase 3 se a ausência de FK nativa se mostrar um problema real de integridade.
+Manter `entity_type` + `entity_id` em `notes`, `tasks` e `appointments`, com a integridade do vínculo validada na aplicação (camada de Service), sem coluna de FK dedicada por tipo de entidade.
+
+**Decisão**: confirmar a proposta original — não criar `lead_id`/`customer_id`/`opportunity_id` como colunas separadas. A implementação deve incluir teste automatizado garantindo que `entity_type` + `entity_id` correspondem a uma entidade existente e do mesmo tenant antes da persistência.
+
+**Motivo**: para o volume esperado no MVP, o risco de integridade órfã é mitigado por validação na aplicação coberta por teste; criar três colunas opcionais por entidade aumentaria a verbosidade do modelo sem ganho proporcional agora.
+
+**Gatilho de reabertura**: se a ausência de FK nativa se mostrar um problema real de integridade em produção, reavaliar migração para colunas dedicadas.
 
 ### D-030 — Política de deprecação de versão de API
 **Status**: `ADIADO` · **Prazo**: antes da primeira mudança incompatível (`/v2`)
@@ -393,12 +399,16 @@ ADR-008 já definia "reuso revoga a família de tokens", mas nunca detalhou o qu
 
 Novo endpoint `POST /v1/auth/logout-all`, público (não exige access token válido — útil quando ele já expirou), identifica o usuário pelo refresh token apresentado (cookie) e revoga todos os refresh tokens ativos daquele `userId`. Mesmo mecanismo de revogação usado pela resposta a reuso (D-056).
 
-### D-058 — Escopo de RBAC na Fase 2: apenas tenant
-**Status**: `DECIDIDO` · **Fase**: 2
+### D-058 — Escopo de RBAC na Fase 2 e na Fase 3: apenas tenant
+**Status**: `DECIDIDO` · **Fase**: 2 · **Reafirmado para a Fase 3 em 2026-09-16**
 
 A Fase 2 implementa e valida **RBAC com escopo de tenant apenas**: uma permissão concedida (ex.: `users:read`) dá acesso a todos os recursos daquele tenant, sem filtro adicional por equipe/filial. `teamId`/`branchId` continuam existindo no schema (suporte de D-016), mas nenhum código de autorização os utiliza ainda.
 
-Escopo por equipe/filial (a coluna "R (equipe)" da matriz de [../01-product/personas.md](../01-product/personas.md) §3 para Gerente/Supervisor) fica **confirmado para a Fase 3+**, quando os módulos `Team`/`Branch` tiverem CRUD e regra de negócio ativa. Não simular esse escopo parcialmente nesta fase — `personas.md` §3 e §4 devem deixar essa fronteira explícita, não ambígua.
+**Decisão do Decision Gate da Fase 3 (2026-09-16)**: a Fase 3 **não ativa** o escopo por Equipe/Filial. O CRM da Fase 3 continua usando **somente escopo por Tenant** como isolamento de dados — assim como na Fase 2. Não implementar nesta fase: filtro por `team_id`/`branch_id` em listagens/consultas de CRM, CRUD de `Team`, CRUD de `Branch`, ou qualquer regra de visibilidade por equipe/filial. A coluna "R (equipe)"/"CRUD (equipe)" da matriz de [../01-product/personas.md](../01-product/personas.md) §3 (Gerente/Supervisor) continua **não aplicada** — esses papéis leem/gerenciam o tenant inteiro também na Fase 3, exatamente como na Fase 2.
+
+**Motivo**: ativar o escopo Equipe/Filial exigiria construir CRUD de Team/Branch (que não têm controller/tela hoje) e adicionar filtro em praticamente todo endpoint de CRM — escopo que o roadmap original da Fase 3 não previa. Manter o escopo simples (Tenant) evita aumentar o tamanho da fase sem necessidade validada.
+
+A estrutura de dados (`teamId`/`branchId`) permanece preparada para a evolução futura, sem migração destrutiva quando o escopo for ativado. **Fase de ativação**: a definir (fica para uma fase futura, não amarrada a nenhum número específico do roadmap atual) — não simular esse escopo parcialmente enquanto não for essa fase.
 
 ### D-059 — Provisionamento de tenant permanece manual (Fase 2)
 **Status**: `DECIDIDO` · **Fase**: 2
@@ -441,29 +451,88 @@ Depende de decisão de produto sobre qual(is) fluxo(s) suportar — não mutuame
 
 Nenhum dos três fluxos está implementado. Este registro existe para que nenhum agente futuro decida silenciosamente qual construir ou em qual fase — a decisão é de produto, não de arquitetura.
 
-## Regras de negócio aguardando stakeholders
+## Decisões da Fase 3 (CRM)
 
-Estas decisões **não** devem ser inventadas por nenhum agente. Enquanto não validadas, os documentos correspondentes carregam `[VALIDAÇÃO DE NEGÓCIO NECESSÁRIA]`.
+### D-065 — Contacts: sub-recurso de Customer, não módulo próprio
+**Status**: `DECIDIDO` · **Fase**: 3 (fechado em 2026-09-16)
+
+`contacts` é implementado como **sub-recurso de `customers`** (`GET/POST /v1/customers/{id}/contacts`), sem módulo Nest independente (sem `modules/contacts/` próprio) nesta fase. A lógica de acesso a dados deve permanecer organizada internamente (repository próprio, ainda que dentro do módulo `customers`) para que possa ser isolada em módulo dedicado depois, caso o domínio evolua (ex.: busca de contato independente do cliente).
+
+**Motivo**: um Contact só existe vinculado a um Customer (1:N), sempre consultado no contexto de um cliente específico — caso clássico de sub-recurso REST; evita um módulo inteiro (controller/service/repository/DTOs/module) para uma entidade simples.
+
+### D-066 — Fundação Frontend de Auth/RBAC faz parte da Fase 3
+**Status**: `DECIDIDO` · **Fase**: 3 (fechado em 2026-09-16)
+
+A Fase 2 validou a autenticação/RBAC apenas via API ([D-063](#d-063--fase-2-não-exige-interface-mínima-opção-b)) — não existe nenhuma UI de login, sessão ou RBAC no `crm-frontend`. Como os critérios de aceite formais da Fase 3 ([roadmap.md](../10-roadmap/roadmap.md)) exigem UC-01 a UC-04 executáveis **via API e UI**, a "Fundação Frontend" de Auth/RBAC passa a ser a **primeira entrega da Fase 3 no frontend**, antes das telas de Customers/Leads/Opportunities/Pipeline.
+
+**Escopo mínimo** (não adicionar nada além disso nesta fundação): tela de login; gerenciamento de sessão com access token em memória (nunca `localStorage`, conforme ADR-008); refresh automático via cookie httpOnly já existente, disparado em 401; `ProtectedRoute`; leitura das permissões do usuário e ocultação/desabilitação de ações conforme RBAC; logout; suporte a `POST`/`PATCH`/`DELETE` no cliente HTTP (`src/services/api.ts`), hoje limitado a `GET`.
+
+**Não altera**: a arquitetura de autenticação do backend (ADR-008, D-004, D-005, D-006) permanece exatamente como está — esta decisão é só sobre o que falta construir no frontend para consumi-la.
+
+**Motivo**: sem sessão autenticada na UI, nenhuma tela de CRM da Fase 3 tem onde se apoiar; tratar isso como item à parte, sem fase associada, arriscava a Fase 3 nunca satisfazer seu próprio critério de aceite formal ("via API e UI").
+
+### D-067 — Deduplicação de Customer é bloqueante (409)
+**Status**: `DECIDIDO` · **Fase**: 3 (fechado no Implementation Gate, 2026-09-16)
+
+Ao criar um Customer cujo documento/telefone/e-mail já identifica um cliente existente no tenant (BR-07/BR-08), o sistema **não cria um duplicado automaticamente**: retorna `409` com o(s) candidato(s) encontrados. O usuário decide, pela UI, usar o cliente existente ou seguir por um fluxo explicitamente permitido pela aplicação. Quando houver **múltiplos candidatos** (ex.: telefone bate com um cliente, e-mail com outro), o sistema retorna todos — nunca escolhe automaticamente entre eles.
+
+**Motivo**: evitar heurística automática arriscada (escolher errado é pior que pedir confirmação); mantém o dono da decisão comercial (qual cliente é "o mesmo") do lado humano.
+
+### D-068 — Estratégia técnica de round-robin: cursor em `tenant_settings`
+**Status**: `DECIDIDO` · **Fase**: 3 (fechado no Implementation Gate, 2026-09-16)
+
+A distribuição round-robin de leads (BR-05, RF-12) usa um cursor persistido na tabela `tenant_settings` (`key = "crm.lead_round_robin.cursor"`, `value = {"last_assigned_user_id": "..."}`), com `SELECT ... FOR UPDATE` na linha correspondente dentro da mesma transação que cria/atualiza o lead — serializa concorrência entre leads simultâneos do mesmo tenant sem bloquear outros tenants. Horário de atendimento (BR-05), quando configurado, usa a mesma tabela (`key = "crm.business_hours"`); **na ausência de configuração, todos os vendedores ativos permanecem elegíveis** (fallback obrigatório — ausência de configuração nunca impede a distribuição).
+
+**Achado nesta etapa**: `tenant_settings` está documentada em [entities.md](../04-database/entities.md) desde a Fase 0, mas **nunca foi criada** no `prisma/schema.prisma` real do `crm-backend`. A criação desta tabela entra no escopo de schema da Fase 3 (junto aos catálogos de CRM), não é reaproveitamento de infraestrutura já existente.
+
+**Quando não houver vendedor elegível** (ver [D-069](#d-069--alerta-de-lead-não-atribuído-só-auditoria-sem-módulo-de-notificações) abaixo): o lead permanece `owner_id = null`, `status = new` — isso já representa a fila "não atribuído", sem necessidade de status/tabela adicional.
+
+### D-069 — Alerta de lead não atribuído: só auditoria, sem módulo de notificações
+**Status**: `DECIDIDO` · **Fase**: 3 (fechado no Implementation Gate, 2026-09-16)
+
+Quando o round-robin (D-068) não encontra nenhum vendedor elegível, a Fase 3 registra o evento apenas via `AuditModule` (ação `lead.unassigned`) — não grava na tabela `notifications`, não cria módulo/endpoint/UI de notificações, não cria fila dedicada para isso. A tabela `notifications` (já modelada desde a Fase 0) só passa a ser escrita/lida a partir da "primeira versão de Notificações" da [Fase 4](../10-roadmap/roadmap.md).
+
+**Motivo**: evitar antecipar o módulo de Notificações (explicitamente Fase 4 no roadmap) só por causa de um único gatilho da Fase 3; o registro de auditoria já é suficiente para rastreabilidade/investigação até lá.
+
+## Regras de negócio validadas pelo responsável pelo produto (Fase 3)
+
+Estas decisões **não devem ser inventadas por nenhum agente** — foram validadas diretamente com o responsável pelo produto em 2026-09-16, no fechamento do Decision Gate da Fase 3. Os documentos correspondentes deixam de carregar `[VALIDAÇÃO DE NEGÓCIO NECESSÁRIA]` e passam a refletir a regra decidida abaixo.
 
 ### D-032 — Ordem de movimentação entre etapas do pipeline
-**Status**: `VALIDAÇÃO DE NEGÓCIO` · **Prazo**: antes da Fase 3
+**Status**: `DECIDIDO` · **Fase**: 3 (fechado em 2026-09-16)
 
-Mover uma oportunidade para uma etapa fora da ordem é livre, bloqueado, ou permitido com justificativa? Depende da política comercial do cliente-alvo.
+A oportunidade pode ser movimentada **livremente** entre as etapas do pipeline, inclusive pulando uma ou mais etapas. Quando o usuário pular etapa(s), uma **justificativa é obrigatória** e fica registrada junto ao histórico de movimentação.
+
+**Toda movimentação registra** (BR-10): oportunidade, etapa anterior, etapa nova, usuário responsável, data/hora, e a justificativa quando houver salto de etapa.
+
+**Motivo**: preservar a flexibilidade comercial do processo de vendas (inclusive vendas de consórcio) sem perder rastreabilidade para análise de conversão e auditoria comercial futura (Fase 4+). O pipeline não se torna um fluxo rigidamente sequencial.
+
+**Impacto em código**: DTO de `POST /opportunities/{id}/move` ganha campo opcional `justification`/`justificativa`; regra de obrigatoriedade condicional (exigir quando `to_stage.order` não é imediatamente adjacente a `from_stage.order`) é validada no Service, não no banco.
 
 ### D-033 — Reabertura de lead desqualificado (BR-06)
-**Status**: `VALIDAÇÃO DE NEGÓCIO` · **Prazo**: antes da Fase 3
+**Status**: `DECIDIDO` · **Fase**: 3 (fechado em 2026-09-16)
 
-Contato que retorna gera um lead novo, ou reabre o anterior?
+Quando um lead desqualificado retorna, o sistema **reabre o lead existente** — não cria automaticamente um novo lead para a mesma pessoa/contato. O histórico anterior (incluindo o motivo da desqualificação anterior) permanece preservado, nunca é apagado. A reabertura registra usuário, data/hora e a alteração de status.
+
+**Motivo**: preservar a história comercial do cliente/contato e permitir, no futuro, analisar quantas tentativas foram feitas antes da conversão (auditoria comercial, Fase 4+).
 
 ### D-034 — Obrigatoriedade de valor em oportunidade (BR-13)
-**Status**: `VALIDAÇÃO DE NEGÓCIO` · **Prazo**: antes da Fase 3
+**Status**: `DECIDIDO` · **Fase**: 3 (fechado em 2026-09-16)
 
-Valor monetário é sempre obrigatório, opcional, ou configurável por pipeline?
+O valor (`value`) da oportunidade **não é obrigatório na criação** — a oportunidade pode ser criada sem valor. O valor **se torna obrigatório a partir de uma etapa comercial configurável do pipeline** (não um nome fixo de etapa como "Proposta" ou "Fechamento" — os pipelines/stages são customizáveis por tenant, então a regra não pode depender de nome).
+
+**Consequência técnica registrada e fechada no Implementation Gate (2026-09-16)**: a documentação já tinha identificado que faltava uma propriedade para representar essa regra — modelada como campo booleano `requires_value` na entidade `stages` (ver [entities.md](../04-database/entities.md) seção "CRM Core"). A regra final adotada para esta implementação é **por etapa individual, sem propagação por `order`**: o valor só é obrigatório quando a oportunidade está exatamente numa etapa com `requires_value = true` — etapas anteriores ou posteriores não marcadas não herdam a obrigatoriedade, mesmo que uma etapa anterior no fluxo esteja marcada. Uma regra de "a partir de uma etapa" com propagação por ordem foi cogitada, mas **não é implementada nesta fase** — fica registrada como evolução técnica futura, a avaliar apenas se a regra por etapa individual se mostrar insuficiente na prática.
+
+**Motivo**: no contexto comercial (ex.: consórcio), a consultora frequentemente não sabe o valor final logo no primeiro contato — exigir valor cedo demais atrapalha o cadastro do lead/oportunidade. Por outro lado, oportunidades maduras precisam ter valor para permitir análise de quanto está "em jogo" em cada etapa do funil.
 
 ### D-035 — Regra de aprovação para exclusão por vendedor
-**Status**: `VALIDAÇÃO DE NEGÓCIO` · **Prazo**: antes da Fase 3
+**Status**: `DECIDIDO` · **Fase**: 3 (fechado em 2026-09-16)
 
-Vendedor pode excluir (soft delete) os próprios registros livremente ou exige aprovação de gerente?
+Vendedor/Consultora **não pode excluir** registros de negócio (Leads, Clientes, Oportunidades) livremente. A exclusão desses registros fica restrita a perfis de gestão/administração (Gerente/Admin), conforme a matriz de permissões ([personas.md](../01-product/personas.md) §3). Não há fluxo de solicitação/aprovação nesta fase — o vendedor simplesmente não tem a permissão de exclusão.
+
+Toda exclusão continua sendo **soft delete** (BR-22) e continua sendo auditada (BR-23/24); exclusão física nunca é exposta via API.
+
+**Motivo**: reduzir o risco de leads/oportunidades mal trabalhados "sumirem" do funil sem visibilidade do gerente, mantendo a autonomia de criação/edição do vendedor sobre seus próprios registros.
 
 ---
 
@@ -473,3 +542,5 @@ Vendedor pode excluir (soft delete) os próprios registros livremente ou exige a
 |---|---|
 | 2026-09-08 | Criação do registro; consolidação e classificação das ~55 ocorrências de `[DECISÃO PENDENTE]` da Fase 0. Nenhum bloqueador remanescente para a Fase 1. |
 | 2026-09-08 | Validação final da Fase 0. D-036 ampliada com a decisão provisória explícita (sem acesso automático) e a evolução futura "Support Access Controlado". Corrigidas 3 inconsistências detectadas na auditoria: restrição do Super Admin em `personas.md`, réplica de leitura em `scalability.md` §3, e marcação de fase em `requirements.md` (Relatórios/Dashboard e Notificações). |
+| 2026-09-16 | Decision Gate da Fase 3 (CRM) fechado com o responsável pelo produto. D-031 (`PROPOSTO`→`DECIDIDO`), D-032, D-033, D-034, D-035 (`VALIDAÇÃO DE NEGÓCIO`→`DECIDIDO`) e D-058 (reafirmado para a Fase 3: escopo permanece Tenant-only) resolvidos. Duas decisões novas registradas: D-065 (Contacts como sub-recurso de Customer) e D-066 (Fundação Frontend de Auth/RBAC como primeira entrega da Fase 3). Consistência documental atualizada em `entities.md`, `relationships.md`, `business-rules.md`, `personas.md`, `use-cases.md`, `workflows.md`, `roadmap.md`, `api-guidelines.md` e `openapi.yaml`. |
+| 2026-09-16 | Implementation Gate da Fase 3 fechado — última validação antes da implementação, sem reabrir nenhuma decisão anterior. D-034 teve sua consequência técnica precisada: `stages.requires_value` é regra **por etapa individual, sem propagação por `order`** (removida a leitura anterior de "etapa igual ou posterior"). Três decisões técnicas novas registradas: D-067 (deduplicação de Customer é bloqueante, `409` com candidatos, sem escolha automática), D-068 (round-robin usa cursor em `tenant_settings` com lock transacional; achado que essa tabela nunca foi criada no `crm-backend` real, apesar de documentada desde a Fase 0 — criação entra no escopo de schema da Fase 3) e D-069 (lead não atribuído gera só evento de auditoria, sem usar a tabela `notifications` nem antecipar o módulo de Notificações da Fase 4). Consistência documental atualizada em `entities.md` e `business-rules.md`. |

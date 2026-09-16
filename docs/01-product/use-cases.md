@@ -14,12 +14,12 @@ Casos de uso principais, por área. Formato: ator, pré-condição, fluxo princi
 - **Ator**: Vendedor/Operador.
 - **Pré-condição**: lead atribuído ao usuário.
 - **Fluxo**: usuário registra contato/qualificação → decide avançar → sistema converte lead em Oportunidade vinculada a um Cliente (novo ou existente) → oportunidade entra na primeira etapa do Pipeline.
-- **Exceção**: lead desqualificado → usuário registra motivo de perda, lead é encerrado sem virar oportunidade.
+- **Exceção**: lead desqualificado → usuário registra motivo de desqualificação, lead não vira oportunidade agora. Se o contato retornar depois, o mesmo lead é **reaberto** (não é criado um lead novo) — [D-033](../00-governance/decision-register.md#d-033--reabertura-de-lead-desqualificado-br-06), `DECIDIDO`.
 
 ### UC-03 Condução de oportunidade pelo pipeline
 - **Ator**: Vendedor/Gerente.
 - **Fluxo**: oportunidade avança/retrocede entre etapas configuráveis do pipeline → cada mudança de etapa pode disparar tarefas/notificações → oportunidade é marcada como Ganha ou Perdida (com motivo).
-- **Exceção**: tentativa de mover para etapa fora da ordem — comportamento é `[VALIDAÇÃO DE NEGÓCIO NECESSÁRIA]` ([D-032](../00-governance/decision-register.md#d-032--ordem-de-movimentação-entre-etapas-do-pipeline), antes da Fase 3).
+- **Exceção**: movimentação para etapa fora da ordem (pulando etapas) é permitida, mas exige justificativa obrigatória, registrada no histórico da oportunidade — [D-032](../00-governance/decision-register.md#d-032--ordem-de-movimentação-entre-etapas-do-pipeline), `DECIDIDO`.
 
 ### UC-04 Follow-up e agenda
 - **Ator**: Vendedor.

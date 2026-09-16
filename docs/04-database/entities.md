@@ -96,6 +96,8 @@ Convenções gerais (UUID, `tenant_id`, timestamps, soft delete) em [database.md
 | email | string | não | |
 | role | string | não | Cargo/relação com o cliente |
 
+Implementado como **sub-recurso de `customers`** (`GET/POST /v1/customers/{id}/contacts`), sem módulo Nest independente — [D-065](../00-governance/decision-register.md#d-065--contacts-sub-recurso-de-customer-não-módulo-próprio), `DECIDIDO`.
+
 ### `lead_sources`
 | Campo | Tipo | Obrigatório |
 |---|---|---|
@@ -126,6 +128,7 @@ Convenções gerais (UUID, `tenant_id`, timestamps, soft delete) em [database.md
 | order | integer | sim | |
 | is_won | boolean | sim | |
 | is_lost | boolean | sim | |
+| requires_value | boolean | sim (default `false`) | Regra **por etapa individual**, sem propagação por `order`: só quando a oportunidade está exatamente nesta etapa (`requires_value = true`) o valor é obrigatório — etapas anteriores ou posteriores não marcadas não exigem valor, mesmo que esta esteja marcada — [D-034](../00-governance/decision-register.md#d-034--obrigatoriedade-de-valor-em-oportunidade-br-13), `DECIDIDO` (Implementation Gate de 2026-09-16). Configurável por tenant/pipeline, sem depender de nome fixo de etapa. Regra "a partir de uma etapa" (com propagação por ordem) fica como evolução futura, não implementada nesta fase |
 
 ### `opportunities`
 | Campo | Tipo | Obrigatório | Notas |
@@ -135,7 +138,7 @@ Convenções gerais (UUID, `tenant_id`, timestamps, soft delete) em [database.md
 | pipeline_id | UUID (FK pipelines) | sim | BR-09 |
 | stage_id | UUID (FK stages) | sim | BR-09 |
 | owner_id | UUID (FK users) | sim | |
-| value | numeric | não | Obrigatório conforme config do pipeline (BR-13) |
+| value | numeric | não | Opcional na criação; obrigatório quando a oportunidade estiver numa etapa com `stages.requires_value = true` — regra avaliada por etapa individual, sem propagação por ordem (BR-13, [D-034](../00-governance/decision-register.md#d-034--obrigatoriedade-de-valor-em-oportunidade-br-13) `DECIDIDO`) |
 | status | enum(open, won, lost) | sim | Estado terminal won/lost (BR-11) |
 | lost_reason | string | não | Obrigatório se status=lost (BR-12) |
 
@@ -149,6 +152,7 @@ Convenções gerais (UUID, `tenant_id`, timestamps, soft delete) em [database.md
 | to_stage_id | UUID (FK stages) | sim | |
 | changed_by | UUID (FK users) | sim | |
 | changed_at | timestamptz | sim | Imutável (BR-10) |
+| justification | string | não | Obrigatório quando a movimentação pula uma ou mais etapas — [D-032](../00-governance/decision-register.md#d-032--ordem-de-movimentação-entre-etapas-do-pipeline), `DECIDIDO` (movimentação livre, com justificativa quando houver salto de etapa) |
 
 ### `notes`
 | Campo | Tipo | Obrigatório | Notas |
@@ -275,6 +279,8 @@ Convenções gerais (UUID, `tenant_id`, timestamps, soft delete) em [database.md
 | payload | jsonb | sim |
 | read_at | timestamptz | não |
 
+**Não utilizada na Fase 3** (Implementation Gate, 2026-09-16): quando o round-robin não encontra vendedor elegível, a Fase 3 apenas registra o evento no `audit_log` (`AuditModule`, ação `lead.unassigned`) — não grava nesta tabela, não expõe UI de notificações, não cria fila dedicada. `notifications` só passa a ser escrita/lida a partir da "primeira versão de Notificações" da Fase 4 ([roadmap.md](../10-roadmap/roadmap.md)).
+
 ### `file_assets`
 | Campo | Tipo | Obrigatório |
 |---|---|---|
@@ -305,6 +311,8 @@ Convenções gerais (UUID, `tenant_id`, timestamps, soft delete) em [database.md
 | value | jsonb | sim |
 
 Índices: `(tenant_id, key)` único.
+
+**Achado no Implementation Gate da Fase 3 (2026-09-16)**: esta tabela está documentada desde a Fase 0, mas **nunca foi criada** no `prisma/schema.prisma` real do `crm-backend` (confirmado por ausência do model `TenantSettings`). A Fase 3 depende dela para a estratégia de round-robin ([D-068](../00-governance/decision-register.md#d-068--estratégia-técnica-de-round-robin-cursor-em-tenant_settings)) — a criação desta tabela entra no escopo de schema da Fase 3 (junto com os catálogos de CRM), não é reaproveitamento de algo já existente em produção.
 
 ---
 

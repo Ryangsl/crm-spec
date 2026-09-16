@@ -67,7 +67,7 @@ Este documento define os perfis de acesso iniciais do sistema. O RBAC é **exten
 - **Visualiza**: seus próprios leads/oportunidades/clientes e, se configurado, os da equipe.
 - **Cria**: leads, oportunidades, clientes, tarefas, notas, agendamentos.
 - **Edita**: os registros dos quais é responsável (dono).
-- **Exclui**: rascunhos próprios (leads não convertidos); para as demais exclusões (sempre soft delete), se há ou não necessidade de aprovação do gerente é `[VALIDAÇÃO DE NEGÓCIO NECESSÁRIA]` — [D-035](../00-governance/decision-register.md#d-035--regra-de-aprovação-para-exclusão-por-vendedor), a resolver antes da Fase 3.
+- **Exclui**: nada — vendedor/consultora não tem permissão de exclusão sobre Leads/Clientes/Oportunidades; toda exclusão (sempre soft delete) fica restrita a Gerente/Admin, sem fluxo de aprovação nesta fase ([D-035](../00-governance/decision-register.md#d-035--regra-de-aprovação-para-exclusão-por-vendedor), `DECIDIDO`).
 - **Restrições**: sem acesso a registros de outros vendedores fora de sua equipe, salvo liberação do gerente; sem acesso a configurações administrativas.
 
 ### 2.7 Operador de Call Center
@@ -104,15 +104,17 @@ Este documento define os perfis de acesso iniciais do sistema. O RBAC é **exten
 | Módulo | Super Admin | Admin Empresa | Diretor | Gerente | Supervisor | Vendedor | Operador | Backoffice | Leitura |
 |---|---|---|---|---|---|---|---|---|---|
 | Usuários/Papéis | - (só plataforma) | CRUD | R | R (equipe) | R (equipe) | - | - | - | R |
-| Leads | - | CRUD | R | CRUD (equipe) | R | CRUD (próprio) | C (de atendimento) | RU | R |
-| Clientes | - | CRUD | R | CRUD (equipe) | R | CRUD (próprio) | R | RU | R |
-| Oportunidades/Pipeline | - | CRUD | R | CRUD (equipe) | R | CRUD (próprio) | - | R | R |
+| Leads | - | CRUD | R | CRUD (equipe) | R | CRU (próprio) | C (de atendimento) | RU | R |
+| Clientes | - | CRUD | R | CRUD (equipe) | R | CRU (próprio) | R | RU | R |
+| Oportunidades/Pipeline | - | CRUD | R | CRUD (equipe) | R | CRU (próprio) | - | R | R |
 | Atendimentos/Call Center | - | CRUD | R | R (equipe) | CRUD (fila) | R (próprio) | CRUD (próprio) | R | R |
 | Filas/Telefonia (config) | - | CRUD | - | R | RU | - | - | - | - |
 | Campanhas | - | CRUD | R | CU (equipe) | R | R | - | - | R |
 | Relatórios/Dashboard | Plataforma | R (tenant) | R (tenant) | R (equipe) | R (call center) | R (próprio) | R (próprio) | R (limitado) | R (escopo liberado) |
 | Configurações do tenant | - | CRUD | - | - | - | - | - | - | - |
 | Auditoria | R (plataforma) | R (tenant) | R (tenant) | - | - | - | - | - | - |
+
+`CRU (próprio)` do Vendedor em Leads/Clientes/Oportunidades — sem `D` — reflete [D-035](../00-governance/decision-register.md#d-035--regra-de-aprovação-para-exclusão-por-vendedor) (`DECIDIDO`): vendedor não exclui, apenas Gerente/Admin.
 
 Esta matriz é o ponto de partida; o detalhamento operação-a-operação vive no código como *policies* versionadas (ver [../03-architecture/security.md](../03-architecture/security.md) e [../07-backend/backend-architecture.md](../07-backend/backend-architecture.md)).
 
@@ -127,10 +129,10 @@ Além do papel (o que a tela permite fazer), todo acesso a um registro passa por
 
 [D-016](../00-governance/decision-register.md#d-016--escopo-de-dados-por-equipefilial) (`DECIDIDO`, Fase 2): o escopo é resolvido por **atribuição estática** usuário → equipe → filial. Hierarquia dinâmica (árvore de gerência com profundidade arbitrária) fica adiada até haver necessidade real validada — o modelo de dados suporta a evolução sem migração destrutiva.
 
-**Fronteira de implementação explícita** ([D-058](../00-governance/decision-register.md#d-058--escopo-de-rbac-na-fase-2-apenas-tenant), `DECIDIDO`):
-- **Fase 2**: RBAC aplicado apenas no escopo **Tenant** — uma permissão concedida (ex.: `users:read`) dá acesso a todos os registros do tenant, sem filtro adicional. As colunas "R (equipe)" da matriz acima (Gerente, Supervisor) **ainda não são aplicadas** nesta fase; na prática, esses papéis leem o tenant inteiro até a Fase 3+.
-- **Fase 3+**: filtro por Equipe e Filial passa a valer de fato, quando os módulos `Team`/`Branch` tiverem CRUD e regra de negócio ativa.
-- Não simular escopo de equipe/filial parcialmente antes da Fase 3+ — a ausência do filtro é deliberada e documentada, não um bug a mascarar.
+**Fronteira de implementação explícita** ([D-058](../00-governance/decision-register.md#d-058--escopo-de-rbac-na-fase-2-e-na-fase-3-apenas-tenant), `DECIDIDO`, reafirmado para a Fase 3 em 2026-09-16):
+- **Fase 2 e Fase 3**: RBAC aplicado apenas no escopo **Tenant** — uma permissão concedida (ex.: `users:read`) dá acesso a todos os registros do tenant, sem filtro adicional. As colunas "R (equipe)"/"CRUD (equipe)" da matriz acima (Gerente, Supervisor) **ainda não são aplicadas** nesta fase; na prática, esses papéis leem/gerenciam o tenant inteiro também na Fase 3.
+- **Fase futura (a definir)**: filtro por Equipe e Filial só passa a valer de fato quando os módulos `Team`/`Branch` tiverem CRUD e regra de negócio ativa — o Decision Gate da Fase 3 confirmou que essa ativação **não** acontece na Fase 3.
+- Não simular escopo de equipe/filial parcialmente antes dessa fase futura — a ausência do filtro é deliberada e documentada, não um bug a mascarar.
 
 ## 5. Papéis customizados (extensibilidade)
 

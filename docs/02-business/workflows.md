@@ -7,7 +7,7 @@ Lead recebido
   → distribuição (round-robin / fila / manual)
   → contato (ligação, WhatsApp, e-mail)
   → qualificação (critérios do tenant)
-       ├─ desqualificado → motivo → encerrado
+       ├─ desqualificado → motivo → pode ser reaberto quando o contato retornar (D-033)
        └─ qualificado → conversão em Oportunidade
   → oportunidade entra no Pipeline (1ª etapa)
   → negociação (movimentação entre etapas, tarefas, follow-ups)

@@ -10,7 +10,7 @@
 | Tipo | Segurança (Autorização) |
 | Requisitos relacionados | — (RBAC não tem RF numerado próprio; coberto por BR-25/BR-26) |
 | ADRs relacionados | — |
-| Decisions relacionadas | [D-058](../../00-governance/decision-register.md#d-058--escopo-de-rbac-na-fase-2-apenas-tenant) |
+| Decisions relacionadas | [D-058](../../00-governance/decision-register.md#d-058--escopo-de-rbac-na-fase-2-e-na-fase-3-apenas-tenant) |
 
 Referências adicionais: [personas.md](../../01-product/personas.md) §1/§3, [BR-25/BR-26](../../02-business/business-rules.md).
 

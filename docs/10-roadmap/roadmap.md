@@ -12,7 +12,7 @@ Decisões vivem no [Decision Register](../00-governance/decision-register.md), c
 |---|---|
 | **Fase 1** | Fundação técnica: identificador, validação de DTO, estado global do frontend, E2E, CI, branches, ambiente local. Todas resolvidas. |
 | **Fase 2** | Multi-tenancy, tenant context, JWT, refresh token, RBAC, auditoria (D-002, D-004, D-005, D-016, D-037 resolvidas; D-003 e D-006 a fechar até o fim da fase) |
-| **Fase 3** | CRM, pipeline, campos personalizados, paginação (D-007, D-008 resolvidas; D-031 a fechar; D-032 a D-035 dependem de stakeholders) |
+| **Fase 3** | CRM, pipeline, campos personalizados, paginação (D-007, D-008, D-031, D-032, D-033, D-034, D-035, D-058, D-065, D-066, D-067, D-068, D-069 — todas `DECIDIDO`. Decision Gate e Implementation Gate fechados em 2026-09-16, nada pendente) |
 | **Fase 5** | Provedor de telefonia (D-010), WebSocket (D-013), secrets (D-025), circuit breaker (D-039) |
 | **Fase 6** | Provedor de WhatsApp (D-011) |
 | **Antes do 1º cliente em produção** | Staging (D-027), retenção de backup (D-028), teste de restore (D-029), paleta de marca (D-043), fluxo LGPD (D-047) |
@@ -43,11 +43,12 @@ Fases 1 a 4 **não dependem** de telefonia, WhatsApp, IA, escalabilidade avança
 - **Riscos**: vazamento cross-tenant — risco crítico, tratado com testes obrigatórios (13 casos e2e + MAT-007) antes de prosseguir para dados de negócio reais.
 - **Ressalvas não bloqueantes**: RF-03 (redefinição de senha) e RF-07 (provisionamento de tenant pelo Super Admin) de [requirements.md](../01-product/requirements.md) não têm implementação nem fase declarada — não eram critério de aceite desta fase, mas precisam de dono antes de virarem dívida esquecida.
 
-## FASE 3 — CRM ⬅ *aguarda autorização explícita*
+## FASE 3 — CRM ⬅ *decisões fechadas (Decision Gate 2026-09-16); aguarda autorização explícita para implementação*
 - **Objetivo**: ciclo Lead → Oportunidade → Pipeline funcionando.
-- **Funcionalidades**: Clientes, Leads (com distribuição round-robin), Oportunidades, Pipeline configurável, Tarefas, Notas, Agenda básica.
+- **Funcionalidades**: Fundação Frontend de Auth/RBAC (primeira entrega, [D-066](../00-governance/decision-register.md#d-066--fundação-frontend-de-authrbac-faz-parte-da-fase-3)); Clientes (com Contacts como sub-recurso, [D-065](../00-governance/decision-register.md#d-065--contacts-sub-recurso-de-customer-não-módulo-próprio)), Leads (com distribuição round-robin), Oportunidades, Pipeline configurável, Tarefas, Notas, Agenda básica.
 - **Dependências**: Fase 2.
 - **Critérios de aceite**: fluxo completo de [../01-product/use-cases.md](../01-product/use-cases.md) UC-01 a UC-04 executável via API e UI.
+- **Decisões de negócio/arquitetura fechadas nesta fase** (ver [Decision Register](../00-governance/decision-register.md)): D-031 (polimorfismo de notes/tasks/appointments), D-032 (movimentação livre no pipeline, com justificativa ao pular etapa), D-033 (lead desqualificado é reaberto, não duplicado), D-034 (valor da oportunidade opcional na criação, obrigatório por etapa individual marcada), D-035 (vendedor não exclui registros de negócio), D-058 (escopo permanece Tenant-only nesta fase), D-065 (Contacts como sub-recurso), D-066 (Fundação Frontend de Auth/RBAC), D-067 (deduplicação de Customer bloqueante), D-068 (round-robin via cursor em `tenant_settings`), D-069 (lead não atribuído gera só auditoria, sem antecipar Notificações).
 - **Riscos**: modelo de campos personalizados subdimensionado — mitigado por decisão registrada em [../04-database/database.md](../04-database/database.md) seção 6.
 
 ## FASE 4 — Atendimento

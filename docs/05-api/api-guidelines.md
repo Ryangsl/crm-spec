@@ -101,6 +101,7 @@ O cursor é o UUID v7 do último item da página ([D-001](../00-governance/decis
 `GET /v1/customers?page=1&limit=20`
 `GET /v1/customers/{id}`
 `POST /v1/customers`
+`GET/POST /v1/customers/{id}/contacts` — Contacts é sub-recurso de Customer, sem módulo próprio ([D-065](../00-governance/decision-register.md#d-065--contacts-sub-recurso-de-customer-não-módulo-próprio), `DECIDIDO`).
 
 ### Leads
 `POST /v1/leads`
@@ -110,7 +111,7 @@ O cursor é o UUID v7 do último item da página ([D-001](../00-governance/decis
 
 ### Oportunidades / Pipeline
 `GET /v1/pipelines/{id}/opportunities?stage_id=...`
-`POST /v1/opportunities/{id}/move` `{ "stage_id": "..." }`
+`POST /v1/opportunities/{id}/move` `{ "stage_id": "...", "justification": "..." }` — `justification` é obrigatório quando a movimentação pula uma ou mais etapas ([D-032](../00-governance/decision-register.md#d-032--ordem-de-movimentação-entre-etapas-do-pipeline), `DECIDIDO`).
 `POST /v1/opportunities/{id}/win`
 `POST /v1/opportunities/{id}/lose` `{ "reason": "..." }`
 
