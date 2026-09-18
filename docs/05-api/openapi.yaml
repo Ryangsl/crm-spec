@@ -397,6 +397,31 @@ paths:
                   next_cursor: { type: string, nullable: true }
 
   /leads:
+    get:
+      summary: Lista leads do tenant (paginação por offset)
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Limit"
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [new, in_progress, qualified, disqualified, converted]
+        - name: owner_id
+          in: query
+          required: false
+          schema: { type: string, format: uuid }
+        - name: source_id
+          in: query
+          required: false
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Lista paginada de leads
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LeadList" }
     post:
       summary: Cria um lead
       requestBody:
@@ -412,19 +437,74 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Lead"
+        "404":
+          description: source_id (ou owner_id, quando informado) não encontrado no tenant
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
 
-  /leads/{id}/qualify:
-    post:
-      summary: Qualifica um lead
+  /leads/{id}:
+    get:
+      summary: Obtém um lead
       parameters:
         - $ref: "#/components/parameters/Id"
       responses:
         "200":
+          description: Lead encontrado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Lead" }
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      summary: Atualiza a origem e/ou o responsável de um lead
+      description: >
+        Não atualiza status — mudança de estado sempre passa pelos
+        endpoints de ação (qualify/disqualify/reopen/convert).
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LeadUpdate" }
+      responses:
+        "200":
+          description: Lead atualizado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Lead" }
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      summary: Exclui (soft delete) um lead
+      description: D-035/BR-22 — preenche deleted_at, nunca remove fisicamente.
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "204":
+          description: Lead excluído (soft delete)
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /leads/{id}/qualify:
+    post:
+      summary: Qualifica um lead
+      description: Válido a partir dos status `new` ou `in_progress`.
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "201":
           description: Lead qualificado
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/Lead"
+        "409":
+          description: Status atual não permite qualificação (LEAD_INVALID_STATUS_TRANSITION)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
 
   /leads/{id}/disqualify:
     post:
@@ -441,31 +521,144 @@ paths:
               properties:
                 reason: { type: string }
       responses:
-        "200":
+        "201":
           description: Lead desqualificado
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/Lead"
+        "409":
+          description: Status atual não permite desqualificação (LEAD_INVALID_STATUS_TRANSITION)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
 
-  /leads/{id}/convert:
+  /leads/{id}/reopen:
     post:
-      summary: Converte um lead qualificado em oportunidade (BR-04)
+      summary: Reabre um lead desqualificado (D-033/BR-06)
+      description: >
+        Só é possível a partir do status `disqualified`. Reutiliza o
+        mesmo registro (nunca cria um novo lead) — status volta a `new`,
+        disqualify_reason é limpo no registro ativo (o motivo anterior
+        fica preservado no AuditLog, ação `lead.reopened`).
       parameters:
         - $ref: "#/components/parameters/Id"
       responses:
         "201":
-          description: Oportunidade criada a partir do lead
+          description: Lead reaberto
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Opportunity"
+                $ref: "#/components/schemas/Lead"
         "409":
-          description: Lead já convertido ou em estado inválido para conversão
+          description: Lead não está desqualificado (LEAD_INVALID_STATUS_TRANSITION)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /leads/{id}/convert:
+    post:
+      summary: Converte um lead, vinculando-o a um Cliente (BR-04)
+      description: >
+        Escopo da Fase 3.4: vincula/cria o Customer (respeitando a
+        deduplicação de BR-08/D-067) e marca o lead como `converted`.
+        NÃO cria Opportunity nesta fase — fica para a Fase 3.5, que usará
+        `leads.id` via `opportunities.lead_id` (campo já existente no
+        schema desde a 3.2). Válido a partir dos status `new`,
+        `in_progress` ou `qualified`.
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ConvertLeadRequest" }
+      responses:
+        "201":
+          description: Lead convertido (vinculado ao Customer)
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
+                $ref: "#/components/schemas/Lead"
+        "400":
+          description: customer_id e customer ausentes ou ambos informados
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "409":
+          description: >
+            Lead em estado inválido para conversão
+            (LEAD_INVALID_STATUS_TRANSITION) ou cliente duplicado
+            (CUSTOMER_DUPLICATE, BR-08/D-067 — ver CustomerDuplicateError)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /lead-sources:
+    get:
+      summary: Lista origens de lead do tenant (paginação por offset)
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Lista paginada de origens
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LeadSourceList" }
+    post:
+      summary: Cria uma origem de lead
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LeadSourceCreate" }
+      responses:
+        "201":
+          description: Origem criada
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LeadSource" }
+
+  /lead-sources/{id}:
+    get:
+      summary: Obtém uma origem de lead
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Origem encontrada
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LeadSource" }
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      summary: Atualiza uma origem de lead
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LeadSourceUpdate" }
+      responses:
+        "200":
+          description: Origem atualizada
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LeadSource" }
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      summary: Exclui (soft delete) uma origem de lead
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "204":
+          description: Origem excluída (soft delete)
+        "404":
+          $ref: "#/components/responses/NotFound"
 
   /pipelines/{pipelineId}/opportunities:
     get:
@@ -831,8 +1024,26 @@ components:
       type: object
       required: [source_id]
       properties:
+        source_id: { type: string, format: uuid, description: "BR-03: origem obrigatoria" }
+        owner_id:
+          type: string
+          format: uuid
+          description: >
+            Atribuicao manual do responsavel. Se omitido, o round-robin
+            (D-068/BR-05) escolhe automaticamente e pode resultar em
+            owner_id null quando nao ha vendedor elegivel (D-069).
+      description: >
+        customer_id nao faz parte do contrato de criacao — so e preenchido
+        via POST /leads/{id}/convert (BR-04/D-065).
+
+    LeadUpdate:
+      type: object
+      description: >
+        PATCH parcial (origem, reatribuicao manual). Mudanca de status
+        nunca passa por aqui — sempre pelos endpoints de acao dedicados
+        (qualify/disqualify/reopen/convert).
+      properties:
         source_id: { type: string, format: uuid }
-        customer_id: { type: string, format: uuid, nullable: true }
         owner_id: { type: string, format: uuid, nullable: true }
 
     Lead:
@@ -845,7 +1056,63 @@ components:
         source_id: { type: string, format: uuid }
         customer_id: { type: string, format: uuid, nullable: true }
         owner_id: { type: string, format: uuid, nullable: true }
+        disqualify_reason: { type: string, nullable: true }
         created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    LeadList:
+      type: object
+      properties:
+        data:
+          type: array
+          items: { $ref: "#/components/schemas/Lead" }
+        page: { type: integer }
+        limit: { type: integer }
+        total: { type: integer }
+
+    ConvertLeadRequest:
+      type: object
+      description: >
+        BR-04 — vincula o lead a um Cliente (novo ou existente, resolvido
+        por deduplicacao — BR-08/D-067). Exatamente um dos dois campos
+        deve ser informado.
+      properties:
+        customer_id:
+          type: string
+          format: uuid
+          description: Vincula a um cliente ja existente no tenant.
+        customer:
+          $ref: "#/components/schemas/CustomerCreate"
+          description: Cria um novo cliente (mesma validacao/dedup de POST /v1/customers).
+
+    LeadSourceCreate:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string }
+
+    LeadSourceUpdate:
+      type: object
+      properties:
+        name: { type: string }
+
+    LeadSource:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    LeadSourceList:
+      type: object
+      properties:
+        data:
+          type: array
+          items: { $ref: "#/components/schemas/LeadSource" }
+        page: { type: integer }
+        limit: { type: integer }
+        total: { type: integer }
 
     Opportunity:
       type: object

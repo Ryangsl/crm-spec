@@ -103,11 +103,16 @@ O cursor é o UUID v7 do último item da página ([D-001](../00-governance/decis
 `POST /v1/customers`
 `GET/POST /v1/customers/{id}/contacts` — Contacts é sub-recurso de Customer, sem módulo próprio ([D-065](../00-governance/decision-register.md#d-065--contacts-sub-recurso-de-customer-não-módulo-próprio), `DECIDIDO`).
 
-### Leads
+### Leads (offset)
+`GET /v1/leads?page=1&limit=20` · `GET /v1/leads/{id}` · `PATCH /v1/leads/{id}` · `DELETE /v1/leads/{id}`
 `POST /v1/leads`
 `POST /v1/leads/{id}/qualify`
 `POST /v1/leads/{id}/disqualify` `{ "reason": "..." }`
-`POST /v1/leads/{id}/convert` → cria/retorna a Oportunidade vinculada.
+`POST /v1/leads/{id}/reopen` — D-033: só a partir de `disqualified`, reabre o mesmo registro.
+`POST /v1/leads/{id}/convert` `{ "customer_id": "..." }` ou `{ "customer": { ... } }` → vincula/cria o Cliente (BR-04/BR-08) e marca o lead `converted`. **Fase 3.4**: não cria Oportunidade — fica para a Fase 3.5.
+
+### Lead Sources (offset)
+`GET /v1/lead-sources?page=1&limit=20` · `GET/POST /v1/lead-sources` · `PATCH/DELETE /v1/lead-sources/{id}`
 
 ### Oportunidades / Pipeline
 `GET /v1/pipelines/{id}/opportunities?stage_id=...`
