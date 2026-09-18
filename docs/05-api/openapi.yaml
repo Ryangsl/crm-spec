@@ -200,22 +200,27 @@ paths:
       parameters:
         - $ref: "#/components/parameters/Page"
         - $ref: "#/components/parameters/Limit"
+        - name: q
+          in: query
+          required: false
+          description: Busca livre em name/document/primary_phone/primary_email
+          schema: { type: string }
+        - name: owner_id
+          in: query
+          required: false
+          schema: { type: string, format: uuid }
       responses:
         "200":
           description: Lista paginada de clientes
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    type: array
-                    items: { $ref: "#/components/schemas/Customer" }
-                  page: { type: integer }
-                  limit: { type: integer }
-                  total: { type: integer }
+              schema: { $ref: "#/components/schemas/CustomerList" }
     post:
       summary: Cria um cliente
+      description: >
+        BR-08/D-067 — se document/primary_phone/primary_email já existir em
+        outro cliente ativo do tenant, retorna 409 com os candidatos
+        encontrados em vez de criar.
       requestBody:
         required: true
         content:
@@ -229,6 +234,11 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Customer"
+        "409":
+          description: Cliente duplicado (BR-08/D-067)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CustomerDuplicateError" }
 
   /customers/{id}:
     get:
@@ -242,6 +252,127 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Customer"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      summary: Atualiza um cliente
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CustomerUpdate" }
+      responses:
+        "200":
+          description: Cliente atualizado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Customer" }
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      summary: Exclui (soft delete) um cliente
+      description: >
+        D-035/BR-22 — preenche deleted_at, nunca remove fisicamente.
+        Requer customers:delete (vendedor/consultora nunca tem essa
+        permissão).
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "204":
+          description: Cliente excluído (soft delete)
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /customers/{id}/contacts:
+    get:
+      summary: Lista os contatos do cliente
+      description: Sub-recurso de Customer (D-065) — sem paginação própria.
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Lista de contatos
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Contact" }
+        "404":
+          $ref: "#/components/responses/NotFound"
+    post:
+      summary: Cria um contato para o cliente
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ContactCreate" }
+      responses:
+        "201":
+          description: Contato criado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Contact" }
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /customers/{id}/contacts/{contactId}:
+    get:
+      summary: Obtém um contato do cliente
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - name: contactId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Contato encontrado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Contact" }
+        "404":
+          description: >
+            Cliente ou contato não encontrado, de outro tenant, ou contato
+            não pertence ao cliente informado (nunca 403 nesse descasamento).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+    patch:
+      summary: Atualiza um contato do cliente
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - name: contactId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ContactUpdate" }
+      responses:
+        "200":
+          description: Contato atualizado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Contact" }
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      summary: Exclui (soft delete) um contato do cliente
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - name: contactId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "204":
+          description: Contato excluído (soft delete)
         "404":
           $ref: "#/components/responses/NotFound"
 
@@ -593,9 +724,32 @@ components:
       required: [name]
       properties:
         name: { type: string }
-        document: { type: string }
-        primary_phone: { type: string }
+        document:
+          type: string
+          description: CPF (11 dígitos) ou CNPJ (14 dígitos), apenas números.
+        primary_phone: { type: string, description: "Formato E.164, ex.: +5511999999999" }
         primary_email: { type: string, format: email }
+        owner_id:
+          type: string
+          format: uuid
+          description: Responsável pelo cliente; padrão — usuário autenticado.
+        tags: { type: array, items: { type: string } }
+        custom_fields: { type: object }
+
+    CustomerUpdate:
+      type: object
+      description: >
+        Nenhum campo obrigatório (PATCH parcial). Ausente = não mexe;
+        `null` explícito limpa document/primary_phone/primary_email/owner_id/
+        custom_fields.
+      properties:
+        name: { type: string }
+        document: { type: string, nullable: true }
+        primary_phone: { type: string, nullable: true }
+        primary_email: { type: string, nullable: true }
+        owner_id: { type: string, format: uuid, nullable: true }
+        tags: { type: array, items: { type: string } }
+        custom_fields: { type: object, nullable: true }
 
     Customer:
       type: object
@@ -606,7 +760,72 @@ components:
         primary_phone: { type: string, nullable: true }
         primary_email: { type: string, nullable: true }
         owner_id: { type: string, format: uuid, nullable: true }
+        tags: { type: array, items: { type: string } }
+        custom_fields: { type: object, nullable: true }
         created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    CustomerList:
+      type: object
+      properties:
+        data:
+          type: array
+          items: { $ref: "#/components/schemas/Customer" }
+        page: { type: integer }
+        limit: { type: integer }
+        total: { type: integer }
+
+    CustomerDuplicateCandidate:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        document: { type: string, nullable: true }
+        primary_phone: { type: string, nullable: true }
+        primary_email: { type: string, nullable: true }
+
+    CustomerDuplicateError:
+      description: >
+        BR-08/D-067 — documento, telefone ou e-mail já existe em outro
+        cliente ativo do tenant. Nunca cria automaticamente; a aplicação
+        nunca escolhe entre candidatos.
+      allOf:
+        - $ref: "#/components/schemas/Error"
+        - type: object
+          properties:
+            candidates:
+              type: array
+              items: { $ref: "#/components/schemas/CustomerDuplicateCandidate" }
+
+    ContactCreate:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string }
+        phone: { type: string }
+        email: { type: string, format: email }
+        role: { type: string, description: "Cargo/relação com o cliente" }
+
+    ContactUpdate:
+      type: object
+      description: Nenhum campo obrigatório (PATCH parcial). Ausente = não mexe.
+      properties:
+        name: { type: string }
+        phone: { type: string, nullable: true }
+        email: { type: string, nullable: true }
+        role: { type: string, nullable: true }
+
+    Contact:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        customer_id: { type: string, format: uuid }
+        name: { type: string }
+        phone: { type: string, nullable: true }
+        email: { type: string, nullable: true }
+        role: { type: string, nullable: true }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
 
     LeadCreate:
       type: object
