@@ -109,16 +109,19 @@ O cursor é o UUID v7 do último item da página ([D-001](../00-governance/decis
 `POST /v1/leads/{id}/qualify`
 `POST /v1/leads/{id}/disqualify` `{ "reason": "..." }`
 `POST /v1/leads/{id}/reopen` — D-033: só a partir de `disqualified`, reabre o mesmo registro.
-`POST /v1/leads/{id}/convert` `{ "customer_id": "..." }` ou `{ "customer": { ... } }` → vincula/cria o Cliente (BR-04/BR-08) e marca o lead `converted`. **Fase 3.4**: não cria Oportunidade — fica para a Fase 3.5.
+`POST /v1/leads/{id}/convert` `{ "customer_id": "..." }` ou `{ "customer": { ... } }` → vincula/cria o Cliente (BR-04/BR-08) e marca o lead `converted`. Não cria Oportunidade: ela é criada à parte por `POST /v1/opportunities` com `lead_id` (Fase 3.5), exigindo que o lead já esteja vinculado ao mesmo cliente e ainda sem oportunidade.
 
 ### Lead Sources (offset)
 `GET /v1/lead-sources?page=1&limit=20` · `GET/POST /v1/lead-sources` · `PATCH/DELETE /v1/lead-sources/{id}`
 
-### Oportunidades / Pipeline
-`GET /v1/pipelines/{id}/opportunities?stage_id=...`
-`POST /v1/opportunities/{id}/move` `{ "stage_id": "...", "justification": "..." }` — `justification` é obrigatório quando a movimentação pula uma ou mais etapas ([D-032](../00-governance/decision-register.md#d-032--ordem-de-movimentação-entre-etapas-do-pipeline), `DECIDIDO`).
-`POST /v1/opportunities/{id}/win`
-`POST /v1/opportunities/{id}/lose` `{ "reason": "..." }`
+### Oportunidades / Pipeline (offset)
+`GET /v1/pipelines` · `GET /v1/pipelines/{id}` (com `stages` ordenadas) · `POST/PATCH/DELETE` (gestão — `pipelines:create/update/delete`, hoje só Admin)
+`POST /v1/pipelines/{id}/stages` · `PATCH/DELETE /v1/pipelines/{id}/stages/{stageId}` — Stage é sub-recurso de configuração do Pipeline.
+`GET /v1/opportunities?pipeline_id=&stage_id=&owner_id=&customer_id=&status=` · `GET/PATCH/DELETE /v1/opportunities/{id}` · `POST /v1/opportunities`
+`GET /v1/pipelines/{id}/opportunities?stage_id=...` — alimenta o Kanban.
+`POST /v1/opportunities/{id}/move` `{ "stage_id": "...", "justification": "..." }` — `justification` é obrigatório quando a movimentação pula uma ou mais etapas ([D-032](../00-governance/decision-register.md#d-032--ordem-de-movimentação-entre-etapas-do-pipeline), `DECIDIDO`): implementado como diferença de `order` maior que 1, para frente ou para trás.
+`POST /v1/opportunities/{id}/win` · `POST /v1/opportunities/{id}/lose` `{ "reason": "..." }` — resolvem a etapa terminal pelas flags `is_won`/`is_lost` (nunca pelo nome). Ações POST retornam **201**, como no resto da API.
+`value` é sempre um decimal exato em **string** (ex.: `"1500.00"`) — nunca `number`. Erros de domínio com `code` estável: `OPPORTUNITY_JUSTIFICATION_REQUIRED` e `OPPORTUNITY_VALUE_REQUIRED` (422, permitem ao frontend pedir o dado e reenviar), `OPPORTUNITY_TERMINAL`, `OPPORTUNITY_ALREADY_IN_STAGE` (409).
 
 ### Atendimentos / Ligações
 `GET /v1/customers/{id}/interactions?cursor=...&limit=20` (cursor — recurso cronológico)

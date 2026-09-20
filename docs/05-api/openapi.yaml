@@ -560,12 +560,12 @@ paths:
     post:
       summary: Converte um lead, vinculando-o a um Cliente (BR-04)
       description: >
-        Escopo da Fase 3.4: vincula/cria o Customer (respeitando a
-        deduplicação de BR-08/D-067) e marca o lead como `converted`.
-        NÃO cria Opportunity nesta fase — fica para a Fase 3.5, que usará
-        `leads.id` via `opportunities.lead_id` (campo já existente no
-        schema desde a 3.2). Válido a partir dos status `new`,
-        `in_progress` ou `qualified`.
+        Vincula/cria o Customer (respeitando a deduplicação de
+        BR-08/D-067) e marca o lead como `converted`. NÃO cria
+        Opportunity: ela é criada à parte por `POST /opportunities` com
+        `lead_id` (Fase 3.5), exigindo o lead já vinculado ao mesmo
+        cliente. Válido a partir dos status `new`, `in_progress` ou
+        `qualified`.
       parameters:
         - $ref: "#/components/parameters/Id"
       requestBody:
@@ -660,9 +660,165 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /pipelines:
+    get:
+      summary: Lista pipelines do tenant, com suas etapas (paginação por offset)
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Lista paginada; cada pipeline traz `stages` ordenadas por `order` (depois id)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PipelineList" }
+    post:
+      summary: Cria um pipeline (gestão — pipelines:create, Admin)
+      description: >
+        `is_default: true` desmarca o pipeline padrão anterior do tenant (no máximo um padrão ativo).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PipelineCreate" }
+      responses:
+        "201":
+          description: Pipeline criado (sem etapas)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Pipeline" }
+
+  /pipelines/{id}:
+    get:
+      summary: Obtém um pipeline com suas etapas
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Pipeline encontrado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Pipeline" }
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      summary: Atualiza nome/padrão do pipeline (pipelines:update)
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PipelineUpdate" }
+      responses:
+        "200":
+          description: Pipeline atualizado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Pipeline" }
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      summary: Exclui (soft delete) um pipeline sem oportunidades ativas (pipelines:delete)
+      description: >
+        Soft delete; as etapas acompanham o pipeline. Com oportunidades ativas retorna 409
+        `PIPELINE_IN_USE` — nada é movido nem apagado automaticamente.
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "204":
+          description: Pipeline excluído (soft delete)
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Pipeline possui oportunidades ativas (PIPELINE_IN_USE)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /pipelines/{pipelineId}/stages:
+    post:
+      summary: Cria uma etapa no pipeline (pipelines:update)
+      description: >
+        `order` omitido = última posição. Uma etapa não pode ser `is_won` e `is_lost` ao mesmo
+        tempo (422 `STAGE_INVALID_FLAGS`). `requires_value` é regra da PRÓPRIA etapa, sem
+        propagação por ordem (D-034).
+      parameters:
+        - name: pipelineId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/StageCreate" }
+      responses:
+        "201":
+          description: Etapa criada
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Stage" }
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /pipelines/{pipelineId}/stages/{stageId}:
+    patch:
+      summary: Atualiza uma etapa (pipelines:update)
+      description: >
+        Alterar `is_won`/`is_lost` de etapa com oportunidades ativas retorna 409 `STAGE_IN_USE`.
+      parameters:
+        - name: pipelineId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: stageId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/StageUpdate" }
+      responses:
+        "200":
+          description: Etapa atualizada
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Stage" }
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Etapa em uso (STAGE_IN_USE)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+    delete:
+      summary: Exclui (soft delete) uma etapa sem oportunidades ativas (pipelines:update)
+      parameters:
+        - name: pipelineId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: stageId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "204":
+          description: Etapa excluída (soft delete)
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Etapa possui oportunidades ativas (STAGE_IN_USE)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
   /pipelines/{pipelineId}/opportunities:
     get:
-      summary: Lista oportunidades de um pipeline, opcionalmente por etapa
+      summary: Lista oportunidades de um pipeline, opcionalmente por etapa (alimenta o Kanban)
       parameters:
         - name: pipelineId
           in: path
@@ -672,6 +828,10 @@ paths:
           in: query
           required: false
           schema: { type: string, format: uuid }
+        - name: status
+          in: query
+          required: false
+          schema: { type: string, enum: [open, won, lost] }
         - $ref: "#/components/parameters/Page"
         - $ref: "#/components/parameters/Limit"
       responses:
@@ -679,23 +839,110 @@ paths:
           description: Lista paginada de oportunidades (offset)
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    type: array
-                    items: { $ref: "#/components/schemas/Opportunity" }
-                  page: { type: integer }
-                  limit: { type: integer }
-                  total: { type: integer }
+              schema: { $ref: "#/components/schemas/OpportunityList" }
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /opportunities:
+    get:
+      summary: Lista oportunidades do tenant (paginação por offset)
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Limit"
+        - { name: pipeline_id, in: query, required: false, schema: { type: string, format: uuid } }
+        - { name: stage_id, in: query, required: false, schema: { type: string, format: uuid } }
+        - { name: owner_id, in: query, required: false, schema: { type: string, format: uuid } }
+        - { name: customer_id, in: query, required: false, schema: { type: string, format: uuid } }
+        - { name: status, in: query, required: false, schema: { type: string, enum: [open, won, lost] } }
+      responses:
+        "200":
+          description: Lista paginada de oportunidades
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OpportunityList" }
+    post:
+      summary: Cria uma oportunidade
+      description: >
+        Cliente, lead, responsável, pipeline e etapa são resolvidos dentro do tenant (outro
+        tenant = 404). Etapa inicial deve pertencer ao pipeline e não ser terminal. Se a etapa
+        exigir valor (D-034) e `value` faltar: 422 `OPPORTUNITY_VALUE_REQUIRED`. Com `lead_id`:
+        o lead precisa estar vinculado (convertido) ao MESMO cliente — 422
+        `OPPORTUNITY_LEAD_INVALID` — e ainda sem oportunidade — 409 `LEAD_ALREADY_HAS_OPPORTUNITY`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/OpportunityCreate" }
+      responses:
+        "201":
+          description: Oportunidade criada (status `open`)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Opportunity" }
+        "422":
+          description: Regra de negócio violada (valor exigido pela etapa, etapa fora do pipeline, etapa terminal, lead inválido)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /opportunities/{id}:
+    get:
+      summary: Obtém uma oportunidade
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Oportunidade encontrada
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Opportunity" }
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      summary: Atualiza valor e/ou responsável
+      description: >
+        Etapa, status, cliente e lead nunca mudam por aqui (etapa/status via move/win/lose).
+        `value: null` só é aceito se a etapa atual não exigir valor (422
+        `OPPORTUNITY_VALUE_REQUIRED`).
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/OpportunityUpdate" }
+      responses:
+        "200":
+          description: Oportunidade atualizada
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Opportunity" }
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      summary: Exclui (soft delete) uma oportunidade (opportunities:delete)
+      description: D-035/BR-22 — preenche deleted_at, nunca remove; o histórico de etapas é preservado.
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "204":
+          description: Oportunidade excluída (soft delete)
+        "404":
+          $ref: "#/components/responses/NotFound"
 
   /opportunities/{id}/move:
     post:
-      summary: Move a oportunidade para outra etapa (BR-09, BR-10)
+      summary: Move a oportunidade para outra etapa do MESMO pipeline (BR-09, BR-10)
       description: >
-        Movimentação entre etapas é livre, inclusive pulando etapas. `justification` é
-        obrigatório quando a movimentação pula uma ou mais etapas (D-032); a obrigatoriedade
-        condicional é validada no backend, não expressável neste schema.
+        Movimentação livre (para frente ou para trás). `justification` é obrigatória quando a
+        diferença de `order` entre origem e destino é maior que 1 (pulou etapa — D-032):
+        422 `OPPORTUNITY_JUSTIFICATION_REQUIRED`. Destino que exige valor (D-034) sem valor na
+        oportunidade: 422 `OPPORTUNITY_VALUE_REQUIRED`. Etapas terminais (is_won/is_lost) só por
+        win/lose (422 `OPPORTUNITY_TERMINAL_STAGE`). Mesma etapa: 409
+        `OPPORTUNITY_ALREADY_IN_STAGE`. Etapa de outro pipeline: 422
+        `OPPORTUNITY_STAGE_PIPELINE_MISMATCH`; de outro tenant: 404. Oportunidade ganha/perdida:
+        409 `OPPORTUNITY_TERMINAL`. Atualização + OpportunityStageHistory + AuditLog na mesma
+        transação.
       parameters:
         - $ref: "#/components/parameters/Id"
       requestBody:
@@ -712,29 +959,56 @@ paths:
                   nullable: true
                   description: Obrigatório quando a movimentação pula uma ou mais etapas (D-032).
       responses:
-        "200":
+        "201":
           description: Oportunidade movida
           content:
             application/json:
-              schema:
-                $ref: "#/components/schemas/Opportunity"
+              schema: { $ref: "#/components/schemas/Opportunity" }
+        "409":
+          description: Já está na etapa (OPPORTUNITY_ALREADY_IN_STAGE) ou oportunidade encerrada (OPPORTUNITY_TERMINAL)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "422":
+          description: Justificativa/valor exigidos, etapa terminal ou de outro pipeline
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
 
   /opportunities/{id}/win:
     post:
       summary: Marca a oportunidade como ganha (estado terminal — BR-11)
+      description: >
+        Move para a etapa `is_won` do pipeline (nunca por nome; se houver mais de uma, a de menor
+        `order`), define `status = won`, registra histórico e auditoria. Se essa etapa exigir
+        valor (D-034) e faltar: 422 `OPPORTUNITY_VALUE_REQUIRED`. Pipeline sem etapa is_won: 422
+        `PIPELINE_WITHOUT_WON_STAGE`. Já encerrada: 409 `OPPORTUNITY_TERMINAL`.
       parameters:
         - $ref: "#/components/parameters/Id"
       responses:
-        "200":
+        "201":
           description: Oportunidade ganha
           content:
             application/json:
-              schema:
-                $ref: "#/components/schemas/Opportunity"
+              schema: { $ref: "#/components/schemas/Opportunity" }
+        "409":
+          description: Oportunidade já encerrada (OPPORTUNITY_TERMINAL)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "422":
+          description: Valor exigido ou pipeline sem etapa de ganho
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
 
   /opportunities/{id}/lose:
     post:
-      summary: Marca a oportunidade como perdida (exige motivo — BR-12)
+      summary: Marca a oportunidade como perdida (exige motivo — BR-12; estado terminal — BR-11)
+      description: >
+        Move para a etapa `is_lost` do pipeline (nunca por nome), define `status = lost` e
+        `lost_reason`, registra histórico e auditoria. Pipeline sem etapa is_lost: 422
+        `PIPELINE_WITHOUT_LOST_STAGE`. Já encerrada: 409 `OPPORTUNITY_TERMINAL`.
       parameters:
         - $ref: "#/components/parameters/Id"
       requestBody:
@@ -745,14 +1019,23 @@ paths:
               type: object
               required: [reason]
               properties:
-                reason: { type: string }
+                reason: { type: string, minLength: 3 }
       responses:
-        "200":
+        "201":
           description: Oportunidade perdida
           content:
             application/json:
-              schema:
-                $ref: "#/components/schemas/Opportunity"
+              schema: { $ref: "#/components/schemas/Opportunity" }
+        "409":
+          description: Oportunidade já encerrada (OPPORTUNITY_TERMINAL)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "422":
+          description: Valor exigido pela etapa de perda ou pipeline sem etapa de perda
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
 
   /calls/click-to-call:
     post:
@@ -1114,18 +1397,133 @@ components:
         limit: { type: integer }
         total: { type: integer }
 
+    Stage:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        pipeline_id: { type: string, format: uuid }
+        name: { type: string }
+        order: { type: integer }
+        is_won: { type: boolean }
+        is_lost: { type: boolean }
+        requires_value:
+          type: boolean
+          description: D-034 — regra da PRÓPRIA etapa, sem propagação por order.
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    StageCreate:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string }
+        order: { type: integer, minimum: 0, description: "Omitido = última posição." }
+        is_won: { type: boolean, default: false }
+        is_lost: { type: boolean, default: false }
+        requires_value: { type: boolean, default: false }
+
+    StageUpdate:
+      type: object
+      properties:
+        name: { type: string }
+        order: { type: integer, minimum: 0 }
+        is_won: { type: boolean }
+        is_lost: { type: boolean }
+        requires_value: { type: boolean }
+
+    Pipeline:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        is_default: { type: boolean }
+        stages:
+          type: array
+          items: { $ref: "#/components/schemas/Stage" }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    PipelineCreate:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string }
+        is_default: { type: boolean, default: false }
+
+    PipelineUpdate:
+      type: object
+      properties:
+        name: { type: string }
+        is_default: { type: boolean }
+
+    PipelineList:
+      type: object
+      properties:
+        data:
+          type: array
+          items: { $ref: "#/components/schemas/Pipeline" }
+        page: { type: integer }
+        limit: { type: integer }
+        total: { type: integer }
+
+    OpportunityCreate:
+      type: object
+      required: [customer_id, pipeline_id, stage_id]
+      properties:
+        customer_id: { type: string, format: uuid }
+        lead_id: { type: string, format: uuid, description: "Opcional; exige lead vinculado ao mesmo cliente e sem oportunidade." }
+        pipeline_id: { type: string, format: uuid }
+        stage_id: { type: string, format: uuid, description: "Etapa inicial — do pipeline e não terminal." }
+        owner_id: { type: string, format: uuid, description: "Padrão: usuário autenticado." }
+        value:
+          type: string
+          example: "1500.00"
+          description: >
+            Decimal exato (até 12 dígitos inteiros e 2 casas), enviado como string ou número JSON e
+            sempre devolvido como string. Obrigatório se a etapa exigir (D-034).
+
+    OpportunityUpdate:
+      type: object
+      properties:
+        owner_id: { type: string, format: uuid }
+        value: { type: string, nullable: true, example: "1500.00" }
+
+    OpportunityRef:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+
     Opportunity:
       type: object
       properties:
         id: { type: string, format: uuid }
         customer_id: { type: string, format: uuid }
+        customer: { $ref: "#/components/schemas/OpportunityRef" }
+        lead_id: { type: string, format: uuid, nullable: true }
         pipeline_id: { type: string, format: uuid }
         stage_id: { type: string, format: uuid }
         owner_id: { type: string, format: uuid }
-        value: { type: number, nullable: true }
+        owner: { $ref: "#/components/schemas/OpportunityRef" }
+        value:
+          type: string
+          nullable: true
+          example: "1500.00"
+          description: Decimal exato como string — nunca number (sem ponto flutuante para dinheiro).
         status: { type: string, enum: [open, won, lost] }
         lost_reason: { type: string, nullable: true }
         created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    OpportunityList:
+      type: object
+      properties:
+        data:
+          type: array
+          items: { $ref: "#/components/schemas/Opportunity" }
+        page: { type: integer }
+        limit: { type: integer }
+        total: { type: integer }
 
     Call:
       type: object
