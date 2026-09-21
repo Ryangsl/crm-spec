@@ -42,7 +42,9 @@ appointments N───1 (lead | customer | opportunity) [polimórfico, opcional
 appointments N───1 users
 ```
 
-## 3. Call Center
+## 3. Atendimento e disponibilidade (legado "Call Center")
+
+> **Nota de escopo ([D-070](../00-governance/decision-register.md#d-070--definição-de-produto-crm-comercial--atendimentoconversas--whatsapp-sem-call-center-telefônico))**: relações com `calls` são de telefonia e não serão implementadas; `queues`, `queue_members`, `dispositions` e `agent_status_log` (disponibilidade — [D-071](../00-governance/decision-register.md#d-071--disponibilidade-de-consultoratendente-para-distribuição-automática)) permanecem como conceitos a revisar antes da implementação.
 
 ```
 queues 1───N calls

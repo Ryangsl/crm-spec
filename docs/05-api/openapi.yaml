@@ -1039,11 +1039,11 @@ paths:
 
   /calls/click-to-call:
     post:
-      summary: "[Fase 5] Origina uma chamada ativa a partir do CRM"
+      summary: "[Fora de escopo — D-070] Origina uma chamada ativa a partir do CRM"
       description: >
-        Fora do MVP. Depende da escolha do provedor de telefonia (D-010,
-        ADIADO até a Fase 5). Documentado aqui apenas como forma esperada do
-        contrato quando a Fase 5 iniciar.
+        Fora do escopo do produto (D-070: o produto não é um Call Center
+        telefônico). Mantido apenas por rastreabilidade do contrato original;
+        não será implementado salvo nova decisão de escopo (D-010, sem fase).
       requestBody:
         required: true
         content:
@@ -1064,7 +1064,7 @@ paths:
 
   /calls/{id}/disposition:
     post:
-      summary: Registra a disposição de uma chamada encerrada (BR-15)
+      summary: "[Legado — D-070] Registra a disposição de uma chamada encerrada (BR-15; a disposição passa a valer para atendimento/conversa)"
       parameters:
         - $ref: "#/components/parameters/Id"
       requestBody:

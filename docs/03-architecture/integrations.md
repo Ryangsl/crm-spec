@@ -4,7 +4,9 @@
 
 Nenhum módulo de negócio (CRM, Atendimento) conhece detalhes de um provedor específico. Toda integração de comunicação implementa a interface `ChannelAdapter` descrita em [architecture.md](architecture.md) seção 4. Isso é o que permite trocar de provedor de telefonia ou WhatsApp sem alterar regra de negócio, e é tratado como requisito de arquitetura, não opcional.
 
-## 2. Telefonia
+## 2. Telefonia *(fora de escopo — D-070)*
+
+> **Nota de escopo ([D-070](../00-governance/decision-register.md#d-070--definição-de-produto-crm-comercial--atendimentoconversas--whatsapp-sem-call-center-telefônico), 2026-09-21)**: o produto não é um Call Center telefônico; não há integração de telefonia prevista no roadmap (a Fase 5 agora é WhatsApp/Conversas). O conteúdo abaixo é mantido por rastreabilidade — só seria retomado por uma nova decisão de escopo.
 
 | Opção | Natureza | Observação |
 |---|---|---|

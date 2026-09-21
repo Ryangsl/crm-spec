@@ -25,8 +25,9 @@ Cada decisão tem um **status**:
 | Fase 1 — Fundação técnica | D-001, D-012, D-017, D-018, D-020, D-021, D-022, D-023 — todas `DECIDIDO`/`PROPOSTO`. Nada pendente. |
 | Fase 2 — Auth/Usuários/Tenants | D-002, D-003, D-004, D-005, D-006, D-016, D-037, D-056 a D-063 — todas `DECIDIDO`. Nada pendente. |
 | Fase 3 — CRM | D-007, D-008, D-031, D-032, D-033, D-034, D-035, D-058, D-065, D-066, D-067, D-068, D-069 — todas `DECIDIDO`. Nada pendente. Decision Gate (2026-09-16) e Implementation Gate (2026-09-16) concluídos. |
-| Fase 5 — Call Center | D-010, D-013, D-024, D-025, D-039 |
-| Fase 6 — Omnichannel | D-011 |
+| Fase 4 — Atendimento/Conversas | D-071 (modelagem de disponibilidade — `VALIDAÇÃO DE NEGÓCIO`; a regra já está `DECIDIDO`) e pendências de D-070. Só bloqueiam a parte de disponibilidade/atendimento, não a Fase 3. |
+| Fase 5 — WhatsApp/Conversas | D-011, D-013, D-024, D-025, D-039 (D-010 e D-045 — telefonia/discador — estão **fora de escopo**, ver D-070) |
+| Fase 6 — Omnichannel | Nenhuma definida hoje; provedores de canais futuros (ex.: D-040) são decididos quando entrarem no roadmap |
 | Fase 7+ | D-038, D-040, D-046, D-049 |
 | Antes do primeiro cliente em produção | D-027, D-028, D-029, D-043, D-047, D-064 |
 
@@ -202,12 +203,14 @@ Não há consumidor externo nem segunda versão no horizonte; definir o tempo m�
 ## Comunicação e provedores externos
 
 ### D-010 — Provedor de telefonia
-**Status**: `ADIADO` · **Prazo**: antes da Fase 5
+**Status**: `ADIADO` · **Prazo**: sem fase — fora do escopo do produto ([D-070](#d-070--definição-de-produto-crm-comercial--atendimentoconversas--whatsapp-sem-call-center-telefônico), 2026-09-21)
 
-Não bloqueia as Fases 1, 2, 3 e 4. A arquitetura precisa apenas garantir a camada de abstração (`TelephonyAdapter` / `ChannelAdapter`), com implementações futuras plugáveis. Não escolher nem integrar provedor antes da Fase 5 sem necessidade de negócio validada.
+**Atualização (D-070)**: o produto deixou de prever telefonia PSTN/Call Center; esta decisão **não é mais pré-requisito da Fase 5** (que passou a ser WhatsApp/Conversas). Só seria retomada por uma nova decisão explícita de escopo.
+
+Texto original: não bloqueia as Fases 1, 2, 3 e 4. A arquitetura precisa apenas garantir a camada de abstração (`TelephonyAdapter` / `ChannelAdapter`), com implementações futuras plugáveis. Não escolher nem integrar provedor sem necessidade de negócio validada.
 
 ### D-011 — Provedor de WhatsApp
-**Status**: `ADIADO` · **Prazo**: antes da Fase 6
+**Status**: `ADIADO` · **Prazo**: antes da Fase 5 (WhatsApp/Conversas — [D-070](#d-070--definição-de-produto-crm-comercial--atendimentoconversas--whatsapp-sem-call-center-telefônico); antes era "antes da Fase 6")
 
 Direção definida: **WhatsApp Business Platform oficial ou BSP oficial** para o produto SaaS comercial. Soluções não oficiais não podem ser a base do produto principal. Abstração: `ChannelAdapter` com `sendMessage()`, `receiveWebhook()`, `sendTemplate()`, `getMedia()`.
 
@@ -222,12 +225,14 @@ Timeout curto já é exigido desde a primeira integração; a biblioteca/abordag
 ### D-024 — Convenção de variáveis de ambiente de provedores
 **Status**: `PROPOSTO` · **Prazo**: Fase 5
 
-Prefixo por **capacidade**, não por marca do provedor (`TELEPHONY_*`, `WHATSAPP_*`), para que a troca de provedor não exija renomear configuração. Consistente com a abstração de canal.
+Prefixo por **capacidade**, não por marca do provedor (`WHATSAPP_*`; `TELEPHONY_*` só se telefonia voltar ao escopo — [D-070](#d-070--definição-de-produto-crm-comercial--atendimentoconversas--whatsapp-sem-call-center-telefônico)), para que a troca de provedor não exija renomear configuração. Consistente com a abstração de canal.
 
 ### D-045 — Discador preditivo
 **Status**: `ADIADO` · **Prazo**: pós-Fase 5, mediante validação de negócio
 
 Exige motor de pacing e tratamento de requisitos legais de abandono de chamada. MVP de telefonia é discagem manual/click-to-call.
+
+**Atualização ([D-070](#d-070--definição-de-produto-crm-comercial--atendimentoconversas--whatsapp-sem-call-center-telefônico))**: discador e telefonia estão fora do escopo do produto; a decisão permanece registrada só por rastreabilidade.
 
 ---
 
@@ -243,7 +248,7 @@ Redis como infraestrutura compartilhada (cache quando necessário, filas, escala
 ### D-013 — WebSocket
 **Status**: `ADIADO` · **Prazo**: Fase 5
 
-Necessário para status de operadores, filas, supervisão em tempo real e eventos de Call Center. Não antecipar implementação de WebSocket na Fase 1.
+Necessário para status de disponibilidade dos atendentes, filas de atendimento, supervisão em tempo real e eventos de conversas/atendimento ([D-070](#d-070--definição-de-produto-crm-comercial--atendimentoconversas--whatsapp-sem-call-center-telefônico): sem eventos de telefonia). Não antecipar implementação de WebSocket na Fase 1.
 
 ### D-046 — Adapter Redis para WebSocket multi-instância
 **Status**: `ADIADO` · **Prazo**: quando houver mais de uma instância de backend (Fase 5/9)
@@ -487,12 +492,58 @@ A distribuição round-robin de leads (BR-05, RF-12) usa um cursor persistido na
 
 **Quando não houver vendedor elegível** (ver [D-069](#d-069--alerta-de-lead-não-atribuído-só-auditoria-sem-módulo-de-notificações) abaixo): o lead permanece `owner_id = null`, `status = new` — isso já representa a fila "não atribuído", sem necessidade de status/tabela adicional.
 
+**Evolução prevista ([D-071](#d-071--disponibilidade-de-consultoratendente-para-distribuição-automática), 2026-09-21)**: a elegibilidade descrita acima (usuário ativo + tenant + permissão `leads:update`) passa a incluir **disponibilidade** — ativo + disponível + permissão — quando a modelagem de disponibilidade for validada. Até lá o comportamento implementado na Fase 3.4 não filtra por disponibilidade.
+
 ### D-069 — Alerta de lead não atribuído: só auditoria, sem módulo de notificações
 **Status**: `DECIDIDO` · **Fase**: 3 (fechado no Implementation Gate, 2026-09-16)
 
 Quando o round-robin (D-068) não encontra nenhum vendedor elegível, a Fase 3 registra o evento apenas via `AuditModule` (ação `lead.unassigned`) — não grava na tabela `notifications`, não cria módulo/endpoint/UI de notificações, não cria fila dedicada para isso. A tabela `notifications` (já modelada desde a Fase 0) só passa a ser escrita/lida a partir da "primeira versão de Notificações" da [Fase 4](../10-roadmap/roadmap.md).
 
 **Motivo**: evitar antecipar o módulo de Notificações (explicitamente Fase 4 no roadmap) só por causa de um único gatilho da Fase 3; o registro de auditoria já é suficiente para rastreabilidade/investigação até lá.
+
+## Ajuste de escopo de produto (2026-09-21)
+
+Ajuste solicitado pelo responsável pelo produto **após** a implementação das Fases 3.1–3.5. É uma correção de definição de produto e de terminologia — **não altera código, schema, migrations nem decisões anteriores fechadas** (D-031 a D-069).
+
+### D-070 — Definição de produto: CRM Comercial + Atendimento/Conversas + WhatsApp (sem Call Center telefônico)
+**Status**: `DECIDIDO` · **Fase**: transversal (ajuste de escopo, 2026-09-21)
+
+O produto é **CRM Comercial + Atendimento/Conversas + WhatsApp + futuro Omnichannel**. "Atendimento" significa conversas/interações comerciais, principalmente via WhatsApp, e as funções relacionadas a Lead/Cliente.
+
+O produto **não é** um Call Center telefônico tradicional. Ficam **fora de escopo**: URA, telefonia PSTN, gravação de chamadas, infraestrutura de telefonia e filas de chamadas telefônicas.
+
+**Consequências**:
+- **Roadmap** (significado funcional, sem renumerar fases): Fase 3 = CRM Comercial; Fase 4 = Atendimento/Conversas; Fase 5 = WhatsApp/Conversas; Fase 6 = Omnichannel. Fases 7–10 preservadas. Ver [roadmap.md](../10-roadmap/roadmap.md).
+- **Regras de negócio**: BR-14, BR-15, BR-16 e BR-18 reescritas para atendimento/conversas e disponibilidade; **BR-17 (gravação de chamada) removida sem regra substituta**; BR-19 a BR-21 (Conversas/WhatsApp) preservadas. Ver [business-rules.md](../02-business/business-rules.md).
+- **Decisões anteriores afetadas** (sem reabrir o mérito): D-010 (provedor de telefonia) e D-045 (discador preditivo) ficam **sem fase e fora do escopo**; D-011 (provedor de WhatsApp) passa a ser pré-requisito da Fase 5; D-013, D-024 e D-039 seguem na Fase 5, agora referidas a WhatsApp/atendimento.
+- **Modelo de dados**: o grupo "Call Center" de [entities.md](../04-database/entities.md) e [relationships.md](../04-database/relationships.md) passa a ser tratado como **legado a revisar antes da implementação**. `calls`, `recording_url` e `queues.channel_type = voice` são específicos de telefonia e **não serão implementados**. `queues`, `queue_members`, `dispositions` e `agent_status_log` permanecem como conceitos reaproveitáveis, sujeitos à modelagem definida em D-071. Nada disso existe no `schema.prisma` — nenhuma migration é criada por esta decisão.
+- **Não altera**: código já implementado (Fases 3.1–3.5), Round Robin (D-068) e alerta de lead não atribuído (D-069).
+
+**Pendências de negócio registradas (não inventadas — decidir antes da fase que as implementa)**:
+1. BR-15: o que caracteriza uma Conversa/atendimento "finalizado" e se toda conversa exige disposição.
+2. BR-16: limite de pausa configurável (valor e onde se configura) e destinatário do alerta — depende da primeira versão de Notificações (Fase 4).
+3. BR-18: pontos de medição do SLA de uma Conversa e nível de configuração (fila, canal ou tenant).
+4. Se "filas" de atendimento existem já na Fase 4 ou só na Fase 5.
+5. Terminologia dos papéis de fábrica/personas "Supervisor (Call Center)" e "Operador de Call Center" (renomear papéis exige mudança de seed — fora deste ajuste).
+
+### D-071 — Disponibilidade de consultor/atendente para distribuição automática
+**Status**: regra `DECIDIDO` · modelagem `VALIDAÇÃO DE NEGÓCIO` · **Prazo**: antes de implementar disponibilidade (Fase 4). Não bloqueia a Fase 3 (Notes/Tasks/Appointments não dependem dela).
+
+**Regra decidida (2026-09-21)**: a distribuição automática de novos Leads/atendimentos só considera consultores/atendentes **ativos e disponíveis**. Usuário ativo porém **indisponível não integra o conjunto elegível** do Round Robin. A disponibilidade é um estado comercial/de atendimento do usuário — **não é "Call Center"**, **não é atrelada a um papel específico** e é reutilizável por: distribuição de leads, distribuição de conversas de WhatsApp, filas de atendimento e outros canais do Omnichannel. Ver BR-14 e BR-05.
+
+**Divergência com a Fase 3.4 (registrada, não corrigida agora)**: o Round Robin implementado (D-068) considera **usuário ativo + mesmo tenant + permissão `leads:update`** (`UsersService.listActiveIdsWithPermission`). **Não considera disponibilidade.** Evolução desejada: **ativo + disponível + permissão** — a elegibilidade continua por permissão, não por papel. Enquanto a modelagem não for validada, o comportamento atual permanece; quando todos os elegíveis estiverem indisponíveis, vale o que D-068/D-069 já definem para "nenhum elegível" (lead fica `owner_id = null`, `status = new`, evento `lead.unassigned` na auditoria).
+
+**Conceito já existente na especificação (reaproveitar, não recriar)**: `agent_status_log` em [entities.md](../04-database/entities.md) (`user_id`, `status` enum `available | busy | paused | offline`, `started_at`, `ended_at`), RF-15 (usuário altera seu status), BR-14/BR-16, `AgentStatus` e o evento `agent.status_changed` em [architecture.md](../03-architecture/architecture.md). Hoje esse conceito está descrito como parte do "Call Center" e não existe no `schema.prisma`.
+
+**Lacuna de modelagem — pendências de negócio (não decididas; nenhum enum, campo ou migration foi escolhido)**:
+1. **Estado atual**: `agent_status_log` é só histórico — não há campo de "status corrente". Representar o estado atual como campo do usuário, derivá-lo da última linha aberta do log ou usar outra estrutura?
+2. **Conjunto de estados**: os quatro estados atuais servem para conversas? Quais contam como "disponível" para a distribuição (`busy` e `offline` são elegíveis)? Qual a relação com login/logout e sessão?
+3. **Quem altera**: o próprio usuário, gestor/supervisor, transições automáticas (login, logout, inatividade)?
+4. **Escopo**: disponibilidade única por usuário ou por fila/canal?
+5. **Relação com `crm.business_hours`** (BR-05, formato ainda indefinido): soma-se ao horário de atendimento ou o substitui?
+6. **Fallback**: se o tenant não usar disponibilidade, todos os ativos continuam elegíveis (como hoje)?
+7. **Leads já atribuídos** a quem fica indisponível: permanecem com o dono (assumido por padrão, hoje) ou há redistribuição?
+8. **Nomenclatura neutra**: `agent_status_log`/`AgentStatus` carregam o vocabulário de Call Center; renomear?
 
 ## Regras de negócio validadas pelo responsável pelo produto (Fase 3)
 
@@ -544,3 +595,4 @@ Toda exclusão continua sendo **soft delete** (BR-22) e continua sendo auditada 
 | 2026-09-08 | Validação final da Fase 0. D-036 ampliada com a decisão provisória explícita (sem acesso automático) e a evolução futura "Support Access Controlado". Corrigidas 3 inconsistências detectadas na auditoria: restrição do Super Admin em `personas.md`, réplica de leitura em `scalability.md` §3, e marcação de fase em `requirements.md` (Relatórios/Dashboard e Notificações). |
 | 2026-09-16 | Decision Gate da Fase 3 (CRM) fechado com o responsável pelo produto. D-031 (`PROPOSTO`→`DECIDIDO`), D-032, D-033, D-034, D-035 (`VALIDAÇÃO DE NEGÓCIO`→`DECIDIDO`) e D-058 (reafirmado para a Fase 3: escopo permanece Tenant-only) resolvidos. Duas decisões novas registradas: D-065 (Contacts como sub-recurso de Customer) e D-066 (Fundação Frontend de Auth/RBAC como primeira entrega da Fase 3). Consistência documental atualizada em `entities.md`, `relationships.md`, `business-rules.md`, `personas.md`, `use-cases.md`, `workflows.md`, `roadmap.md`, `api-guidelines.md` e `openapi.yaml`. |
 | 2026-09-16 | Implementation Gate da Fase 3 fechado — última validação antes da implementação, sem reabrir nenhuma decisão anterior. D-034 teve sua consequência técnica precisada: `stages.requires_value` é regra **por etapa individual, sem propagação por `order`** (removida a leitura anterior de "etapa igual ou posterior"). Três decisões técnicas novas registradas: D-067 (deduplicação de Customer é bloqueante, `409` com candidatos, sem escolha automática), D-068 (round-robin usa cursor em `tenant_settings` com lock transacional; achado que essa tabela nunca foi criada no `crm-backend` real, apesar de documentada desde a Fase 0 — criação entra no escopo de schema da Fase 3) e D-069 (lead não atribuído gera só evento de auditoria, sem usar a tabela `notifications` nem antecipar o módulo de Notificações da Fase 4). Consistência documental atualizada em `entities.md` e `business-rules.md`. |
+| 2026-09-21 | Ajuste de escopo de produto (documentação apenas, sem alteração de código/schema). D-070 (`DECIDIDO`): o produto é CRM Comercial + Atendimento/Conversas + WhatsApp + futuro Omnichannel — **não** um Call Center telefônico (sem URA, PSTN, gravação de chamadas, infraestrutura de telefonia nem filas de chamadas). D-071: regra de disponibilidade `DECIDIDO` (distribuição automática só para consultor/atendente ativo **e** disponível); modelagem `VALIDAÇÃO DE NEGÓCIO` (reaproveita o conceito `agent_status_log`/RF-15; lacunas registradas); divergência com o Round Robin da Fase 3.4 (ativo + permissão, sem disponibilidade) documentada. D-010 e D-045 ficam sem fase/fora de escopo; D-011 passa a ser pré-requisito da Fase 5 (WhatsApp/Conversas). BR-14/15/16/18 reescritas, BR-17 removida, BR-19–21 preservadas. Roadmap: Fase 3 CRM Comercial, Fase 4 Atendimento/Conversas, Fase 5 WhatsApp/Conversas, Fase 6 Omnichannel. |

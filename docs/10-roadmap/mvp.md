@@ -17,8 +17,8 @@ Um produto pequeno o suficiente para ser desenvolvido, testado e colocado em pro
 
 **Atendimento**
 - Registro manual de atendimento (o operador registra que atendeu, por qual canal, com qual resultado) alimentando o histórico unificado do cliente — **sem** integração de telefonia.
-- Click-to-call **não** entra no MVP: é Fase 5, e depende do provedor de telefonia ([D-010](../00-governance/decision-register.md#d-010--provedor-de-telefonia), `ADIADO`).
-- Filas, status de operador e painel de supervisão em tempo real são Fase 5.
+- Telefonia (click-to-call, chamadas) **não faz parte do produto** ([D-070](../00-governance/decision-register.md#d-070--definição-de-produto-crm-comercial--atendimentoconversas--whatsapp-sem-call-center-telefônico): o produto é CRM Comercial + Atendimento/Conversas + WhatsApp, não um Call Center telefônico). O provedor de telefonia ([D-010](../00-governance/decision-register.md#d-010--provedor-de-telefonia)) está sem fase.
+- Disponibilidade de consultor/atendente ([D-071](../00-governance/decision-register.md#d-071--disponibilidade-de-consultoratendente-para-distribuição-automática)) entra na Fase 4; filas de conversa, distribuição de conversas por disponibilidade e painel de supervisão em tempo real são Fase 5 (WhatsApp/Conversas).
 
 **Frontend**
 - Mobile First/PWA, com os fluxos acima cobertos em `xs` a `xl` (ver [../06-frontend/responsive.md](../06-frontend/responsive.md)).
@@ -30,8 +30,8 @@ Um produto pequeno o suficiente para ser desenvolvido, testado e colocado em pro
 
 ## 3. NÃO entra no MVP
 
-- Telefonia integrada de verdade (chamada originada/recebida via provedor) — fica para Fase 5.
-- WhatsApp/omnichannel — Fase 6.
+- Telefonia integrada (chamada originada/recebida via provedor) — fora do escopo do produto ([D-070](../00-governance/decision-register.md#d-070--definição-de-produto-crm-comercial--atendimentoconversas--whatsapp-sem-call-center-telefônico)).
+- WhatsApp/Conversas — Fase 5; Omnichannel (canais adicionais e caixa de entrada unificada) — Fase 6.
 - Dashboard analítico completo e exportação de relatórios — Fase 7.
 - Campanhas e automações — Fase 8.
 - Particionamento de banco, múltiplas instâncias de backend, Kubernetes — Fase 9 (sem evidência de necessidade ainda).

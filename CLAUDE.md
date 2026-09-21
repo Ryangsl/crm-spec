@@ -73,8 +73,8 @@ Criado o repositório **`crm-workspace`**: a pasta que agrupa os três repositó
 | RLS como segunda camada de isolamento ([D-003](docs/00-governance/decision-register.md#d-003--postgresql-row-level-security)) | Até o fim da Fase 2 |
 | Testes de integração/e2e no CI (exigem Postgres e Redis nos runners) | Fase 2, junto do primeiro fluxo real |
 | E2E de frontend com Playwright ([D-020](docs/00-governance/decision-register.md#d-020--ferramenta-de-e2e-de-frontend)) | Fase 2, quando existirem fluxos a cobrir |
-| Provedor de telefonia ([D-010](docs/00-governance/decision-register.md#d-010--provedor-de-telefonia)) | Antes da Fase 5 |
-| Provedor de WhatsApp ([D-011](docs/00-governance/decision-register.md#d-011--provedor-de-whatsapp)) | Antes da Fase 6 |
+| Provedor de telefonia ([D-010](docs/00-governance/decision-register.md#d-010--provedor-de-telefonia)) | Sem fase — telefonia está fora de escopo ([D-070](docs/00-governance/decision-register.md#d-070--definição-de-produto-crm-comercial--atendimentoconversas--whatsapp-sem-call-center-telefônico)) |
+| Provedor de WhatsApp ([D-011](docs/00-governance/decision-register.md#d-011--provedor-de-whatsapp)) | Antes da Fase 5 (WhatsApp/Conversas) |
 | Paleta de marca ([D-043](docs/00-governance/decision-register.md#d-043--paleta-de-marca)) e fluxo LGPD ([D-047](docs/00-governance/decision-register.md#d-047--fluxo-operacional-de-lgpd-titular-de-dados)) | Antes do primeiro cliente em produção |
 
 ### Observação sobre histórico
@@ -155,7 +155,7 @@ Revisão das ~55 ocorrências de `[DECISÃO PENDENTE]` deixadas pela Fase 0. Tod
 - PWA offline apenas para leitura/assets (D-041); sem self-service de tenant no MVP (D-037).
 
 ### Decisões adiadas (com prazo e fase explícitos)
-- Provedor de telefonia → antes da Fase 5 (D-010). WhatsApp → antes da Fase 6, direção já fixada em API oficial/BSP (D-011).
+- Provedor de telefonia → sem fase, fora de escopo (D-010/D-070). WhatsApp → antes da Fase 5 (WhatsApp/Conversas), direção já fixada em API oficial/BSP (D-011).
 - WebSocket → Fase 5 (D-013). Circuit breaker, secrets, registry, teste de carga, IA, app nativo, discador preditivo → suas respectivas fases.
 - Escalabilidade avançada (K8s, microsserviços, réplicas, particionamento) → só com evidência real (D-014).
 

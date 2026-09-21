@@ -123,10 +123,11 @@ O cursor é o UUID v7 do último item da página ([D-001](../00-governance/decis
 `POST /v1/opportunities/{id}/win` · `POST /v1/opportunities/{id}/lose` `{ "reason": "..." }` — resolvem a etapa terminal pelas flags `is_won`/`is_lost` (nunca pelo nome). Ações POST retornam **201**, como no resto da API.
 `value` é sempre um decimal exato em **string** (ex.: `"1500.00"`) — nunca `number`. Erros de domínio com `code` estável: `OPPORTUNITY_JUSTIFICATION_REQUIRED` e `OPPORTUNITY_VALUE_REQUIRED` (422, permitem ao frontend pedir o dado e reenviar), `OPPORTUNITY_TERMINAL`, `OPPORTUNITY_ALREADY_IN_STAGE` (409).
 
-### Atendimentos / Ligações
+### Atendimentos / Ligações *(legado — D-070)*
+> O produto não é um Call Center telefônico ([D-070](../00-governance/decision-register.md#d-070--definição-de-produto-crm-comercial--atendimentoconversas--whatsapp-sem-call-center-telefônico)): os endpoints de chamada abaixo estão **fora de escopo** e mantidos só por rastreabilidade; o contrato de atendimento por conversa será definido na Fase 4/5.
 `GET /v1/customers/{id}/interactions?cursor=...&limit=20` (cursor — recurso cronológico)
 `POST /v1/calls/{id}/disposition` `{ "disposition_id": "..." }`
-`POST /v1/calls/click-to-call` `{ "customer_id": "...", "phone": "..." }` — **Fase 5**, depende do provedor de telefonia ([D-010](../00-governance/decision-register.md#d-010--provedor-de-telefonia), `ADIADO`); não faz parte do MVP.
+`POST /v1/calls/click-to-call` `{ "customer_id": "...", "phone": "..." }` — **fora de escopo** (telefonia, D-070; provedor [D-010](../00-governance/decision-register.md#d-010--provedor-de-telefonia) sem fase); não faz parte do MVP.
 
 ## 10. O que o frontend nunca faz
 

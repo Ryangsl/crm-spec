@@ -22,18 +22,18 @@
 - RF-13: O sistema deve permitir registrar tarefas, notas e agendamentos vinculados a lead/oportunidade/cliente.
 - RF-14: O sistema deve permitir tags e campos personalizados em Clientes/Leads. No MVP, campos personalizados são suportados **estruturalmente** via `JSONB` ([D-008](../00-governance/decision-register.md#d-008--campos-personalizados-mvp), `DECIDIDO`); a gestão visual de campos (criação pelo usuário, permissões por campo, validação configurável) fica fora do MVP ([D-009](../00-governance/decision-register.md#d-009--sistema-completo-de-campos-personalizados), `ADIADO`).
 
-### Atendimento / Call Center
-*(RF-15, RF-16, RF-19 e RF-20 são da Fase 5 — fora do MVP, ver [D-015](../00-governance/decision-register.md#d-015--escopo-oficial-do-mvp). RF-17 e RF-18 já valem no MVP, aplicados ao registro manual de atendimento.)*
+### Atendimento / Conversas e disponibilidade
+*(O produto é CRM Comercial + Atendimento/Conversas + WhatsApp, **não** um Call Center telefônico — [D-070](../00-governance/decision-register.md#d-070--definição-de-produto-crm-comercial--atendimentoconversas--whatsapp-sem-call-center-telefônico). RF-15 (disponibilidade) é da Fase 4, com modelagem pendente em [D-071](../00-governance/decision-register.md#d-071--disponibilidade-de-consultoratendente-para-distribuição-automática); RF-16 na parte de conversas e RF-19 são da Fase 5 — fora do MVP, ver [D-015](../00-governance/decision-register.md#d-015--escopo-oficial-do-mvp). RF-17 e RF-18 já valem no MVP, aplicados ao registro manual de atendimento.)*
 
-- RF-15: O sistema deve permitir que um operador entre/saia de uma ou mais filas e altere seu status (Disponível, Ocupado, Pausa, Offline).
-- RF-16: O sistema deve distribuir chamadas/atendimentos de uma fila entre operadores disponíveis.
-- RF-17: O sistema deve permitir registrar a disposição (resultado) de um atendimento.
-- RF-18: O sistema deve manter histórico completo de atendimentos por cliente (chamadas, mensagens, notas), com timestamps.
-- RF-19: O sistema deve permitir supervisão em tempo real do status de operadores e filas.
-- RF-20: O sistema deve permitir click-to-call (originar chamada a partir da tela de CRM).
+- RF-15: O sistema deve permitir que um consultor/atendente altere seu status de disponibilidade (Disponível, Ocupado, Pausa, Offline — conjunto e semântica sujeitos a [D-071](../00-governance/decision-register.md#d-071--disponibilidade-de-consultoratendente-para-distribuição-automática)) e, quando houver filas de atendimento, entre/saia delas.
+- RF-16: O sistema deve distribuir novos leads/conversas/atendimentos apenas entre consultores/atendentes **ativos e disponíveis** (BR-14). Para leads o round-robin já existe (RF-12, Fase 3.4) e ainda não aplica disponibilidade.
+- RF-17: O sistema deve permitir registrar a disposição (resultado) de um atendimento/conversa (BR-15).
+- RF-18: O sistema deve manter histórico completo de atendimentos por cliente (interações, conversas, mensagens, notas), com timestamps.
+- RF-19: O sistema deve permitir supervisão em tempo real do status de disponibilidade dos atendentes e das filas de atendimento.
+- ~~RF-20~~: **removido** ([D-070](../00-governance/decision-register.md#d-070--definição-de-produto-crm-comercial--atendimentoconversas--whatsapp-sem-call-center-telefônico)) — click-to-call é telefonia, fora do escopo do produto.
 
-### Omnichannel
-*(Fase 6 — fora do MVP. A abstração de canal exigida por RF-22 já orienta o desenho desde a Fase 1.)*
+### Conversas / WhatsApp / Omnichannel
+*(WhatsApp/Conversas — RF-21 e RF-23 — na Fase 5; canais adicionais e caixa de entrada unificada na Fase 6; tudo fora do MVP. A abstração de canal exigida por RF-22 já orienta o desenho desde a Fase 1.)*
 
 - RF-21: O sistema deve permitir receber e enviar mensagens via WhatsApp associadas ao histórico do cliente.
 - RF-22: O sistema deve suportar múltiplos canais de comunicação através de uma camada de abstração, sem acoplamento direto do CRM a um provedor específico.
@@ -62,7 +62,7 @@
 
 ### Disponibilidade e Confiabilidade
 - RNF-04: Falha de WebSocket não deve impedir o uso do sistema — deve haver fallback (polling) para dados críticos.
-- RNF-05: Falhas de integração com provedores externos (telefonia/WhatsApp) não devem derrubar o restante do sistema — timeout curto é obrigatório desde a primeira integração; circuit breaker é [D-039](../00-governance/decision-register.md#d-039--circuit-breaker-para-provedores-externos) (`ADIADO` para a Fase 5). Sem integração externa no MVP, este RNF só passa a ser exercitado na Fase 5.
+- RNF-05: Falhas de integração com provedores externos (WhatsApp/outros canais) não devem derrubar o restante do sistema — timeout curto é obrigatório desde a primeira integração; circuit breaker é [D-039](../00-governance/decision-register.md#d-039--circuit-breaker-para-provedores-externos) (`ADIADO` para a Fase 5). Sem integração externa no MVP, este RNF só passa a ser exercitado na Fase 5.
 - RNF-06: Filas assíncronas devem ter retry com backoff e dead-letter queue.
 
 ### Segurança

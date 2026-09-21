@@ -181,23 +181,27 @@ Implementado como **sub-recurso de `customers`** (`GET/POST /v1/customers/{id}/c
 | starts_at | timestamptz | sim |
 | ends_at | timestamptz | sim |
 
-## Grupo: Call Center
+## Grupo: Atendimento e disponibilidade (legado "Call Center")
+
+> **Nota de escopo ([D-070](../00-governance/decision-register.md#d-070--definição-de-produto-crm-comercial--atendimentoconversas--whatsapp-sem-call-center-telefônico), 2026-09-21)**: o produto não é um Call Center telefônico. Neste grupo, `calls`, `recording_url` e `queues.channel_type = voice` são específicos de telefonia e **não serão implementados**. `queues`, `queue_members`, `dispositions` e `agent_status_log` permanecem como conceitos reaproveitáveis para atendimento/conversas e disponibilidade, **sujeitos a revisão de modelagem** ([D-071](../00-governance/decision-register.md#d-071--disponibilidade-de-consultoratendente-para-distribuição-automática)) antes de qualquer implementação. Nenhuma tabela deste grupo existe no `schema.prisma`.
 
 ### `queues` (filas)
 | Campo | Tipo | Obrigatório | Notas |
 |---|---|---|---|
 | name | string | sim | |
-| channel_type | enum(voice, whatsapp) | sim | |
-| sla_seconds | integer | não | BR-18 |
+| channel_type | enum(voice, whatsapp) | sim | `voice` fora de escopo (D-070) |
+| sla_seconds | integer | não | BR-18 (SLA de fila/atendimento/conversa) |
 
 ### `queue_members`
 `queue_id`, `user_id`.
 
 ### `agent_status_log`
+Conceito de **disponibilidade** do consultor/atendente (BR-14, RF-15), base de [D-071](../00-governance/decision-register.md#d-071--disponibilidade-de-consultoratendente-para-distribuição-automática). É apenas histórico — **não há campo de status corrente**; representação do estado atual, conjunto de estados e quem os altera estão pendentes de validação de negócio (D-071).
+
 | Campo | Tipo | Obrigatório | Notas |
 |---|---|---|---|
 | user_id | UUID (FK users) | sim | |
-| status | enum(available, busy, paused, offline) | sim | |
+| status | enum(available, busy, paused, offline) | sim | Conjunto e semântica sujeitos a D-071 |
 | started_at | timestamptz | sim | |
 | ended_at | timestamptz | não | |
 
@@ -213,7 +217,7 @@ Implementado como **sub-recurso de `customers`** (`GET/POST /v1/customers/{id}/c
 | answered_at | timestamptz | não | |
 | ended_at | timestamptz | não | |
 | disposition_id | UUID (FK dispositions) | não | Obrigatório ao encerrar (BR-15) |
-| recording_url | string | não | BR-17 |
+| recording_url | string | não | ~~BR-17~~ removida (D-070) — telefonia fora de escopo; campo não será implementado |
 
 Índices: `(tenant_id, agent_id)`, `(tenant_id, customer_id)`.
 

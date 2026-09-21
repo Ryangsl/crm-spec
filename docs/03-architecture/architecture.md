@@ -70,12 +70,14 @@ Cada módulo é uma pasta em `src/modules/<nome>` no backend, com controllers, s
 
 Permissões por módulo seguem a matriz de [../01-product/personas.md](../01-product/personas.md); regras de negócio detalhadas por módulo estão em [../02-business/business-rules.md](../02-business/business-rules.md).
 
-## 3. Call Center
+## 3. Atendimento e disponibilidade (legado "Call Center")
+
+> **Nota de escopo ([D-070](../00-governance/decision-register.md#d-070--definição-de-produto-crm-comercial--atendimentoconversas--whatsapp-sem-call-center-telefônico), 2026-09-21)**: o produto não é um Call Center telefônico. Os conceitos de voz desta seção e os módulos "Call Center", "Telefonia" e "Discadores" da tabela de módulos (chamadas, discagem, gravação, eventos `call.*`, `TelephonyAdapter`) estão **fora de escopo**. Permanecem como conceitos reaproveitáveis para atendimento/conversas: status de disponibilidade ([D-071](../00-governance/decision-register.md#d-071--disponibilidade-de-consultoratendente-para-distribuição-automática)), filas de atendimento, disposição e SLA (BR-15/BR-18). O texto original é mantido por rastreabilidade e deve ser revisado antes da implementação.
 
 ### 3.1 Conceitos modelados
 Status de operador (`Disponível`, `Ocupado`, `Pausa`, `Offline`), tempos (pausa, atendimento, ocioso), transferência, conferência, callback, disposição de chamada, gravação, SLA de fila e métricas — ver definição de dados em [../04-database/entities.md](../04-database/entities.md).
 
-### 3.2 Modos de discagem — análise
+### 3.2 Modos de discagem — análise *(fora de escopo — D-070)*
 
 | Modo | Descrição | Complexidade | Decisão |
 |---|---|---|---|
@@ -99,11 +101,11 @@ interface ChannelAdapter {
 }
 ```
 
-Cada provedor implementa esse contrato. Para telefonia, a mesma ideia se aplica sob o nome `TelephonyAdapter` (`ProviderAAdapter`, `AsteriskAdapter`, etc.). O restante do sistema (Conversas, Mensagens, filas de atendimento) trabalha apenas com o modelo normalizado interno, o que permite trocar/adicionar provedor sem alterar regras de negócio. Nenhum provedor concreto é escolhido agora ([D-010](../00-governance/decision-register.md#d-010--provedor-de-telefonia) e [D-011](../00-governance/decision-register.md#d-011--provedor-de-whatsapp), `ADIADO`) — ver [integrations.md](integrations.md).
+Cada provedor implementa esse contrato. Se a telefonia voltar ao escopo (hoje fora — D-070), a mesma ideia se aplicaria sob o nome `TelephonyAdapter` (`ProviderAAdapter`, `AsteriskAdapter`, etc.). O restante do sistema (Conversas, Mensagens, filas de atendimento) trabalha apenas com o modelo normalizado interno, o que permite trocar/adicionar provedor sem alterar regras de negócio. Nenhum provedor concreto é escolhido agora ([D-010](../00-governance/decision-register.md#d-010--provedor-de-telefonia) e [D-011](../00-governance/decision-register.md#d-011--provedor-de-whatsapp), `ADIADO`) — ver [integrations.md](integrations.md).
 
 ## 5. Tempo real (WebSocket)
 
-[D-013](../00-governance/decision-register.md#d-013--websocket) (`ADIADO` para a **Fase 5**): WebSocket não é implementado na Fase 1. Os casos que o exigem — status de operadores, estado de filas, chamada em andamento, supervisão em tempo real — só existem a partir da Fase 5. O MVP não depende de tempo real.
+[D-013](../00-governance/decision-register.md#d-013--websocket) (`ADIADO` para a **Fase 5**): WebSocket não é implementado na Fase 1. Os casos que o exigem — status de disponibilidade dos atendentes, estado de filas de atendimento, conversa em andamento, supervisão em tempo real — só existem a partir da Fase 5. O MVP não depende de tempo real.
 
 Quando a Fase 5 chegar, a forma é:
 

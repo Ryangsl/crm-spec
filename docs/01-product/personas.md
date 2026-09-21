@@ -50,7 +50,8 @@ Este documento define os perfis de acesso iniciais do sistema. O RBAC é **exten
 - **Exclui**: registros das equipes sob sua gestão, conforme regras de negócio.
 - **Restrições**: não visualiza dados de equipes/filiais fora de seu escopo; sem acesso a configurações globais do tenant.
 
-### 2.5 Supervisor (Call Center)
+### 2.5 Supervisor (Call Center — nome legado)
+> Nota ([D-070](../00-governance/decision-register.md#d-070--definição-de-produto-crm-comercial--atendimentoconversas--whatsapp-sem-call-center-telefônico)): o produto não é um Call Center telefônico; leia como **supervisor de atendimento/conversas**. Renomear o papel exige mudança de seed e permanece pendente. Itens de chamada/escuta ficam fora de escopo.
 - **Objetivo**: gerir a operação de atendimento em tempo real.
 - **Responsabilidades**: monitorar status de operadores e filas, intervir em atendimentos (escuta/assumir), gerenciar pausas e SLA.
 - **Funcionalidades**: painel de monitoramento em tempo real, filas, relatórios de call center, gestão de disposições de chamada.
@@ -70,7 +71,8 @@ Este documento define os perfis de acesso iniciais do sistema. O RBAC é **exten
 - **Exclui**: nada — vendedor/consultora não tem permissão de exclusão sobre Leads/Clientes/Oportunidades; toda exclusão (sempre soft delete) fica restrita a Gerente/Admin, sem fluxo de aprovação nesta fase ([D-035](../00-governance/decision-register.md#d-035--regra-de-aprovação-para-exclusão-por-vendedor), `DECIDIDO`).
 - **Restrições**: sem acesso a registros de outros vendedores fora de sua equipe, salvo liberação do gerente; sem acesso a configurações administrativas.
 
-### 2.7 Operador de Call Center
+### 2.7 Operador de Call Center (nome legado)
+> Nota ([D-070](../00-governance/decision-register.md#d-070--definição-de-produto-crm-comercial--atendimentoconversas--whatsapp-sem-call-center-telefônico)): leia como **atendente/consultor de atendimento**; atende conversas (WhatsApp), não chamadas. Sua disponibilidade governa a distribuição (BR-14, [D-071](../00-governance/decision-register.md#d-071--disponibilidade-de-consultoratendente-para-distribuição-automática)). Renomear o papel exige mudança de seed e permanece pendente.
 - **Objetivo**: realizar atendimento receptivo/ativo dentro de filas.
 - **Responsabilidades**: atender chamadas/mensagens da fila, registrar disposição, escalar quando necessário.
 - **Funcionalidades**: tela de atendimento (histórico do cliente, discador/soft-phone, WhatsApp), status de disponibilidade.

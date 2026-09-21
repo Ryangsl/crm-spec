@@ -6,6 +6,8 @@ Cada fase só inicia com a anterior aceita (critérios de aceite cumpridos). Det
 
 > Nenhuma decisão pendente bloqueia uma fase quando não impacta diretamente seus critérios de aceite ou a arquitetura necessária para ela.
 
+> **Definição de produto ([D-070](../00-governance/decision-register.md#d-070--definição-de-produto-crm-comercial--atendimentoconversas--whatsapp-sem-call-center-telefônico), 2026-09-21)**: o produto é **CRM Comercial + Atendimento/Conversas + WhatsApp + futuro Omnichannel** — não um Call Center telefônico (sem URA, PSTN, gravação de chamadas, infraestrutura de telefonia ou filas de chamadas). O ajuste abaixo muda o **significado funcional** das Fases 3 a 6; a numeração e as Fases 7–10 são preservadas.
+
 Decisões vivem no [Decision Register](../00-governance/decision-register.md), classificadas como `DECIDIDO`, `PROPOSTO`, `ADIADO`, `VALIDAÇÃO DE NEGÓCIO` ou `BLOQUEADOR`. Apenas `BLOQUEADOR` impede o início da fase correspondente — e **não há nenhum bloqueador aberto hoje**.
 
 | Antes desta fase, resolver | Decisões |
@@ -13,8 +15,9 @@ Decisões vivem no [Decision Register](../00-governance/decision-register.md), c
 | **Fase 1** | Fundação técnica: identificador, validação de DTO, estado global do frontend, E2E, CI, branches, ambiente local. Todas resolvidas. |
 | **Fase 2** | Multi-tenancy, tenant context, JWT, refresh token, RBAC, auditoria (D-002, D-004, D-005, D-016, D-037 resolvidas; D-003 e D-006 a fechar até o fim da fase) |
 | **Fase 3** | CRM, pipeline, campos personalizados, paginação (D-007, D-008, D-031, D-032, D-033, D-034, D-035, D-058, D-065, D-066, D-067, D-068, D-069 — todas `DECIDIDO`. Decision Gate e Implementation Gate fechados em 2026-09-16, nada pendente) |
-| **Fase 5** | Provedor de telefonia (D-010), WebSocket (D-013), secrets (D-025), circuit breaker (D-039) |
-| **Fase 6** | Provedor de WhatsApp (D-011) |
+| **Fase 4** | Modelagem da disponibilidade de consultor/atendente (D-071, `VALIDAÇÃO DE NEGÓCIO`) e pendências de BR-15/16/18 (D-070) — só para a parte de disponibilidade/atendimento |
+| **Fase 5** | Provedor de WhatsApp (D-011), WebSocket (D-013), secrets (D-025), circuit breaker (D-039). Telefonia (D-010) e discador (D-045) estão **fora de escopo** (D-070) |
+| **Fase 6** | Nenhuma decisão definida hoje; provedores de canais futuros (ex.: D-040) são decididos quando entrarem no roadmap |
 | **Antes do 1º cliente em produção** | Staging (D-027), retenção de backup (D-028), teste de restore (D-029), paleta de marca (D-043), fluxo LGPD (D-047) |
 
 Fases 1 a 4 **não dependem** de telefonia, WhatsApp, IA, escalabilidade avançada, Kubernetes, microsserviços ou de qualquer provedor externo futuro.
@@ -43,34 +46,39 @@ Fases 1 a 4 **não dependem** de telefonia, WhatsApp, IA, escalabilidade avança
 - **Riscos**: vazamento cross-tenant — risco crítico, tratado com testes obrigatórios (13 casos e2e + MAT-007) antes de prosseguir para dados de negócio reais.
 - **Ressalvas não bloqueantes**: RF-03 (redefinição de senha) e RF-07 (provisionamento de tenant pelo Super Admin) de [requirements.md](../01-product/requirements.md) não têm implementação nem fase declarada — não eram critério de aceite desta fase, mas precisam de dono antes de virarem dívida esquecida.
 
-## FASE 3 — CRM ⬅ *decisões fechadas (Decision Gate 2026-09-16); aguarda autorização explícita para implementação*
+## FASE 3 — CRM Comercial ⬅ *decisões fechadas (Decision Gate 2026-09-16); em implementação incremental (3.1–3.5 concluídas)*
+- **Significado funcional (D-070)**: CRM Comercial — Customers, Leads, Opportunities, Pipeline e Follow-up (Tarefas/Notas/Agenda).
 - **Objetivo**: ciclo Lead → Oportunidade → Pipeline funcionando.
 - **Funcionalidades**: Fundação Frontend de Auth/RBAC (primeira entrega, [D-066](../00-governance/decision-register.md#d-066--fundação-frontend-de-authrbac-faz-parte-da-fase-3)); Clientes (com Contacts como sub-recurso, [D-065](../00-governance/decision-register.md#d-065--contacts-sub-recurso-de-customer-não-módulo-próprio)), Leads (com distribuição round-robin), Oportunidades, Pipeline configurável, Tarefas, Notas, Agenda básica.
 - **Dependências**: Fase 2.
 - **Critérios de aceite**: fluxo completo de [../01-product/use-cases.md](../01-product/use-cases.md) UC-01 a UC-04 executável via API e UI.
 - **Decisões de negócio/arquitetura fechadas nesta fase** (ver [Decision Register](../00-governance/decision-register.md)): D-031 (polimorfismo de notes/tasks/appointments), D-032 (movimentação livre no pipeline, com justificativa ao pular etapa), D-033 (lead desqualificado é reaberto, não duplicado), D-034 (valor da oportunidade opcional na criação, obrigatório por etapa individual marcada), D-035 (vendedor não exclui registros de negócio), D-058 (escopo permanece Tenant-only nesta fase), D-065 (Contacts como sub-recurso), D-066 (Fundação Frontend de Auth/RBAC), D-067 (deduplicação de Customer bloqueante), D-068 (round-robin via cursor em `tenant_settings`), D-069 (lead não atribuído gera só auditoria, sem antecipar Notificações).
+- **Divergência registrada ([D-071](../00-governance/decision-register.md#d-071--disponibilidade-de-consultoratendente-para-distribuição-automática))**: a distribuição round-robin implementada na Fase 3.4 considera **usuário ativo + tenant + permissão `leads:update`**, sem disponibilidade. A regra de produto (BR-05/BR-14) é **ativo + disponível + permissão**, sem vincular a disponibilidade a um papel. Nenhuma correção é feita na Fase 3: a disponibilidade depende de modelagem ainda pendente e entra na Fase 4.
 - **Riscos**: modelo de campos personalizados subdimensionado — mitigado por decisão registrada em [../04-database/database.md](../04-database/database.md) seção 6.
 
-## FASE 4 — Atendimento
-- **Objetivo**: histórico unificado de interação por cliente, mesmo antes da telefonia completa.
-- **Funcionalidades**: módulo de Interações (registro manual de atendimento), notas de atendimento, primeira versão de Notificações.
-- **Dependências**: Fase 3.
+## FASE 4 — Atendimento / Conversas
+- **Significado funcional (D-070)**: atendimento comercial — conversas/interações ligadas a Lead/Cliente, follow-up, disponibilidade e primeiras funções de gestão de atendimento.
+- **Objetivo**: histórico unificado de interação por cliente, antes da integração com WhatsApp.
+- **Funcionalidades**: módulo de Interações (registro manual de atendimento), notas de atendimento, follow-up, **disponibilidade de consultor/atendente** ([D-071](../00-governance/decision-register.md#d-071--disponibilidade-de-consultoratendente-para-distribuição-automática); modelagem pendente), primeiras funções de gestão de atendimento, primeira versão de Notificações (quando definida). Aplicar a disponibilidade à distribuição de leads (BR-05/BR-14) é o ponto de evolução do Round Robin da Fase 3.4.
+- **Dependências**: Fase 3; validação de negócio de D-071 e das pendências de BR-15/16/18 ([D-070](../00-governance/decision-register.md#d-070--definição-de-produto-crm-comercial--atendimentoconversas--whatsapp-sem-call-center-telefônico)) para a parte de disponibilidade/atendimento.
 - **Critérios de aceite**: histórico de interações de um cliente reflete leads, oportunidades e atendimentos manuais em uma linha do tempo única.
 - **Riscos**: baixo — módulo majoritariamente de leitura/agregação.
 
-## FASE 5 — Call Center
-- **Objetivo**: telefonia mínima viável.
-- **Funcionalidades**: Filas, status de operador, click-to-call/discagem manual, disposição de chamada, painel de supervisão em tempo real (WebSocket com fallback).
-- **Dependências**: Fase 4; escolha de provedor de telefonia ([D-010](../00-governance/decision-register.md#d-010--provedor-de-telefonia), `ADIADO` — resolver **antes** desta fase, ver [../03-architecture/integrations.md](../03-architecture/integrations.md)) e implementação de WebSocket ([D-013](../00-governance/decision-register.md#d-013--websocket)).
-- **Critérios de aceite**: fluxo UC-05/UC-06/UC-07 executável; SLA e status de fila visíveis em tempo real; fallback de polling testado com WebSocket desligado.
-- **Riscos**: dependência de provedor externo — mitigado pela camada de abstração `ChannelAdapter` (ver [../03-architecture/architecture.md](../03-architecture/architecture.md)).
+## FASE 5 — WhatsApp / Conversas
+- **Significado funcional (D-070)**: WhatsApp como canal de conversa do CRM — não telefonia.
+- **Objetivo**: WhatsApp integrado ao histórico único do cliente, com conversas distribuídas por disponibilidade.
+- **Funcionalidades**: integração com o provedor de WhatsApp, webhooks de canal (idempotência e reprocessamento), envio e recebimento de mensagens, Conversas, Mensagens, Templates, associação de Conversa a Lead/Cliente (BR-19), **distribuição de conversas por disponibilidade** (BR-14), filas de atendimento e supervisão em tempo real (WebSocket com fallback) quando aplicável.
+- **Dependências**: Fase 4 (reaproveita atendimento e disponibilidade); escolha do BSP de WhatsApp ([D-011](../00-governance/decision-register.md#d-011--provedor-de-whatsapp), `ADIADO` — resolver **antes** desta fase; direção já definida: API oficial/BSP, ver [../03-architecture/integrations.md](../03-architecture/integrations.md)) e implementação de WebSocket ([D-013](../00-governance/decision-register.md#d-013--websocket)).
+- **Critérios de aceite**: UC-08 executável ponta a ponta; teste de reentrega de webhook não duplica mensagem (BR-20); falha de envio visível ao usuário após esgotar retries (BR-21); fallback de polling testado com WebSocket desligado.
+- **Riscos**: bloqueio de número por uso de provedor não oficial — mitigado pela decisão de usar API oficial/BSP como canal primário do produto; dependência de provedor externo — mitigada pela camada de abstração `ChannelAdapter` (ver [../03-architecture/architecture.md](../03-architecture/architecture.md)).
 
 ## FASE 6 — Omnichannel
-- **Objetivo**: WhatsApp integrado ao histórico único do cliente.
-- **Funcionalidades**: Conversas, Mensagens, Templates, webhooks de canal, idempotência e reprocessamento.
-- **Dependências**: Fase 5 (reaproveita filas/atendimento); escolha do BSP de WhatsApp ([D-011](../00-governance/decision-register.md#d-011--provedor-de-whatsapp), `ADIADO` — resolver antes desta fase; direção já definida: API oficial/BSP).
-- **Critérios de aceite**: UC-08 executável ponta a ponta; teste de reentrega de webhook não duplica mensagem (BR-20).
-- **Riscos**: bloqueio de número por uso de provedor não oficial — mitigado pela decisão de usar API oficial/BSP como canal primário do produto (ver [integrations.md](../03-architecture/integrations.md)).
+- **Significado funcional (D-070)**: WhatsApp + futuros canais em uma caixa de entrada unificada.
+- **Objetivo**: múltiplos canais de conversa no mesmo histórico único do cliente.
+- **Funcionalidades**: abstração de canal (RF-22) aplicada a novos canais além do WhatsApp (por exemplo e-mail/SMS, quando decididos — D-040), caixa de entrada unificada.
+- **Dependências**: Fase 5.
+- **Critérios de aceite**: a definir quando os canais adicionais forem escolhidos; um novo canal se integra pela abstração de canal sem acoplar o CRM a um provedor específico (RF-22).
+- **Riscos**: acoplamento a provedor específico — mitigado pela abstração de canal.
 
 ## FASE 7 — Dashboard
 - **Objetivo**: indicadores confiáveis para gestores e supervisores.
@@ -95,7 +103,7 @@ Fases 1 a 4 **não dependem** de telefonia, WhatsApp, IA, escalabilidade avança
 
 ## FASE 10 — IA como funcionalidade do produto
 - **Objetivo**: recursos de IA voltados ao usuário final (não confundir com uso de IA para desenvolver o software, ver [../../agents/](../../agents/)).
-- **Funcionalidades candidatas**: sugestão de próxima ação em oportunidade, resumo automático de atendimento, transcrição de chamada. Escopo exato: [D-048](../00-governance/decision-register.md#d-048--escopo-de-ia-como-funcionalidade-do-produto) (`ADIADO`), a detalhar em documento próprio quando esta fase se aproximar.
+- **Funcionalidades candidatas**: sugestão de próxima ação em oportunidade, resumo automático de atendimento, transcrição de áudio/conversa (chamada apenas se telefonia voltar ao escopo — D-070). Escopo exato: [D-048](../00-governance/decision-register.md#d-048--escopo-de-ia-como-funcionalidade-do-produto) (`ADIADO`), a detalhar em documento próprio quando esta fase se aproximar.
 - **Dependências**: volume de dado histórico suficiente (interações, chamadas) das fases anteriores.
 - **Critérios de aceite**: a definir na especificação da fase.
 - **Riscos**: custo de inferência, qualidade/alucinação, privacidade de dado de cliente usado em prompt — a tratar com o mesmo rigor de segurança do restante do sistema.

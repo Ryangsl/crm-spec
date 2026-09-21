@@ -25,9 +25,9 @@ Casos de uso principais, por área. Formato: ator, pré-condição, fluxo princi
 - **Ator**: Vendedor.
 - **Fluxo**: usuário agenda tarefa/compromisso vinculado a lead/oportunidade/cliente → sistema notifica antes do vencimento → usuário registra resultado.
 
-## 2. Atendimento / Call Center
+## 2. Atendimento / Conversas
 
-No MVP, o atendimento é **registrado manualmente** (o operador atende por fora e lança a interação, alimentando o histórico unificado). Os casos UC-05 a UC-07 dependem de telefonia integrada (**Fase 5**) e UC-08 de WhatsApp (**Fase 6**) — ver [D-015](../00-governance/decision-register.md#d-015--escopo-oficial-do-mvp).
+No MVP, o atendimento é **registrado manualmente** (o operador atende por fora e lança a interação, alimentando o histórico unificado). Os casos UC-05 a UC-07 descrevem fluxos de telefonia (chamada, discagem, escuta) que estão **fora de escopo** ([D-070](../00-governance/decision-register.md#d-070--definição-de-produto-crm-comercial--atendimentoconversas--whatsapp-sem-call-center-telefônico): o produto não é um Call Center telefônico) e devem ser reescritos como fluxos de conversa antes da implementação; UC-08 (WhatsApp) é da **Fase 5** — ver [D-015](../00-governance/decision-register.md#d-015--escopo-oficial-do-mvp).
 
 ### UC-05 Atendimento receptivo (chamada) — *Fase 5*
 - **Ator**: Operador.

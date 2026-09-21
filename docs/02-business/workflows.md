@@ -18,7 +18,9 @@ Lead recebido
 
 Regras associadas: [../02-business/business-rules.md](../02-business/business-rules.md) BR-03 a BR-13.
 
-## 2. Fluxo de atendimento receptivo (Call Center) — *Fase 5*
+## 2. Fluxo de atendimento receptivo (legado "Call Center") — *telefonia fora de escopo (D-070)*
+
+> **Nota de escopo ([D-070](../00-governance/decision-register.md#d-070--definição-de-produto-crm-comercial--atendimentoconversas--whatsapp-sem-call-center-telefônico), 2026-09-21)**: as seções 2, 3 e 4 foram escritas para um Call Center telefônico. O produto é CRM Comercial + Atendimento/Conversas + WhatsApp: chamada, discagem, click-to-call, gravação, escuta e sussurro estão **fora de escopo**. O fluxo equivalente por conversa é o da seção 5 (WhatsApp, Fase 5). Vale para toda distribuição: só recebem consultores/atendentes **ativos e disponíveis** (BR-14, [D-071](../00-governance/decision-register.md#d-071--disponibilidade-de-consultoratendente-para-distribuição-automática)). Estas seções devem ser reescritas como fluxos de conversa antes da implementação.
 
 ```
 Chamada/mensagem chega ao canal

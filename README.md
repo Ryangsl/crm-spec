@@ -1,6 +1,6 @@
 # crm-spec
 
-Documentação oficial (fonte da verdade) do **CRM + Call Center SaaS**. Este repositório concentra visão de produto, regras de negócio, arquitetura, modelo de dados, contratos de API, roadmap e ADRs. `crm-backend` e `crm-frontend` implementam a partir daqui — nenhuma decisão de produto ou arquitetura relevante deve ser tomada apenas no código, sem refletir aqui antes ou depois.
+Documentação oficial (fonte da verdade) do **CRM Comercial + Atendimento/Conversas + WhatsApp SaaS** (não é um Call Center telefônico — ver [D-070](docs/00-governance/decision-register.md#d-070--definição-de-produto-crm-comercial--atendimentoconversas--whatsapp-sem-call-center-telefônico)). Este repositório concentra visão de produto, regras de negócio, arquitetura, modelo de dados, contratos de API, roadmap e ADRs. `crm-backend` e `crm-frontend` implementam a partir daqui — nenhuma decisão de produto ou arquitetura relevante deve ser tomada apenas no código, sem refletir aqui antes ou depois.
 
 ## Como este repositório está organizado
 
