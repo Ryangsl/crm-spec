@@ -4,40 +4,38 @@
 
 ## Última atualização
 - **Data**: 27/09/2026
-- **Commit/referência**: `0a5f681` (crm-backend)
-- **Repositório**: crm-backend
-- **Ação realizada**: alinhamento do README com o escopo de produto definido em D-070.
+- **Commit/referência**: `ec63390` (crm-backend) · `dacf723` (crm-frontend) · `dcb4189` (crm-spec)
+- **Repositório**: crm-backend, crm-frontend, crm-spec
+- **Ação realizada**: implementação da F3.6 — Follow-up (Notes, Tasks & Appointments) completa (backend + OpenAPI + frontend), incluindo testes.
 
 ## Estado atual
 
-Fase 3 — CRM Comercial em implementação incremental. Os incrementos 3.1 a 3.5 (Fundação Frontend Auth/RBAC, Customers/Contacts, Leads com round-robin, Pipelines, Opportunities) estão concluídos e com commits fechados nos três repositórios (`crm-backend`, `crm-frontend`, `crm-spec`). Em 2026-09-21 houve um ajuste de escopo de produto (D-070/D-071) que redefiniu o significado funcional das Fases 3–6 (CRM Comercial + Atendimento/Conversas + WhatsApp + futuro Omnichannel, sem Call Center telefônico) — esse ajuste é documental, não alterou código nem decisões já fechadas (D-031 a D-069). A documentação do `crm-backend` foi revisada em 2026-09-27 para remover a menção residual a "Call Center". O incremento 3.6 (Notes/Tasks/Appointments) ainda não foi iniciado.
+Fase 3 — CRM Comercial em implementação incremental. Os incrementos 3.1 a 3.6 estão concluídos e com commits fechados nos três repositórios (`crm-backend`, `crm-frontend`, `crm-spec`): Fundação Frontend Auth/RBAC, Customers/Contacts, Leads com round-robin, Pipelines, Opportunities e agora Follow-up (Notes/Tasks/Appointments). Em 2026-09-21 houve um ajuste de escopo de produto (D-070/D-071) que redefiniu o significado funcional das Fases 3–6 (CRM Comercial + Atendimento/Conversas + WhatsApp + futuro Omnichannel, sem Call Center telefônico) — ajuste documental, sem alterar código nem decisões já fechadas (D-031 a D-069). A Fase 3 está concluída; a Fase 4 (Atendimento/Conversas) ainda não foi iniciada.
 
 ## Última ação realizada
 
-- **O que foi feito**: revisão documental do `crm-backend` para eliminar inconsistências com D-070/D-071. O README descrevia o produto como "CRM + Call Center SaaS"; passou a "CRM Comercial + Atendimento/Conversas + WhatsApp SaaS".
-- **Repositório**: crm-backend
-- **Commit**: `0a5f681` — `docs(product): align backend docs with crm scope`
-- **Arquivos/áreas afetadas**: `README.md` (1 linha). `docs/architecture-mvp.md` foi revisado e não precisou de alteração (já não continha referência a telefonia/URA/PSTN/discador/gravação).
-- **Resultado**: documentação alinhada ao escopo atual do produto. Nenhum código, Prisma/schema, migration ou funcionalidade foi alterado.
-- **Push**: sim, para `origin/main`.
+- **O que foi feito**: F3.6 — Follow-up (Notes, Tasks & Appointments), seguindo D-031 (entity_type + entity_id, sem novos tipos). Diagnóstico prévio confirmou que os models `Note`/`Task`/`Appointment` e as permissões `notes:*`/`tasks:*`/`appointments:*` já existiam (schema.prisma e seed.ts) e que só o módulo `tasks` estava implementado. Implementados os módulos `notes` e `appointments` (controller/service/repository/DTOs) reaproveitando integralmente o padrão do módulo `tasks` (tenant isolation via `TenantContextStorage`, RBAC via `RequirePermissions`, soft delete, `AuditService`). Appointments valida `starts_at < ends_at` (nova exceção `AppointmentInvalidRangeException`, 422 `APPOINTMENT_INVALID_RANGE`). Documentado o contrato OpenAPI (`/notes`, `/tasks`, `/appointments`) no crm-spec. Implementado o frontend (`src/features/follow-up`: types/services/hooks/componentes `NotesSection`/`TasksSection`/`AppointmentsSection`, mais um novo componente `Textarea`), integrado como novas seções em `CustomerDetailPage`, `LeadDetailPage` e `OpportunityDetailPage` — mesmo padrão já usado por `ContactsSection`. `assigned_to`/`user_id` são sempre o usuário autenticado (sem seletor de usuário — mesma decisão já tomada para `owner_id` de Lead, deferida para incremento futuro).
+- **Repositórios/commits**:
+  - crm-backend: `ec63390` — `feat(follow-up): implement Notes and Appointments; add e2e coverage for Follow-up (F3.6)`
+  - crm-frontend: `dacf723` — `feat(follow-up): add Notes/Tasks/Appointments UI integrated into Customer/Lead/Opportunity detail (F3.6)`
+  - crm-spec: `dcb4189` — `docs(api): document Notes/Tasks/Appointments endpoints (Fase 3.6)`
+- **Arquivos/áreas afetadas**: `crm-backend/src/modules/notes/**`, `crm-backend/src/modules/appointments/**`, `crm-backend/src/app.module.ts`, `crm-backend/src/common/exceptions/domain.exception.ts`, `crm-backend/test/e2e/follow-up.e2e-spec.ts`; `crm-frontend/src/features/follow-up/**`, `crm-frontend/src/components/ui/Textarea.tsx`, e os três `*DetailPage.tsx` (Customer/Lead/Opportunity); `crm-spec/docs/05-api/openapi.yaml`. **Nenhuma migration** — `Note`/`Task`/`Appointment` já existiam no schema.
+- **Resultado**: backend — 175 testes passando (35 unit + 140 e2e, incluindo 12 novos e2e de Follow-up), lint e build limpos. Frontend — 128 testes passando (15 novos de Follow-up), lint, type-check e build limpos. OpenAPI validado (YAML parseável, todos os `$ref` resolvidos).
+- **Push**: sim, `origin/main` nos três repositórios.
 
 ## Próxima etapa
 
-- **Fase**: 3 — CRM Comercial
-- **Incremento**: 3.6 — Follow-up (Notes, Tasks & Appointments)
-- **Objetivo**: implementar/validar Notes, Tasks e Appointments, reutilizando modelos/módulos já existentes (não criar estruturas paralelas), integrados ao CRM existente, com tenant isolation, RBAC, soft delete, audit e OpenAPI conforme especificações; implementar o frontend correspondente; testar backend e frontend.
-- **Repositório(s) envolvidos**: crm-backend, crm-frontend, crm-spec (documentação de API quando aplicável).
+- **Fase**: 4 — Atendimento/Conversas
+- **Objetivo**: histórico unificado de interações (Lead/Cliente/Oportunidade) e modelagem de disponibilidade de consultor/atendente — **depende de D-071 (validação de negócio) antes de iniciar a parte de disponibilidade**.
+- **Repositório(s) envolvidos**: crm-backend, crm-frontend, crm-spec.
 
 ## Próximas ações
 
-1. Verificar o estado real do módulo `tasks` já existente em `crm-backend` (`src/modules/tasks`) e dos modelos de Note/Task/Appointment no `schema.prisma` antes de criar qualquer estrutura nova.
-2. Confirmar em `docs/04-database/entities.md` e D-031 o modelo polimórfico (`entity_type` + `entity_id`) a ser seguido para Notes/Tasks/Appointments.
-3. Implementar/completar backend de Notes, Tasks e Appointments reaproveitando o módulo `tasks` existente, com validação de vínculo (`entity_type`/`entity_id` pertencentes ao mesmo tenant) coberta por teste automatizado.
-4. Manter tenant isolation, RBAC, soft delete e auditoria consistentes com o restante do CRM (mesmos padrões de Customers/Leads/Opportunities).
-5. Atualizar `crm-spec/docs/05-api/openapi.yaml` com o contrato de API correspondente.
-6. Implementar o frontend correspondente em `crm-frontend`.
-7. Rodar testes de backend e frontend (unit/integration/e2e conforme aplicável).
-8. Ao concluir, atualizar este arquivo (`PROJECT-CONTEXT.md`) com data, commits dos repositórios envolvidos, resultado e a próxima etapa.
+1. Antes de iniciar a Fase 4: validar com o responsável pelo produto as pendências de negócio de D-071 (estado atual vs. histórico, conjunto de estados, quem altera, escopo por fila/canal, relação com `business_hours`, fallback) e as pendências de D-070 (BR-15/16/18, terminologia de papéis).
+2. Definir o desenho do módulo de Interações (histórico unificado) sem antecipar disponibilidade nem WhatsApp (Fase 5).
+3. Só depois de D-071 fechado, modelar e implementar disponibilidade e sua aplicação ao Round Robin (evolução da F3.4, D-068).
+4. Manter os mesmos padrões consolidados (tenant isolation, RBAC, soft delete, audit, OpenAPI, testes).
+5. Ao concluir cada incremento da Fase 4, atualizar este arquivo (`PROJECT-CONTEXT.md`) com data, commits, resultado e próxima etapa.
 
 ## Decisões pendentes
 
@@ -46,14 +44,14 @@ Fase 3 — CRM Comercial em implementação incremental. Os incrementos 3.1 a 3.
 | D-071 | Modelagem de disponibilidade de consultor/atendente (estado atual vs. histórico, conjunto de estados, quem altera, escopo por fila/canal, relação com `business_hours`, fallback) | Distribuição automática de leads/conversas por disponibilidade | Antes de implementar disponibilidade (Fase 4) | `VALIDAÇÃO DE NEGÓCIO` (regra já `DECIDIDO`) |
 | D-070 (pendências) | O que caracteriza uma Conversa/atendimento "finalizado"; limite de pausa e destinatário do alerta; pontos de medição do SLA; se "filas" de atendimento existem já na Fase 4 ou só na Fase 5; terminologia dos papéis "Supervisor/Operador de Call Center" | BR-15, BR-16, BR-18 e nomenclatura de papéis (Fase 4/5) | Antes da fase que as implementa (Fase 4/5) | `VALIDAÇÃO DE NEGÓCIO` |
 
-**Nenhuma das decisões acima bloqueia o incremento 3.6** (Notes/Tasks/Appointments segue D-031, já `DECIDIDO` desde a Fase 3). Não há decisões pendentes bloqueantes para a próxima etapa.
+**Estas são as decisões que passam a bloquear a próxima etapa (Fase 4, parte de disponibilidade/atendimento)** — D-071 precisa ser resolvida com o responsável pelo produto antes de modelar disponibilidade. A Fase 3 (incluindo a F3.6, concluída) não dependia delas.
 
 ## Restrições importantes
 
 - Não implementar telefonia, PSTN, URA, discador ou gravação de chamadas — fora de escopo do produto (D-070).
-- Não implementar disponibilidade de consultor/atendente na F3.6 — a modelagem depende de D-071, ainda em validação de negócio, e pertence à Fase 4.
-- Reutilizar o módulo `tasks` e os modelos já existentes de Note/Task/Appointment antes de criar qualquer estrutura nova; manter o modelo polimórfico `entity_type` + `entity_id` (D-031), sem colunas de FK dedicadas por tipo de entidade.
-- Manter tenant isolation, RBAC, soft delete e auditoria consistentes com os padrões já implementados em Customers/Leads/Opportunities.
+- Não implementar disponibilidade de consultor/atendente antes de D-071 ser resolvida (validação de negócio) — pertence à Fase 4, não à F3.6 (concluída sem isso).
+- Reutilizar módulos/modelos já existentes antes de criar qualquer estrutura nova (ex.: F3.6 reaproveitou o padrão do módulo `tasks` para `notes`/`appointments`); manter o modelo polimórfico `entity_type` + `entity_id` (D-031), sem colunas de FK dedicadas por tipo de entidade.
+- Manter tenant isolation, RBAC, soft delete e auditoria consistentes com os padrões já implementados em Customers/Leads/Opportunities/Notes/Tasks/Appointments.
 - Não avançar automaticamente para a próxima fase (Fase 4) sem fechamento formal do incremento/fase atual.
 - Não reabrir decisões já fechadas (D-031 a D-069) nem o ajuste de escopo D-070/D-071.
 - `crm-spec` continua sendo a fonte oficial de especificações e decisões; este arquivo é apenas um checkpoint operacional.
@@ -67,10 +65,14 @@ Fase 3 — CRM Comercial em implementação incremental. Os incrementos 3.1 a 3.
 | 2026-09-20 | crm-spec | Documentação da API de Opportunities/Pipeline | `0387ae5` | OpenAPI atualizado |
 | 2026-09-21 | crm-spec | Ajuste de escopo de produto — D-070/D-071 (CRM Comercial + Atendimento/Conversas + WhatsApp, sem Call Center telefônico) | `651b2c9` | Roadmap, business-rules e decision-register atualizados; código e decisões fechadas (D-031–D-069) preservados |
 | 2026-09-27 | crm-backend | Alinhamento do README com D-070 | `0a5f681` | Documentação alinhada; nenhum código alterado; push feito |
+| 2026-09-27 | crm-spec | Criação do checkpoint operacional `PROJECT-CONTEXT.md` | `60c2e22` | Arquivo criado; nenhuma decisão nova/reaberta |
+| 2026-09-27 | crm-backend | F3.6 — Notes/Appointments implementados (Tasks já existia); e2e Follow-up | `ec63390` | 175 testes passando (35 unit + 140 e2e); lint/build limpos; push feito |
+| 2026-09-27 | crm-frontend | F3.6 — UI de Notes/Tasks/Appointments integrada em Customer/Lead/Opportunity | `dacf723` | 128 testes passando; lint/type-check/build limpos; push feito |
+| 2026-09-27 | crm-spec | F3.6 — OpenAPI de Notes/Tasks/Appointments | `dcb4189` | YAML validado, todos os $ref resolvidos; push feito |
 
 ## Roadmap atual
 
-- **Fase atual**: Fase 3 — CRM Comercial (incrementos 3.1–3.5 concluídos; 3.6 — Notes/Tasks/Appointments — próximo)
+- **Fase atual**: Fase 3 — CRM Comercial — **concluída** (incrementos 3.1–3.6, incluindo Follow-up)
 - **Próxima fase**: Fase 4 — Atendimento/Conversas (histórico unificado de interações, disponibilidade de consultor/atendente — depende de D-071)
 - **Fases posteriores (resumo)**:
   - Fase 5 — WhatsApp/Conversas (integração com provedor oficial/BSP, conversas distribuídas por disponibilidade)
