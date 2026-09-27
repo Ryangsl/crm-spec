@@ -1037,6 +1037,262 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
 
+  /notes:
+    get:
+      summary: Lista notas do tenant, filtradas pela entidade do CRM (D-031)
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Limit"
+        - { name: entity_type, in: query, required: false, schema: { type: string, enum: [lead, customer, opportunity] } }
+        - { name: entity_id, in: query, required: false, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Lista paginada de notas
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NoteList" }
+    post:
+      summary: Cria uma nota vinculada a uma entidade do CRM (notes:create)
+      description: >
+        `entity_type` e `entity_id` são obrigatórios (D-031) e validados no mesmo tenant —
+        entidade inexistente ou de outro tenant: 404. `author_id` é sempre o usuário
+        autenticado.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/NoteCreate" }
+      responses:
+        "201":
+          description: Nota criada
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Note" }
+        "404":
+          description: Entidade do CRM não encontrada no tenant
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /notes/{id}:
+    get:
+      summary: Obtém uma nota (notes:read)
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Nota encontrada
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Note" }
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      summary: Atualiza o conteúdo de uma nota (notes:update)
+      description: Somente `content` é editável — entity_type/entity_id/author_id nunca mudam.
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/NoteUpdate" }
+      responses:
+        "200":
+          description: Nota atualizada
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Note" }
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      summary: Exclui (soft delete) uma nota (notes:delete)
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "204":
+          description: Nota excluída (soft delete)
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /tasks:
+    get:
+      summary: Lista tarefas do tenant (D-031, Follow-up)
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Limit"
+        - { name: assigned_to, in: query, required: false, schema: { type: string, format: uuid } }
+        - { name: status, in: query, required: false, schema: { type: string, enum: [pending, done, overdue] } }
+        - { name: entity_type, in: query, required: false, schema: { type: string, enum: [lead, customer, opportunity] } }
+        - { name: entity_id, in: query, required: false, schema: { type: string, format: uuid } }
+        - { name: due_from, in: query, required: false, schema: { type: string, format: date-time } }
+        - { name: due_to, in: query, required: false, schema: { type: string, format: date-time } }
+      responses:
+        "200":
+          description: Lista paginada de tarefas
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TaskList" }
+    post:
+      summary: Cria uma tarefa, opcionalmente vinculada a uma entidade do CRM (tasks:create)
+      description: >
+        `entity_type`/`entity_id` são opcionais mas, se informados, ambos são obrigatórios e
+        validados no mesmo tenant (D-031) — entidade inexistente ou de outro tenant: 404.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TaskCreate" }
+      responses:
+        "201":
+          description: Tarefa criada (status `pending`)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Task" }
+        "400":
+          description: entity_type/entity_id informados incompletos
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: Entidade do CRM não encontrada no tenant
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /tasks/{id}:
+    get:
+      summary: Obtém uma tarefa (tasks:read)
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Tarefa encontrada
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Task" }
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      summary: Atualiza título, prazo, responsável e/ou status (tasks:update)
+      description: >
+        Conclusão da tarefa é feita por aqui (status = done); vínculo com a entidade não muda.
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TaskUpdate" }
+      responses:
+        "200":
+          description: Tarefa atualizada
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Task" }
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      summary: Exclui (soft delete) uma tarefa (tasks:delete)
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "204":
+          description: Tarefa excluída (soft delete)
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /appointments:
+    get:
+      summary: Lista compromissos de agenda do tenant (D-031, Follow-up)
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Limit"
+        - { name: user_id, in: query, required: false, schema: { type: string, format: uuid } }
+        - { name: entity_type, in: query, required: false, schema: { type: string, enum: [lead, customer, opportunity] } }
+        - { name: entity_id, in: query, required: false, schema: { type: string, format: uuid } }
+        - { name: starts_from, in: query, required: false, schema: { type: string, format: date-time } }
+        - { name: starts_to, in: query, required: false, schema: { type: string, format: date-time } }
+      responses:
+        "200":
+          description: Lista paginada de compromissos
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AppointmentList" }
+    post:
+      summary: Cria um compromisso, opcionalmente vinculado a uma entidade do CRM (appointments:create)
+      description: >
+        `entity_type`/`entity_id` são opcionais mas, se informados, ambos são obrigatórios e
+        validados no mesmo tenant (D-031). `starts_at` deve ser anterior a `ends_at` — caso
+        contrário 422 `APPOINTMENT_INVALID_RANGE`. Não implementa recorrência, calendário
+        externo, notificações ou disponibilidade (fora do escopo desta fase — ver D-071).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AppointmentCreate" }
+      responses:
+        "201":
+          description: Compromisso criado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Appointment" }
+        "404":
+          description: Entidade do CRM não encontrada no tenant
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "422":
+          description: starts_at maior ou igual a ends_at (APPOINTMENT_INVALID_RANGE)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /appointments/{id}:
+    get:
+      summary: Obtém um compromisso (appointments:read)
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Compromisso encontrado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Appointment" }
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      summary: Atualiza responsável e/ou horário do compromisso (appointments:update)
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AppointmentUpdate" }
+      responses:
+        "200":
+          description: Compromisso atualizado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Appointment" }
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          description: starts_at maior ou igual a ends_at (APPOINTMENT_INVALID_RANGE)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+    delete:
+      summary: Exclui (soft delete) um compromisso (appointments:delete)
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "204":
+          description: Compromisso excluído (soft delete)
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /calls/click-to-call:
     post:
       summary: "[Fora de escopo — D-070] Origina uma chamada ativa a partir do CRM"
@@ -1521,6 +1777,121 @@ components:
         data:
           type: array
           items: { $ref: "#/components/schemas/Opportunity" }
+        page: { type: integer }
+        limit: { type: integer }
+        total: { type: integer }
+
+    NoteCreate:
+      type: object
+      required: [entity_type, entity_id, content]
+      properties:
+        entity_type: { type: string, enum: [lead, customer, opportunity], description: "D-031 — obrigatório para Notes." }
+        entity_id: { type: string, format: uuid }
+        content: { type: string, minLength: 1 }
+
+    NoteUpdate:
+      type: object
+      required: [content]
+      properties:
+        content: { type: string, minLength: 1 }
+
+    Note:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        entity_type: { type: string, enum: [lead, customer, opportunity] }
+        entity_id: { type: string, format: uuid }
+        author_id: { type: string, format: uuid, description: "Sempre o usuário autenticado no momento da criação." }
+        content: { type: string }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    NoteList:
+      type: object
+      properties:
+        data:
+          type: array
+          items: { $ref: "#/components/schemas/Note" }
+        page: { type: integer }
+        limit: { type: integer }
+        total: { type: integer }
+
+    TaskCreate:
+      type: object
+      required: [title, assigned_to, due_at]
+      properties:
+        title: { type: string, minLength: 2 }
+        assigned_to: { type: string, format: uuid }
+        due_at: { type: string, format: date-time }
+        entity_type: { type: string, enum: [lead, customer, opportunity], description: "Opcional (D-031); se informado, entity_id também é obrigatório." }
+        entity_id: { type: string, format: uuid }
+
+    TaskUpdate:
+      type: object
+      properties:
+        title: { type: string, minLength: 2 }
+        assigned_to: { type: string, format: uuid }
+        due_at: { type: string, format: date-time }
+        status: { type: string, enum: [pending, done, overdue] }
+
+    Task:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string }
+        assigned_to: { type: string, format: uuid }
+        due_at: { type: string, format: date-time }
+        status: { type: string, enum: [pending, done, overdue] }
+        entity_type: { type: string, enum: [lead, customer, opportunity], nullable: true }
+        entity_id: { type: string, format: uuid, nullable: true }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    TaskList:
+      type: object
+      properties:
+        data:
+          type: array
+          items: { $ref: "#/components/schemas/Task" }
+        page: { type: integer }
+        limit: { type: integer }
+        total: { type: integer }
+
+    AppointmentCreate:
+      type: object
+      required: [user_id, starts_at, ends_at]
+      properties:
+        user_id: { type: string, format: uuid }
+        starts_at: { type: string, format: date-time }
+        ends_at: { type: string, format: date-time, description: "Deve ser posterior a starts_at (422 APPOINTMENT_INVALID_RANGE)." }
+        entity_type: { type: string, enum: [lead, customer, opportunity], description: "Opcional (D-031); se informado, entity_id também é obrigatório." }
+        entity_id: { type: string, format: uuid }
+
+    AppointmentUpdate:
+      type: object
+      properties:
+        user_id: { type: string, format: uuid }
+        starts_at: { type: string, format: date-time }
+        ends_at: { type: string, format: date-time }
+
+    Appointment:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        user_id: { type: string, format: uuid }
+        starts_at: { type: string, format: date-time }
+        ends_at: { type: string, format: date-time }
+        entity_type: { type: string, enum: [lead, customer, opportunity], nullable: true }
+        entity_id: { type: string, format: uuid, nullable: true }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    AppointmentList:
+      type: object
+      properties:
+        data:
+          type: array
+          items: { $ref: "#/components/schemas/Appointment" }
         page: { type: integer }
         limit: { type: integer }
         total: { type: integer }
