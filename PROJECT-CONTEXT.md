@@ -3,57 +3,67 @@
 > Checkpoint operacional de continuidade do projeto. **Não substitui** o [Decision Register](docs/00-governance/decision-register.md), o [Roadmap](docs/10-roadmap/roadmap.md), o [Requirements](docs/01-product/requirements.md) ou qualquer outro documento oficial do `crm-spec` — em caso de conflito, os documentos oficiais prevalecem. Serve apenas para que uma nova sessão/agente entenda rapidamente onde o projeto parou, sem reauditar tudo do zero.
 
 ## Última atualização
-- **Data**: 27/09/2026
-- **Commit/referência**: `ec63390` (crm-backend) · `dacf723` (crm-frontend) · `dcb4189` (crm-spec)
-- **Repositório**: crm-backend, crm-frontend, crm-spec
-- **Ação realizada**: implementação da F3.6 — Follow-up (Notes, Tasks & Appointments) completa (backend + OpenAPI + frontend), incluindo testes.
+- **Data**: 29/09/2026
+- **Commit/referência**: crm-spec — `docs(product): finalize availability business rules` (último código: `ec63390` crm-backend · `dacf723` crm-frontend, inalterados)
+- **Repositório**: crm-spec
+- **Ação realizada**: consolidação das regras de negócio de disponibilidade (D-071), distinção Lead x Cliente, princípio da ociosidade de atendimento e terminologia do produto ("CRM Universal") — documentação apenas.
 
 ## Estado atual
 
-Fase 3 — CRM Comercial em implementação incremental. Os incrementos 3.1 a 3.6 estão concluídos e com commits fechados nos três repositórios (`crm-backend`, `crm-frontend`, `crm-spec`): Fundação Frontend Auth/RBAC, Customers/Contacts, Leads com round-robin, Pipelines, Opportunities e agora Follow-up (Notes/Tasks/Appointments). Em 2026-09-21 houve um ajuste de escopo de produto (D-070/D-071) que redefiniu o significado funcional das Fases 3–6 (CRM Comercial + Atendimento/Conversas + WhatsApp + futuro Omnichannel, sem Call Center telefônico) — ajuste documental, sem alterar código nem decisões já fechadas (D-031 a D-069). A Fase 3 está concluída; a Fase 4 (Atendimento/Conversas) ainda não foi iniciada.
+**Fase 3 — CRM Comercial: CONCLUÍDA.** Os incrementos 3.1 a 3.6 estão concluídos e com commits fechados nos três repositórios (`crm-backend`, `crm-frontend`, `crm-spec`): Fundação Frontend Auth/RBAC, Customers/Contacts, Leads com round-robin, Pipelines, Opportunities e agora Follow-up (Notes/Tasks/Appointments). Em 2026-09-21 houve um ajuste de escopo de produto (D-070/D-071) que redefiniu o significado funcional das Fases 3–6 (CRM Comercial + Atendimento/Conversas + WhatsApp + futuro Omnichannel, sem Call Center telefônico) — ajuste documental, sem alterar código nem decisões já fechadas (D-031 a D-069). A Fase 3 está concluída; a Fase 4 (Atendimento/Conversas) ainda não foi iniciada. Em 2026-09-29 as regras de negócio de disponibilidade (D-071) foram consolidadas — D-071 deixa de bloquear o conceito básico de disponibilidade; sua implementação técnica será planejada na Fase 4.
 
 ## Última ação realizada
 
-- **O que foi feito**: F3.6 — Follow-up (Notes, Tasks & Appointments), seguindo D-031 (entity_type + entity_id, sem novos tipos). Diagnóstico prévio confirmou que os models `Note`/`Task`/`Appointment` e as permissões `notes:*`/`tasks:*`/`appointments:*` já existiam (schema.prisma e seed.ts) e que só o módulo `tasks` estava implementado. Implementados os módulos `notes` e `appointments` (controller/service/repository/DTOs) reaproveitando integralmente o padrão do módulo `tasks` (tenant isolation via `TenantContextStorage`, RBAC via `RequirePermissions`, soft delete, `AuditService`). Appointments valida `starts_at < ends_at` (nova exceção `AppointmentInvalidRangeException`, 422 `APPOINTMENT_INVALID_RANGE`). Documentado o contrato OpenAPI (`/notes`, `/tasks`, `/appointments`) no crm-spec. Implementado o frontend (`src/features/follow-up`: types/services/hooks/componentes `NotesSection`/`TasksSection`/`AppointmentsSection`, mais um novo componente `Textarea`), integrado como novas seções em `CustomerDetailPage`, `LeadDetailPage` e `OpportunityDetailPage` — mesmo padrão já usado por `ContactsSection`. `assigned_to`/`user_id` são sempre o usuário autenticado (sem seletor de usuário — mesma decisão já tomada para `owner_id` de Lead, deferida para incremento futuro).
+- **O que foi feito**: consolidação, com o responsável pelo produto, das regras de negócio de disponibilidade em [D-071](docs/00-governance/decision-register.md#d-071--disponibilidade-de-consultoratendente-para-distribuição-automática) — sem código, Prisma, migration, API ou frontend:
+  - **Estados**: Disponível, Indisponível, Pausa, Almoço, Treinamento. Só **Disponível** recebe distribuição automática. Disponibilidade **global por usuário** (não por canal/fila).
+  - **Alteração de status**: o próprio consultor controla; **Treinamento** só é definido/removido por Gestor ou Sistema (o consultor não entra nem sai dele). Configuração por tenant fica para o futuro.
+  - **`business_hours`**: configuração administrativa do tenant (quando implementada); **não altera o status** automaticamente; pode restringir acesso de consultores a Leads/Conversas fora do horário, com liberação excepcional pelo Admin (detalhes técnicos na implementação) — BR-27.
+  - **Lead x Cliente**: o CRM diferencia claramente Lead de Cliente; Lead não é tratado como Cliente — BR-28.
+  - **Ociosidade**: regra de atendimento/conversa de **Cliente**, não de Lead; interações do consultor (ex.: "Só mais um momento") devem ser consideradas para evitar transferência indevida; regra de 5 minutos e demais detalhes adiados para o incremento da Fase 4 de atendimento de Cliente — BR-28. Não implementada.
+  - **Terminologia**: o produto é o **"CRM Universal"** — CRM para empresas de vendas, também utilizável para controle e gestão de cadastros; "Call Center" não define o produto.
 - **Repositórios/commits**:
-  - crm-backend: `ec63390` — `feat(follow-up): implement Notes and Appointments; add e2e coverage for Follow-up (F3.6)`
-  - crm-frontend: `dacf723` — `feat(follow-up): add Notes/Tasks/Appointments UI integrated into Customer/Lead/Opportunity detail (F3.6)`
-  - crm-spec: `dcb4189` — `docs(api): document Notes/Tasks/Appointments endpoints (Fase 3.6)`
-- **Arquivos/áreas afetadas**: `crm-backend/src/modules/notes/**`, `crm-backend/src/modules/appointments/**`, `crm-backend/src/app.module.ts`, `crm-backend/src/common/exceptions/domain.exception.ts`, `crm-backend/test/e2e/follow-up.e2e-spec.ts`; `crm-frontend/src/features/follow-up/**`, `crm-frontend/src/components/ui/Textarea.tsx`, e os três `*DetailPage.tsx` (Customer/Lead/Opportunity); `crm-spec/docs/05-api/openapi.yaml`. **Nenhuma migration** — `Note`/`Task`/`Appointment` já existiam no schema.
-- **Resultado**: backend — 175 testes passando (35 unit + 140 e2e, incluindo 12 novos e2e de Follow-up), lint e build limpos. Frontend — 128 testes passando (15 novos de Follow-up), lint, type-check e build limpos. OpenAPI validado (YAML parseável, todos os `$ref` resolvidos).
-- **Push**: sim, `origin/main` nos três repositórios.
+  - crm-spec: `docs(product): finalize availability business rules`
+  - crm-backend / crm-frontend: não alterados.
+- **Arquivos/áreas afetadas**: `docs/00-governance/decision-register.md` (D-071, tabela de fases, histórico), `docs/02-business/business-rules.md` (BR-05, BR-14, BR-16, novas BR-27/BR-28), `docs/01-product/requirements.md` (RF-15), `docs/10-roadmap/roadmap.md` (Fase 3 concluída, Fase 4), `PROJECT-CONTEXT.md`.
+- **Resultado**: regras de negócio de disponibilidade fechadas; nenhuma decisão anterior reaberta; nenhum código alterado.
+- **Push**: sim, `origin/main` (crm-spec).
 
 ## Próxima etapa
 
 - **Fase**: 4 — Atendimento/Conversas
-- **Objetivo**: histórico unificado de interações (Lead/Cliente/Oportunidade) e modelagem de disponibilidade de consultor/atendente — **depende de D-071 (validação de negócio) antes de iniciar a parte de disponibilidade**.
+- **Objetivo**: histórico unificado de interações (Lead/Cliente/Oportunidade) e disponibilidade de consultor/atendente. As regras de negócio de disponibilidade já estão fechadas (D-071); falta o **planejamento técnico** dentro da Fase 4. A regra detalhada de ociosidade de atendimento de Cliente será definida no incremento correspondente da Fase 4.
 - **Repositório(s) envolvidos**: crm-backend, crm-frontend, crm-spec.
 
 ## Próximas ações
 
-1. Antes de iniciar a Fase 4: validar com o responsável pelo produto as pendências de negócio de D-071 (estado atual vs. histórico, conjunto de estados, quem altera, escopo por fila/canal, relação com `business_hours`, fallback) e as pendências de D-070 (BR-15/16/18, terminologia de papéis).
-2. Definir o desenho do módulo de Interações (histórico unificado) sem antecipar disponibilidade nem WhatsApp (Fase 5).
-3. Só depois de D-071 fechado, modelar e implementar disponibilidade e sua aplicação ao Round Robin (evolução da F3.4, D-068).
-4. Manter os mesmos padrões consolidados (tenant isolation, RBAC, soft delete, audit, OpenAPI, testes).
-5. Ao concluir cada incremento da Fase 4, atualizar este arquivo (`PROJECT-CONTEXT.md`) com data, commits, resultado e próxima etapa.
+1. Iniciar a Fase 4 somente com autorização explícita; o primeiro passo é o planejamento técnico (não iniciado).
+2. No planejamento técnico da disponibilidade: representação do estado atual vs. histórico (reaproveitando o conceito `agent_status_log`/RF-15, cujo enum em `entities.md` precisa ser revisto para os cinco estados), nomenclatura neutra, relação com login/logout, fallback para tenants sem disponibilidade e tratamento de leads já atribuídos (lacunas remanescentes de D-071).
+3. Aplicar a disponibilidade ao Round Robin (evolução da F3.4, D-068): ativo + **Disponível** + permissão.
+4. Definir o desenho do módulo de Interações (histórico unificado) sem antecipar WhatsApp (Fase 5).
+5. No incremento de atendimento/conversas de Cliente: fechar os detalhes da ociosidade (BR-28) e as pendências de D-070 (BR-15/16/18, filas, terminologia de papéis).
+6. Manter os mesmos padrões consolidados (tenant isolation, RBAC, soft delete, audit, OpenAPI, testes).
+7. Ao concluir cada incremento da Fase 4, atualizar este arquivo (`PROJECT-CONTEXT.md`) com data, commits, resultado e próxima etapa.
 
 ## Decisões pendentes
 
 | ID | Decisão necessária | Impacto | Fase limite | Status |
 |----|---------------------|---------|--------------|--------|
-| D-071 | Modelagem de disponibilidade de consultor/atendente (estado atual vs. histórico, conjunto de estados, quem altera, escopo por fila/canal, relação com `business_hours`, fallback) | Distribuição automática de leads/conversas por disponibilidade | Antes de implementar disponibilidade (Fase 4) | `VALIDAÇÃO DE NEGÓCIO` (regra já `DECIDIDO`) |
-| D-070 (pendências) | O que caracteriza uma Conversa/atendimento "finalizado"; limite de pausa e destinatário do alerta; pontos de medição do SLA; se "filas" de atendimento existem já na Fase 4 ou só na Fase 5; terminologia dos papéis "Supervisor/Operador de Call Center" | BR-15, BR-16, BR-18 e nomenclatura de papéis (Fase 4/5) | Antes da fase que as implementa (Fase 4/5) | `VALIDAÇÃO DE NEGÓCIO` |
+| D-071 (implementação) | Planejamento técnico da disponibilidade: estado atual vs. histórico, nomenclatura neutra, relação com login/logout, fallback para tenant sem disponibilidade, leads já atribuídos a quem fica indisponível, formato de `business_hours` e da liberação excepcional pelo Admin | Distribuição automática por disponibilidade; acesso fora do horário | Planejamento da Fase 4 | Regras de negócio `DECIDIDO` (2026-09-29); implementação a planejar |
+| D-071 (ociosidade) | Detalhes da ociosidade de atendimento de Cliente: regra de 5 minutos, eventos que reiniciam o contador, seleção do próximo consultor, prioridade, mensagens automáticas, transferência | Atendimento/conversas de Cliente (BR-28) | Incremento de atendimento de Cliente (Fase 4) | `VALIDAÇÃO DE NEGÓCIO` (princípio já `DECIDIDO`) |
+| D-070 (pendências) | O que caracteriza uma Conversa/atendimento "finalizado"; limite de pausa e destinatário do alerta (e se Almoço/Treinamento contam); pontos de medição do SLA; se "filas" de atendimento existem já na Fase 4 ou só na Fase 5; terminologia dos papéis "Supervisor/Operador de Call Center" | BR-15, BR-16, BR-18 e nomenclatura de papéis (Fase 4/5) | Antes da fase que as implementa (Fase 4/5) | `VALIDAÇÃO DE NEGÓCIO` |
 
-**Estas são as decisões que passam a bloquear a próxima etapa (Fase 4, parte de disponibilidade/atendimento)** — D-071 precisa ser resolvida com o responsável pelo produto antes de modelar disponibilidade. A Fase 3 (incluindo a F3.6, concluída) não dependia delas.
+**D-071 deixou de ser decisão de negócio bloqueante** para o conceito básico de disponibilidade. As pendências acima são decididas no incremento da Fase 4 que as implementar — não impedem o início da Fase 4.
 
 ## Restrições importantes
 
 - Não implementar telefonia, PSTN, URA, discador ou gravação de chamadas — fora de escopo do produto (D-070).
-- Não implementar disponibilidade de consultor/atendente antes de D-071 ser resolvida (validação de negócio) — pertence à Fase 4, não à F3.6 (concluída sem isso).
+- Disponibilidade de consultor/atendente pertence à Fase 4: implementar somente após o planejamento técnico da fase, seguindo as regras de D-071. Não implementar a regra de ociosidade antes de seus detalhes serem definidos no incremento de atendimento de Cliente.
+- Lead não é Cliente (BR-28): regras de atendimento de Cliente (ex.: ociosidade) não se aplicam a Lead.
+- Usar a terminologia "CRM Universal"; não definir o produto como "Call Center".
 - Reutilizar módulos/modelos já existentes antes de criar qualquer estrutura nova (ex.: F3.6 reaproveitou o padrão do módulo `tasks` para `notes`/`appointments`); manter o modelo polimórfico `entity_type` + `entity_id` (D-031), sem colunas de FK dedicadas por tipo de entidade.
 - Manter tenant isolation, RBAC, soft delete e auditoria consistentes com os padrões já implementados em Customers/Leads/Opportunities/Notes/Tasks/Appointments.
 - Não avançar automaticamente para a próxima fase (Fase 4) sem fechamento formal do incremento/fase atual.
-- Não reabrir decisões já fechadas (D-031 a D-069) nem o ajuste de escopo D-070/D-071.
+- Não reabrir decisões já fechadas (D-031 a D-069), o ajuste de escopo D-070 nem as regras de negócio de D-071.
 - `crm-spec` continua sendo a fonte oficial de especificações e decisões; este arquivo é apenas um checkpoint operacional.
 
 ## Histórico recente
@@ -69,11 +79,13 @@ Fase 3 — CRM Comercial em implementação incremental. Os incrementos 3.1 a 3.
 | 2026-09-27 | crm-backend | F3.6 — Notes/Appointments implementados (Tasks já existia); e2e Follow-up | `ec63390` | 175 testes passando (35 unit + 140 e2e); lint/build limpos; push feito |
 | 2026-09-27 | crm-frontend | F3.6 — UI de Notes/Tasks/Appointments integrada em Customer/Lead/Opportunity | `dacf723` | 128 testes passando; lint/type-check/build limpos; push feito |
 | 2026-09-27 | crm-spec | F3.6 — OpenAPI de Notes/Tasks/Appointments | `dcb4189` | YAML validado, todos os $ref resolvidos; push feito |
+| 2026-09-27 | crm-spec | Atualização do PROJECT-CONTEXT após F3.6 | `a642465` | Checkpoint atualizado; push feito |
+| 2026-09-29 | crm-spec | Consolidação das regras de disponibilidade (D-071), Lead x Cliente, ociosidade (princípio), "CRM Universal" | `docs(product): finalize availability business rules` | Documentação apenas; nenhum código alterado; push feito |
 
 ## Roadmap atual
 
 - **Fase atual**: Fase 3 — CRM Comercial — **concluída** (incrementos 3.1–3.6, incluindo Follow-up)
-- **Próxima fase**: Fase 4 — Atendimento/Conversas (histórico unificado de interações, disponibilidade de consultor/atendente — depende de D-071)
+- **Próxima fase**: Fase 4 — Atendimento/Conversas (histórico unificado de interações, disponibilidade de consultor/atendente — regras de negócio fechadas em D-071, implementação técnica a planejar) — **não iniciada**
 - **Fases posteriores (resumo)**:
   - Fase 5 — WhatsApp/Conversas (integração com provedor oficial/BSP, conversas distribuídas por disponibilidade)
   - Fase 6 — Omnichannel (novos canais além do WhatsApp em caixa de entrada unificada)
