@@ -61,7 +61,9 @@ Supervisor abre painel de monitoramento
   → falha de WebSocket → painel cai para polling periódico (fallback)
 ```
 
-## 5. Fluxo de mensageria (WhatsApp/omnichannel) — *Fase 6*
+## 5. Fluxo de mensageria (WhatsApp/omnichannel) — *Fase 5*
+
+> Fluxo de referência **preliminar**. O desenho detalhado (recebimento, envio, pontos de falha) e as regras ainda pendentes estão em [../03-architecture/whatsapp-architecture.md](../03-architecture/whatsapp-architecture.md) §6–§7 — este fluxo só é reescrito de forma definitiva quando o Gate de [D-072](../00-governance/decision-register.md#d-072--whatsapp-é-uma-frente-própria-fase-5-núcleo-de-conversas-agnóstico-ao-canal-fase-4) for atendido.
 
 ```
 Provedor de canal envia webhook de mensagem recebida

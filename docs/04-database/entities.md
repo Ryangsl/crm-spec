@@ -229,6 +229,8 @@ Conceito de **disponibilidade** do consultor/atendente (BR-14, RF-15), base de [
 
 ## Grupo: Omnichannel
 
+> **Nota (2026-09-30, [D-073](../00-governance/decision-register.md#d-073--módulo-communications-implementado-fora-da-especificação-whatsapp-outbound-e-automações))**: o `schema.prisma` já contém `whatsapp_messages` e `automation_rules` (módulo `communications`), **fora** deste modelo documentado. Não substituem `conversations`/`messages` abaixo; a coexistência/migração está `PENDENTE`. O módulo está **congelado** (D-073). Entidades adicionais propostas para o WhatsApp — incluindo `channel_accounts`, conta de canal **por tenant com cardinalidade 0..N** ([D-074](../00-governance/decision-register.md#d-074--integração-de-whatsapp-configurada-por-tenant-por-conta-de-canal-wa-02)) — e `channel_webhook_events` estão em [../03-architecture/whatsapp-architecture.md](../03-architecture/whatsapp-architecture.md) §6.2 e **ainda não fazem parte do modelo**.
+
 ### `conversations`
 | Campo | Tipo | Obrigatório | Notas |
 |---|---|---|---|

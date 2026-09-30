@@ -45,10 +45,10 @@ No MVP, o atendimento é **registrado manualmente** (o operador atende por fora 
 - **Fluxo**: supervisor visualiza painel com status de todos os operadores e filas em tempo real → identifica operador em dificuldade/fila com SLA em risco → intervém (escuta, sussurro, transferência ou assume o atendimento).
 - **Exceção**: operador cai (perde conexão) — sistema marca operador como offline e libera fila.
 
-### UC-08 Atendimento via WhatsApp — *Fase 6*
+### UC-08 Atendimento via WhatsApp — *Fase 5*
 - **Ator**: Operador/Vendedor.
 - **Fluxo**: mensagem recebida de um contato → sistema cria/atualiza uma Conversa vinculada ao Cliente/Lead (por telefone) → mensagem entra na fila do canal → operador responde pela interface unificada → conversa fica no histórico do cliente.
-- **Exceção**: mensagem de número não vinculado a nenhum cadastro → vira lead/atendimento avulso até vinculação manual.
+- **Exceção**: mensagem de número não vinculado a nenhum cadastro → vira lead/atendimento avulso até vinculação manual. *(Texto anterior a [D-070](../00-governance/decision-register.md#d-070--definição-de-produto-crm-comercial--atendimentoconversas--whatsapp-sem-call-center-telefônico)/BR-28 e ainda não validado contra "Lead ≠ Cliente" — pendência `WA-06` em [../03-architecture/whatsapp-architecture.md](../03-architecture/whatsapp-architecture.md).)*
 
 ## 3. Administração
 

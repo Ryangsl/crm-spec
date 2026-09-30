@@ -26,7 +26,7 @@ Cada decisão tem um **status**:
 | Fase 2 — Auth/Usuários/Tenants | D-002, D-003, D-004, D-005, D-006, D-016, D-037, D-056 a D-063 — todas `DECIDIDO`. Nada pendente. |
 | Fase 3 — CRM | D-007, D-008, D-031, D-032, D-033, D-034, D-035, D-058, D-065, D-066, D-067, D-068, D-069 — todas `DECIDIDO`. Nada pendente. Decision Gate (2026-09-16) e Implementation Gate (2026-09-16) concluídos. |
 | Fase 4 — Atendimento/Conversas | D-071 — regras de negócio de disponibilidade `DECIDIDO` (consolidadas em 2026-09-29); implementação técnica a planejar na Fase 4. Pendentes, a decidir no incremento que as implementar: fallback e leads já atribuídos (D-071), detalhes da ociosidade de atendimento de Cliente (D-071) e pendências de D-070 (BR-15/16/18, filas, terminologia de papéis). |
-| Fase 5 — WhatsApp/Conversas | D-011, D-013, D-024, D-025, D-039 (D-010 e D-045 — telefonia/discador — estão **fora de escopo**, ver D-070) |
+| Fase 5 — WhatsApp/Conversas | D-011, D-013, D-024, D-025, D-039 (D-010 e D-045 — telefonia/discador — estão **fora de escopo**, ver D-070) e o **Gate de entrada** de [D-072](#d-072--whatsapp-é-uma-frente-própria-fase-5-núcleo-de-conversas-agnóstico-ao-canal-fase-4) — integração por tenant/conta ([D-074](#d-074--integração-de-whatsapp-configurada-por-tenant-por-conta-de-canal-wa-02)), módulo legado congelado e reconciliado na F5.0 ([D-073](#d-073--módulo-communications-implementado-fora-da-especificação-whatsapp-outbound-e-automações)) e as pendências restantes `WA-01`–`WA-30` de [whatsapp-architecture.md](../03-architecture/whatsapp-architecture.md). **Implementação bloqueada.** |
 | Fase 6 — Omnichannel | Nenhuma definida hoje; provedores de canais futuros (ex.: D-040) são decididos quando entrarem no roadmap |
 | Fase 7+ | D-038, D-040, D-046, D-049 |
 | Antes do primeiro cliente em produção | D-027, D-028, D-029, D-043, D-047, D-064 |
@@ -557,6 +557,71 @@ O produto **não é** um Call Center telefônico tradicional. Ficam **fora de es
 | 7 | Leads já atribuídos a quem fica indisponível | Não definida — permanecem com o dono (comportamento atual) até decisão em contrário |
 | 8 | Nomenclatura neutra (`agent_status_log`/`AgentStatus`) | Técnica — planejamento da Fase 4 (item 7 reforça abandonar o vocabulário de Call Center) |
 
+### D-072 — WhatsApp é uma frente própria (Fase 5); núcleo de Conversas agnóstico ao canal (Fase 4)
+**Status**: `DECIDIDO` (escopo e fronteira de intenção, 2026-09-30) · fronteira detalhada `PROPOSTO` (aguarda aprovação) · **Gate**: implementação bloqueada até o Gate de entrada
+
+O CRM Universal terá integração com o **WhatsApp oficial**, configurada por tenant ([D-074](#d-074--integração-de-whatsapp-configurada-por-tenant-por-conta-de-canal-wa-02)). Por ser uma frente grande e de alto impacto arquitetural, **não é tratada como feature da Fase 4**:
+
+- **Fase 4 — Atendimento/Conversas** permanece **agnóstica ao canal**: o núcleo `Conversation`/`Message`, ciclo de vida, disponibilidade (D-071) e distribuição não conhecem WhatsApp.
+- **Fase 5** é a frente específica de WhatsApp; **Fase 6** (Omnichannel) reaproveita o mesmo núcleo.
+- Nesta etapa houve **apenas discovery e planejamento** — nenhum código, migration, endpoint, componente, dependência ou integração. `crm-backend` e `crm-frontend` não foram alterados.
+
+O levantamento, a fronteira F4/F5/F6 proposta, a arquitetura de referência, o catálogo de pendências (`WA-01` a `WA-30`), os incrementos propostos da F5 e o **Gate de entrada** estão em [whatsapp-architecture.md](../03-architecture/whatsapp-architecture.md). A **fronteira detalhada** (o que exatamente sai da Fase 5 e entra na Fase 4 — hoje o roadmap lista "Conversas, Mensagens" na Fase 5) é `PROPOSTO` e depende de aprovação explícita (critério G7 do Gate).
+
+**Não decidido aqui (`PENDENTE`)**: provedor/BSP (D-011), armazenamento de segredos, detalhes de contas por tenant (ver [D-074](#d-074--integração-de-whatsapp-configurada-por-tenant-por-conta-de-canal-wa-02), que resolveu o princípio de WA-02), e todas as regras de negócio de conversa (contato desconhecido, transferência, encerramento, fora do horário, consultor indisponível etc.). Nada disso foi inventado.
+
+### D-073 — Módulo `communications` implementado fora da especificação (WhatsApp outbound e automações)
+**Status**: congelamento `DECIDIDO` (2026-09-30) · reconciliação `PENDENTE` — executada na **F5.0** (critério G9 do Gate)
+
+**Achado (2026-09-30)**: o `crm-backend` contém, desde o commit `3ed66f2` (anterior à F3.6), o módulo `communications`: regras de automação (`birthday`/`inactivity`/`campaign`) e envio **somente outbound** de **templates** WhatsApp pela Meta Cloud API direta, via BullMQ, com tabelas `automation_rules` e `whatsapp_messages`, endpoints `/v1/automations` e `/v1/whatsapp/messages` e permissões `automations:*`/`messages:*`. Está descrito no README e em `docs/architecture-mvp.md` do backend, mas **não** no `crm-spec`: sem decisão, sem OpenAPI, sem entrada em `entities.md`, sem teste de envio real.
+
+**Por que é uma divergência**: [D-015](#d-015--escopo-oficial-do-mvp) coloca "integração real com WhatsApp" e "engine avançada de automação" **fora** do MVP; [D-011](#d-011--provedor-de-whatsapp) (provedor) está `ADIADO`; o roadmap prevê Automações na Fase 8; a regra do `crm-backend/CLAUDE.md` proíbe módulo de fase futura. Além disso: credenciais **globais** por variável de ambiente (um número para todos os tenants — contraria [D-074](#d-074--integração-de-whatsapp-configurada-por-tenant-por-conta-de-canal-wa-02)), chamada ao provedor **sem timeout** (RNF-05), janela de reenvio duplicado, sem opt-in/opt-out nem cota por tenant, `send()` sem auditoria. Detalhe em [whatsapp-architecture.md §8](../03-architecture/whatsapp-architecture.md#8-riscos-e-gaps-encontrados).
+
+**Decisão (2026-09-30)** — congelamento do módulo legado:
+
+- **congelar a evolução funcional** do módulo `communications`;
+- **não apagar** e **não refatorar agora**;
+- **manter temporariamente**, para preservar o funcionamento existente;
+- **não adicionar novas funcionalidades de WhatsApp nele** e **não duplicar** nele o que a nova arquitetura (F4/F5) vai fornecer;
+- **na F5.0**, fazer a **reconciliação** entre o módulo existente e a nova arquitetura orientada por tenant/conta de canal ([D-074](#d-074--integração-de-whatsapp-configurada-por-tenant-por-conta-de-canal-wa-02)), decidindo então o que será **reutilizado, migrado, refatorado ou substituído** (inclusive o destino de `whatsapp_messages`/`automation_rules` e das automações, que o roadmap prevê na Fase 8).
+
+Nenhum código foi alterado por esta decisão. Qualquer mudança no módulo antes da F5.0 exige decisão explícita.
+
+### D-074 — Integração de WhatsApp configurada por tenant, por conta de canal (WA-02)
+**Status**: princípio `DECIDIDO` (2026-09-30) · detalhes `PENDENTE` (Fase 5)
+
+**Decisão**: **cada tenant possui sua própria configuração de integração de WhatsApp, podendo essa configuração variar conforme o negócio.** Não se fecha a regra como "um número de WhatsApp por tenant".
+
+O modelo deve permitir, sem exigir agora uma decisão definitiva sobre quantidade:
+
+- tenant **sem** WhatsApp;
+- tenant com **um** número/conta;
+- tenant com **múltiplos** números/contas;
+- configurações **diferentes** entre tenants.
+
+Exemplo conceitual: Tenant A → WhatsApp → 1 conta/número · Tenant B → WhatsApp → múltiplas contas/números · Tenant C → sem WhatsApp.
+
+**O CRM não assume**: um WhatsApp global da plataforma; uma única credencial global; um único número para todos os tenants; uma quantidade fixa de números por tenant. A integração é **isolada por tenant** e orientada por **conta/canal configurado**.
+
+**Orientação arquitetural (conceitual — sem schema nem código agora)**:
+
+```
+Tenant
+└── ChannelAccount            (0..N por tenant)
+    ├── channel = whatsapp
+    ├── provider
+    ├── configuração
+    ├── credenciais/secrets   (nunca em texto puro no banco — security.md §5)
+    ├── número
+    └── status
+```
+
+A estrutura `channel_accounts` proposta no discovery ([whatsapp-architecture.md §6.2](../03-architecture/whatsapp-architecture.md#62-entidades-todas-proposto--modelo-a-validar-no-gate)) foi avaliada sob esta decisão e permanece como **proposta** (cardinalidade 0..N por tenant, sem máximo definido). Fronteira: o **núcleo do CRM (F4) não depende de configuração global de WhatsApp** — funciona para um tenant sem nenhum canal; o WhatsApp é um `ChannelAccount` registrado, resolvido por tenant e por conta ([whatsapp-architecture.md §6.9](../03-architecture/whatsapp-architecture.md#69-integração-orientada-por-tenant-e-por-conta-de-canal)).
+
+**Não decidido (permanece na Fase 5, quando aplicável)**: quantidade máxima de números por tenant; processo de onboarding; UI de configuração; modelo comercial; provedor/BSP definitivo ([D-011](#d-011--provedor-de-whatsapp)); forma definitiva de armazenamento dos secrets ([D-025](#d-025--secrets-management-em-produção)); qual conta usar para iniciar uma conversa ativa quando o tenant tem várias.
+
+**Consequências (sem reabrir decisões fechadas)**: a expressão "WhatsApp oficial único da empresa" usada no briefing do discovery fica **superada** por esta formulação. A convenção de variáveis `WHATSAPP_*` de [D-024](#d-024--convenção-de-variáveis-de-ambiente-de-provedores) (`PROPOSTO`) não pode ser a fonte de credenciais **por tenant** — a revisão é feita na Fase 5 (WA-03). O módulo legado `communications` usa credenciais globais por ambiente e, portanto, diverge deste princípio — tratado em [D-073](#d-073--módulo-communications-implementado-fora-da-especificação-whatsapp-outbound-e-automações).
+
 ## Regras de negócio validadas pelo responsável pelo produto (Fase 3)
 
 Estas decisões **não devem ser inventadas por nenhum agente** — foram validadas diretamente com o responsável pelo produto em 2026-09-16, no fechamento do Decision Gate da Fase 3. Os documentos correspondentes deixam de carregar `[VALIDAÇÃO DE NEGÓCIO NECESSÁRIA]` e passam a refletir a regra decidida abaixo.
@@ -609,3 +674,5 @@ Toda exclusão continua sendo **soft delete** (BR-22) e continua sendo auditada 
 | 2026-09-16 | Implementation Gate da Fase 3 fechado — última validação antes da implementação, sem reabrir nenhuma decisão anterior. D-034 teve sua consequência técnica precisada: `stages.requires_value` é regra **por etapa individual, sem propagação por `order`** (removida a leitura anterior de "etapa igual ou posterior"). Três decisões técnicas novas registradas: D-067 (deduplicação de Customer é bloqueante, `409` com candidatos, sem escolha automática), D-068 (round-robin usa cursor em `tenant_settings` com lock transacional; achado que essa tabela nunca foi criada no `crm-backend` real, apesar de documentada desde a Fase 0 — criação entra no escopo de schema da Fase 3) e D-069 (lead não atribuído gera só evento de auditoria, sem usar a tabela `notifications` nem antecipar o módulo de Notificações da Fase 4). Consistência documental atualizada em `entities.md` e `business-rules.md`. |
 | 2026-09-21 | Ajuste de escopo de produto (documentação apenas, sem alteração de código/schema). D-070 (`DECIDIDO`): o produto é CRM Comercial + Atendimento/Conversas + WhatsApp + futuro Omnichannel — **não** um Call Center telefônico (sem URA, PSTN, gravação de chamadas, infraestrutura de telefonia nem filas de chamadas). D-071: regra de disponibilidade `DECIDIDO` (distribuição automática só para consultor/atendente ativo **e** disponível); modelagem `VALIDAÇÃO DE NEGÓCIO` (reaproveita o conceito `agent_status_log`/RF-15; lacunas registradas); divergência com o Round Robin da Fase 3.4 (ativo + permissão, sem disponibilidade) documentada. D-010 e D-045 ficam sem fase/fora de escopo; D-011 passa a ser pré-requisito da Fase 5 (WhatsApp/Conversas). BR-14/15/16/18 reescritas, BR-17 removida, BR-19–21 preservadas. Roadmap: Fase 3 CRM Comercial, Fase 4 Atendimento/Conversas, Fase 5 WhatsApp/Conversas, Fase 6 Omnichannel. |
 | 2026-09-29 | Consolidação das regras de negócio de disponibilidade (documentação apenas, sem código/schema). D-071 atualizada: cinco estados (Disponível, Indisponível, Pausa, Almoço, Treinamento); só Disponível recebe distribuição automática; disponibilidade global por usuário; consultor controla o próprio status, exceto Treinamento (só Gestor/Sistema); `business_hours` configurável por tenant, não altera status, pode restringir acesso a Leads/Conversas com liberação excepcional pelo Admin; Lead ≠ Cliente; ociosidade é regra de atendimento de Cliente (não de Lead), detalhes adiados para a Fase 4; produto denominado "CRM Universal". D-071 deixa de bloquear o conceito básico de disponibilidade; implementação técnica fica para a Fase 4. BR-05/14/16 ajustadas, BR-27/28 criadas, RF-15 atualizado. |
+| 2026-09-30 | Discovery e arquitetura do WhatsApp (documentação apenas, sem código/schema/migration/endpoint). D-072 (`DECIDIDO`): WhatsApp é frente própria (Fase 5), Fase 4 agnóstica ao canal, Fase 6 sobre o mesmo núcleo; implementação bloqueada por Gate explícito (10 critérios). D-073 (`VALIDAÇÃO DE NEGÓCIO`): divergência registrada — o módulo `communications` (WhatsApp outbound + automações, commit `3ed66f2`) existe no backend fora da especificação; destino a decidir antes da Fase 5. Novo documento [whatsapp-architecture.md](../03-architecture/whatsapp-architecture.md): estado atual, fronteira F4/F5/F6 (proposta), arquitetura de referência, 30 pendências (WA-01–WA-30), riscos e incrementos F5.0–F5.7. Corrigidas referências "Fase 6" para WhatsApp em integrations, workflows e use-cases. |
+| 2026-09-30 | Ajuste final do discovery do WhatsApp (documentação apenas). D-074 (novo, princípio `DECIDIDO`): a integração de WhatsApp é configurada **por tenant** e por conta de canal (`ChannelAccount` 0..N por tenant) — sem WhatsApp global, sem credencial global, sem número único, sem quantidade fixa; detalhes (máximo, onboarding, UI, modelo comercial, BSP, secrets) ficam na Fase 5. Resolve o princípio de WA-02. D-073: congelamento `DECIDIDO` (sem evolução funcional, sem apagar/refatorar agora, sem duplicar WhatsApp nele); reconciliação na F5.0. Gate F5 (G1–G10) continua **fechado**. |
