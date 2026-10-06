@@ -115,7 +115,7 @@ Consultor altera o próprio estado (Disponível | Indisponível | Pausa | Almoç
   → só "Disponível" participa da distribuição automática (BR-14, a partir do F4.3)
 Admin/Gerente colocam um consultor em TREINAMENTO
   → o consultor não sai sozinho; sem duração automática
-  → Admin/Gerente retiram manualmente (o consultor volta Indisponível — derivação PROPOSTO)
+  → Admin/Gerente retiram manualmente (o consultor volta Indisponível — D-077)
 Mecanismo desabilitado
   → seletor oculto, alterações bloqueadas pela API, distribuição ignora, estados preservados
 ```

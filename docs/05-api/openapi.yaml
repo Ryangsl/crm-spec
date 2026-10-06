@@ -1405,7 +1405,7 @@ paths:
     get:
       summary: Estado de disponibilidade do próprio usuário e se o mecanismo está habilitado (autenticado)
       description: |
-        **Planejado (F4.2) — ainda não implementado.** Sem registro => `status: unavailable`,
+        **Implementado no F4.2.** Sem registro => `status: unavailable`,
         `since: null` (D-071/VN-17.1). `enabled` espelha `crm.availability.enabled` para que o
         frontend decida exibir o seletor sem depender de `tenant_settings:read` (só admin).
       responses:
@@ -1419,12 +1419,12 @@ paths:
     put:
       summary: Altera o próprio estado (availability:update ou availability:manage)
       description: |
-        **Planejado (F4.2) — ainda não implementado.** Aceita `available`, `unavailable`, `break`
+        **Implementado no F4.2.** Aceita `available`, `unavailable`, `break`
         e `lunch`. `training` não pode ser assumido nem deixado pelo próprio usuário
         (`403 AVAILABILITY_TRAINING_LOCKED`). Com o mecanismo desabilitado: `409
         AVAILABILITY_DISABLED`. Estado igual ao atual não grava nem audita. Estado atual,
         histórico e auditoria na mesma transação. Sem transição automática por login/logout.
-        (Códigos de erro propostos; confirmar na execução.)
+        Códigos de erro: `AVAILABILITY_DISABLED` (409), `AVAILABILITY_TRAINING_LOCKED` (403). Autorizado por `availability:update` **ou** `availability:manage`.
       requestBody:
         required: true
         content:
@@ -1458,7 +1458,7 @@ paths:
     get:
       summary: Lista o estado dos usuários ativos do tenant (availability:read)
       description: |
-        **Planejado (F4.2) — ainda não implementado.** `availability:read`: admin, gerente,
+        **Implementado no F4.2.** `availability:read`: admin, gerente,
         supervisor, diretor. Usuário sem registro aparece como `unavailable` com `since: null`.
         Devolve o nome do usuário (não exige `users:read`). Paginação por offset (D-007). Sem
         escopo por equipe/filial (D-058). Leitura segue disponível com o mecanismo desabilitado.
@@ -1487,12 +1487,12 @@ paths:
     put:
       summary: Admin/Gerente colocam ou retiram um terceiro de Treinamento (availability:manage)
       description: |
-        **Planejado (F4.2) — ainda não implementado.** `availability:manage`: admin, gerente.
+        **Implementado no F4.2.** `availability:manage`: admin, gerente.
         Aceita apenas `training` (entrar) e `unavailable` (retirar, **somente** a partir de
         `training`); qualquer outro estado de terceiro é recusado (D-071/VN-17.2). O próprio
         usuário não é alvo válido (usa `/availability/me`). Alvo deve ser ativo e do mesmo
         tenant. `training` não tem duração automática; registra-se `since`. Sem escopo por
-        equipe/filial. (Regras derivadas e códigos de erro `PROPOSTO` — ver D-077.)
+        equipe/filial. Códigos de erro: `AVAILABILITY_THIRD_PARTY_RESTRICTED` (403), `AVAILABILITY_NOT_IN_TRAINING`, `AVAILABILITY_USER_INACTIVE` e `AVAILABILITY_DISABLED` (409), `AVAILABILITY_SELF_TARGET` (422). Ver D-077.
       parameters:
         - $ref: "#/components/parameters/Id"
       requestBody:
@@ -1530,7 +1530,7 @@ paths:
     get:
       summary: Histórico de disponibilidade de um usuário (availability:read)
       description: |
-        **Planejado (F4.2) — ainda não implementado.** Linhas de `availability_log`, mais
+        **Implementado no F4.2.** Linhas de `availability_log`, mais
         recentes primeiro, paginação por cursor.
       parameters:
         - $ref: "#/components/parameters/Id"
