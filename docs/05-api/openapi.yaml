@@ -1293,6 +1293,114 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /tenant-settings/business-hours:
+    get:
+      summary: Lê o horário de funcionamento do tenant (tenant_settings:read)
+      description: |
+        Configuração por tenant sobre `tenant_settings` (chave `crm.business_hours`, F4.1).
+        Sem configuração — ou com valor fora do formato v1 — responde `configured: false`
+        (ausência de configuração nunca é erro nem restringe nada, D-068).
+        **Sem efeito operacional na F4.1**: o horário não filtra distribuição, não restringe
+        acesso e não altera status de consultor (D-071; VN-07/VN-08 pendentes).
+      responses:
+        "200":
+          description: Configuração atual (ou ausência dela)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BusinessHoursResponse" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Sem a permissão `tenant_settings:read`
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+    put:
+      summary: Grava o horário de funcionamento do tenant (tenant_settings:update)
+      description: |
+        Substitui a configuração do tenant (formato v1, versionado). Persiste na forma
+        canônica (`days` em ordem crescente). Idempotente: valor igual ao já gravado não
+        reescreve nem gera auditoria. Audita `tenant_settings.created|updated`.
+        Erros: `400` formato inválido (versão, `HH:mm`, dias fora de 1–7, janelas vazias,
+        campos extras — inclusive `tenant_id`); `422 BUSINESS_HOURS_INVALID` regras
+        semânticas (fuso IANA desconhecido, `start` >= `end`).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BusinessHours" }
+      responses:
+        "200":
+          description: Configuração gravada
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BusinessHoursResponse" }
+        "400":
+          description: Payload inválido (validação estrutural)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Sem a permissão `tenant_settings:update`
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "422":
+          description: Regra semântica violada (`BUSINESS_HOURS_INVALID`)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /tenant-settings/availability:
+    get:
+      summary: Lê a flag de uso de disponibilidade do tenant (tenant_settings:read)
+      description: |
+        Chave `crm.availability.enabled` (F4.1). Ausente = `false` = comportamento da Fase 3
+        (D-071/VN-02). **Sem efeito na distribuição na F4.1** — a aplicação da flag é F4.3.
+      responses:
+        "200":
+          description: Estado da flag
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AvailabilitySetting" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Sem a permissão `tenant_settings:read`
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+    put:
+      summary: Liga/desliga o uso de disponibilidade no tenant (tenant_settings:update)
+      description: |
+        Idempotente (valor igual não audita). Somente boolean JSON é aceito — strings como
+        `"false"` retornam `400`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AvailabilitySetting" }
+      responses:
+        "200":
+          description: Flag gravada
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AvailabilitySetting" }
+        "400":
+          description: Payload inválido
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Sem a permissão `tenant_settings:update`
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
   /calls/click-to-call:
     post:
       summary: "[Fora de escopo — D-070] Origina uma chamada ativa a partir do CRM"
@@ -1794,6 +1902,54 @@ components:
       required: [content]
       properties:
         content: { type: string, minLength: 1 }
+
+    BusinessHoursWindow:
+      type: object
+      required: [days, start, end]
+      properties:
+        days:
+          type: array
+          minItems: 1
+          maxItems: 7
+          uniqueItems: true
+          items: { type: integer, minimum: 1, maximum: 7 }
+          description: Dias ISO-8601 (1 = segunda ... 7 = domingo).
+        start: { type: string, pattern: '^([01]\d|2[0-3]):[0-5]\d$', example: "08:00" }
+        end:
+          type: string
+          pattern: '^([01]\d|2[0-3]):[0-5]\d$'
+          example: "18:00"
+          description: Deve ser posterior a `start` (janelas que atravessam a meia-noite não são suportadas na v1).
+
+    BusinessHours:
+      type: object
+      required: [schema_version, timezone, weekly]
+      description: |
+        Formato v1 de `crm.business_hours` (proposta versionada — VN-07: feriados, exceções
+        pontuais, horário por filial/equipe, efeito na distribuição e no acesso seguem pendentes).
+      properties:
+        schema_version: { type: integer, enum: [1] }
+        timezone: { type: string, example: America/Sao_Paulo, description: Nome IANA do fuso do tenant. }
+        weekly:
+          type: array
+          minItems: 1
+          maxItems: 21
+          items: { $ref: "#/components/schemas/BusinessHoursWindow" }
+
+    BusinessHoursResponse:
+      type: object
+      properties:
+        configured: { type: boolean }
+        business_hours:
+          allOf: [{ $ref: "#/components/schemas/BusinessHours" }]
+          nullable: true
+        updated_at: { type: string, format: date-time, nullable: true }
+
+    AvailabilitySetting:
+      type: object
+      required: [enabled]
+      properties:
+        enabled: { type: boolean }
 
     Note:
       type: object

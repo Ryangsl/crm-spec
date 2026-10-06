@@ -320,6 +320,8 @@ Conceito de **disponibilidade** do consultor/atendente (BR-14, RF-15), base de [
 
 Índices: `(tenant_id, key)` único.
 
+**Chaves em uso (F4.1)**: `crm.lead_round_robin.cursor` (objeto, D-068), `crm.business_hours` (objeto v1 versionado — [phase-4-plan.md §13](../10-roadmap/phase-4-plan.md); gravado via `PUT /v1/tenant-settings/business-hours`, sem efeito operacional) e `crm.availability.enabled` (boolean; ausente = `false` = comportamento da Fase 3 — D-071/VN-02). Sem tabela nova por configuração.
+
 **Achado no Implementation Gate da Fase 3 (2026-09-16)**: esta tabela está documentada desde a Fase 0, mas **nunca foi criada** no `prisma/schema.prisma` real do `crm-backend` (confirmado por ausência do model `TenantSettings`). A Fase 3 depende dela para a estratégia de round-robin ([D-068](../00-governance/decision-register.md#d-068--estratégia-técnica-de-round-robin-cursor-em-tenant_settings)) — a criação desta tabela entra no escopo de schema da Fase 3 (junto com os catálogos de CRM), não é reaproveitamento de algo já existente em produção.
 
 ---

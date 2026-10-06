@@ -39,7 +39,7 @@
 | K8 | Criar e **importar** Leads sem `owner_id` **sempre** aciona o round-robin; não há modo explícito "sem proprietário" quando existem elegíveis. No cenário "lista de ~300 pessoas" (D-075), a importação sem `owner_id` distribuiria tudo se houver consultores elegíveis | §3.2 | Depende de `VN-16` |
 | K9 | `GET /leads` filtra `owner_id` por igualdade; **não há filtro "sem proprietário"** (o frontend só rotula "Sem responsável") | §3.2 | Depende de `VN-16` |
 | K10 | **Não há atribuição em lote** de Leads (o `PATCH /leads/{id}` atribui um a um) | §3.2 | Depende de `VN-16` |
-| TD-13 | Momento de entrega do P1 (contexto de tenant fora de HTTP + ator Sistema): com VN-05, o Sistema **não** altera estados agora; P1 só é exigido antes do F4.8 e da F5 | §17 | Decidir no F4.1 |
+| TD-13 | Momento de entrega do P1 (contexto de tenant fora de HTTP + ator Sistema): com VN-05, o Sistema **não** altera estados agora; P1 só é exigido antes do F4.8 e da F5 | §17 | **Resolvida no F4.1**: não entregue (ver F4.1) |
 
 ### 0.5 O que continua pendente (não decidido)
 
@@ -122,7 +122,7 @@ Conceitos documentados que **não existem no código**: `conversations`, `messag
 |---|---|---|
 | K1 | `messages:*` no seed pertence ao módulo legado WhatsApp | F4 deve usar outras chaves (§7.4) |
 | K2 | `Customer.lastInteractionAt` é escrito só pelo cliente da API | Regra de "última interação" não existe de fato |
-| K3 | `TenantSettings` sem service/API; `tenant_settings:*` sem uso | Necessário para `business_hours` |
+| K3 | `TenantSettings` sem service/API; `tenant_settings:*` sem uso | Necessário para `business_hours` — **resolvido no F4.1** |
 | K4 | Ator "Sistema" e execução por tenant fora de HTTP **não existem** (contexto, auditoria) | Pré-requisito para transições do Sistema (Treinamento), ociosidade e F5 (webhook) |
 | K5 | Round Robin lê elegibilidade **fora da `tx`** e reinicia do primeiro id quando o último atribuído não é mais elegível (favorece o menor id) | Comportamento a corrigir ao introduzir disponibilidade (§10) |
 | K6 | Frontend `AppShell`: "CRM + Call Center"; comentário desatualizado em `AuthUser.permissions` | Ajuste de terminologia/documentação de código |
@@ -223,8 +223,8 @@ Convenções: prefixo `/v1`; `tenant_id` **nunca** em payload (contexto do JWT);
 ### 7.1 Configurações e disponibilidade
 | Método | Rota | Objetivo | Autorização | Payload → Resposta | Erros relevantes |
 |---|---|---|---|---|---|
-| GET/PUT | `/tenant-settings/business-hours` | Ler/gravar horário do tenant | `tenant_settings:read/update` | schema v1 → o mesmo | 422 schema inválido / fuso desconhecido |
-| GET/PUT | `/tenant-settings/availability` | Ligar/desligar uso de disponibilidade | `tenant_settings:read/update` | `{enabled}` | — |
+| GET/PUT | `/tenant-settings/business-hours` | Ler/gravar horário do tenant | `tenant_settings:read/update` | PUT: schema v1 → `{configured, business_hours, updated_at}` (GET devolve o mesmo envelope) | 400 formato inválido; 422 `BUSINESS_HOURS_INVALID` (fuso desconhecido, `start` ≥ `end`) — **implementado no F4.1** |
+| GET/PUT | `/tenant-settings/availability` | Ligar/desligar uso de disponibilidade | `tenant_settings:read/update` | `{enabled}` | 400 se não for boolean — **implementado no F4.1** (sem efeito até o F4.3) |
 | GET | `/availability/me` | Estado atual do próprio usuário | autenticado | → `{status, since}` | — |
 | PUT | `/availability/me` | Consultor altera o **próprio** status | `availability:update` | `{status, reason?}` → estado | **403/409 `AVAILABILITY_TRAINING_LOCKED`** se `training` (entrar ou sair); 422 status inválido |
 | GET | `/availability` | Lista de estados do tenant | `availability:read` | filtros `status`, `page` (offset, D-007) | — |
@@ -399,7 +399,7 @@ Sem tabela de participantes na F4 (um responsável por vez; histórico em `conve
 - **Aceite**: decisões registradas ✔; documentos coerentes ✔; **aprovação do responsável pelo produto — pendente**.
 - **Fora**: qualquer implementação; ociosidade; regras de conversa; política de `VN-16`.
 
-### F4.1 — Fundação: `tenant-settings` + avaliador de `business_hours`
+### F4.1 — Fundação: `tenant-settings` + avaliador de `business_hours` — **implementado em 2026-10-05 (branch `feat/f4-1-tenant-settings`, aguardando aprovação/push)**
 - **Objetivo**: P2 e infraestrutura de configuração; **sem mudar comportamento**.
 - **Backend**: `TenantSettingsService` (registro de chaves e schema), `BusinessHoursService`, controller `GET/PUT /tenant-settings/business-hours` e `/availability`; migrar a leitura do round-robin para o serviço; **P1** (contexto de tenant fora de HTTP + ator Sistema) — **não é mais exigido pelo F4.2** (o Sistema não altera estados agora; VN-05); necessário antes do F4.8 e da F5 (webhook/worker); momento de entrega em `TD-13`.
 - **Frontend**: tela `/settings/business-hours`; item de menu (permissão).
@@ -410,6 +410,10 @@ Sem tabela de participantes na F4 (um responsável por vez; histórico em `conve
 - **Decisões necessárias**: **VN-07** (conteúdo do formato), TD-04, TD-10.
 - **Aceite**: horário configurável e auditado; nenhum efeito em Leads; P1 (se entregue neste incremento — `TD-13`) coberto por teste.
 - **Fora**: aplicar horário à distribuição ou ao acesso.
+- **Implementado (fatos)**: módulo `tenant-settings` no backend (`TenantSettingsService`, `BusinessHoursService`, módulo puro `business-hours.ts`, controller com 4 rotas); **sem migration** — reutiliza a tabela `tenant_settings`; **sem permissão nova** (`tenant_settings:read|update`, hoje só no papel `admin`); `RoundRobinService` passou a consultar a presença de `crm.business_hours` pelo serviço (mesmo comportamento; log `warn` → `debug`); frontend: `/settings/business-hours` + item "Config." no `AppShell` (visível só com `tenant_settings:read`) + `apiPut`; OpenAPI atualizado. A flag `crm.availability.enabled` só tem API (sem tela — a UI de disponibilidade é F4.2+).
+- **Decisões técnicas tomadas neste incremento**: `TD-04` — `Intl` (nenhuma dependência nova); `TD-10` — chaves `crm.business_hours` e `crm.availability.enabled` (valor boolean JSON); `TD-13` — **P1 não entregue** no F4.1 (sem consumidor nos F4.2–F4.5; entra antes do F4.8/F5). Detalhes do formato v1 implementados: dias ISO 1–7, `HH:mm`, `start < end` (sem janelas que atravessam a meia-noite), dias únicos por janela, 1–21 janelas, fuso IANA validado por `Intl`. **VN-07 continua pendente** — o formato v1 é a proposta versionada do plano, não uma decisão de negócio; feriados, horário por filial/equipe, restrição de acesso e efeito na distribuição **não** foram implementados nem decididos.
+- **Contrato**: `GET/PUT /v1/tenant-settings/business-hours` e `/availability` (OpenAPI). GET de horário devolve `{configured, business_hours, updated_at}` (ausente ou fora do formato v1 ⇒ `configured:false`); PUT é idempotente (valor igual não reescreve nem audita); erros: 400 estrutural, 422 `BUSINESS_HOURS_INVALID` semântico. Não há `DELETE` (não previsto no plano): uma vez gravado, o horário só pode ser substituído.
+- **Testes automatizados adicionados**: backend — 21 unit (`business-hours.spec.ts`, `tenant-settings.service.spec.ts`) + 13 e2e (`tenant-settings.e2e-spec.ts`: persistência, 400/422, auditoria, idempotência, RBAC, isolamento entre tenants, linha legada fora do formato, "sem efeito operacional" na distribuição); frontend — 13 (`BusinessHoursPage.test.tsx`) + 2 (`AppShell.test.tsx`).
 
 ### F4.2 — Disponibilidade (núcleo)
 - **Objetivo**: estado atual, histórico, transições e controle de Treinamento (D-071).
@@ -519,16 +523,16 @@ Sem tabela de participantes na F4 (um responsável por vez; histórico em `conve
 | TD-01 | Estado atual da disponibilidade | Tabela 1:1 + log (recomendada) × só log com índice parcial (SQL manual) | F4.0 |
 | TD-02 | Timeline: `UNION ALL` SQL × merge por fonte; cursor `(occurred_at, source, id)` | Medir no F4.4 | F4.4 |
 | TD-03 | ~~`Conversation`: FKs dedicadas × polimórfico~~ **Resolvida (A3/D-076)**: FKs dedicadas | §11.4 | — |
-| TD-04 | Fuso horário: `Intl` × biblioteca | Preferir `Intl`; biblioteca só se necessário (dependência exige aprovação) | F4.1 |
+| TD-04 | ~~Fuso horário: `Intl` × biblioteca~~ **Resolvida no F4.1**: `Intl` (sem dependência nova; validação do nome IANA e avaliador testados com relógio fixo, incl. horário de verão) | — | — |
 | TD-05 | Exceções de acesso: tabela (recomendada) × chave em settings × permissão | §6.10 | F4.7 |
 | TD-06 | Ociosidade: *delayed job* por conversa × varredura periódica | Após VN-13 | F4.8 |
 | TD-07 | Entrega de notificação: polling (F4) × WebSocket (F5) | Polling | F4.5 |
 | TD-08 | Chaves de permissão (evitar colisão com `messages:*` legado) | §7.4 | F4.0 |
 | TD-09 | Unicidade de `external_message_id`: `(tenant, id)` × `(tenant, channel_type, id)` | Incluir `channel_type` | F4.6 |
-| TD-10 | Nome/escopo das chaves em `tenant_settings` | `crm.availability.enabled`, `crm.business_hours*` | F4.1 |
+| TD-10 | ~~Nome/escopo das chaves em `tenant_settings`~~ **Resolvida no F4.1**: `crm.business_hours` (objeto v1) e `crm.availability.enabled` (boolean) | — | — |
 | TD-11 | Correção do cursor de justiça do Round Robin | §10 | F4.3 |
 | TD-12 | Enums em Postgres × texto: migração de novos valores (canal, disponibilidade) | Enum para estados fechados (disponibilidade), texto para `channel_type`/`channel` | F4.2/F4.6 |
-| TD-13 | Momento de entrega do P1 (contexto de tenant fora de HTTP + ator Sistema): no F4.1 × só antes do F4.8/F5 | Sem consumidor nos F4.2–F4.5 (VN-05) | F4.1 |
+| TD-13 | ~~Momento de entrega do P1~~ **Resolvida no F4.1**: **não entregue** no F4.1 (sem consumidor nos F4.2–F4.5, VN-05); entra antes do F4.8 e da F5 | — | — |
 
 ## 18. Pendências de negócio (`VN-xx`) — situação após o F4.0
 
