@@ -139,7 +139,7 @@ Comunicação entre módulos: chamada direta de serviço público (síncrona) ou
 | `message_templates` | entities.md | Precisa de status de aprovação, idioma, categoria, variáveis (`PENDENTE` WA-20) |
 | `file_assets` | entities.md | Mídia; armazenamento `PENDENTE` WA-19 |
 | `queues`, `queue_members`, `dispositions` | entities.md (legado D-070) | Existência de "filas" na F4 ou só F5 continua `PENDENTE` (D-070 item 4) |
-| disponibilidade (estado corrente + `agent_status_log`) | D-071 | Enum precisa refletir os 5 estados; nomenclatura neutra |
+| disponibilidade (`user_availability` + `availability_log`) | D-071/D-077 | Modelo aprovado no Gate do F4.2 (5 estados; nomenclatura neutra) |
 | `channel_accounts` (`ChannelAccount`) | **nova** — avaliada sob [D-074](../00-governance/decision-register.md#d-074--integração-de-whatsapp-configurada-por-tenant-por-conta-de-canal-wa-02): mantida como proposta | Conta de canal **por tenant, cardinalidade 0..N** (sem máximo definido): canal, provider, configuração, número/identificador externo (ex.: `phone_number_id`), status e **referência** a secrets (nunca o segredo em texto puro). Conversas/mensagens referenciam a conta pela qual trafegam (vínculo genérico; conta concreta é F5) |
 | `channel_webhook_events` | **nova** | Payload bruto + assinatura verificada + estado de processamento, para reprocessamento/auditoria ([integrations.md §5](integrations.md)) |
 | `whatsapp_messages`, `automation_rules` | **existentes no schema** | Ver D-073 — coexistência/migração `PENDENTE` |

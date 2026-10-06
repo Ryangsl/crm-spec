@@ -104,3 +104,20 @@ Qualquer ação de escrita relevante (create/update/delete, login, mudança de p
   → persistido de forma imutável, indexado por tenant/usuário/entidade/período
   → consultável por Admin/Diretor via tela de auditoria
 ```
+
+## 8. Fluxo de disponibilidade (Fase 4)
+
+```
+Admin habilita a disponibilidade no tenant (tenant_settings:update)
+  → usuários sem registro continuam INDISPONÍVEIS (nenhuma transição automática)
+Consultor altera o próprio estado (Disponível | Indisponível | Pausa | Almoço)
+  → grava estado atual + histórico + auditoria (mesma transação)
+  → só "Disponível" participa da distribuição automática (BR-14, a partir do F4.3)
+Admin/Gerente colocam um consultor em TREINAMENTO
+  → o consultor não sai sozinho; sem duração automática
+  → Admin/Gerente retiram manualmente (o consultor volta Indisponível — derivação PROPOSTO)
+Mecanismo desabilitado
+  → seletor oculto, alterações bloqueadas pela API, distribuição ignora, estados preservados
+```
+
+Regras: [business-rules.md](business-rules.md) BR-14; decisões: [D-071](../00-governance/decision-register.md#d-071--disponibilidade-de-consultoratendente-para-distribuição-automática) e [D-077](../00-governance/decision-register.md#d-077--disponibilidade-modelo-de-dados-e-permissões-td-01-td-08).

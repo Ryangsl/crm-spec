@@ -195,7 +195,7 @@ Implementado como **sub-recurso de `customers`** (`GET/POST /v1/customers/{id}/c
 ### `queue_members`
 `queue_id`, `user_id`.
 
-### `agent_status_log`
+### `agent_status_log` *(substituído por `user_availability` + `availability_log` — D-077; não será implementado)*
 Conceito de **disponibilidade** do consultor/atendente (BR-14, RF-15), base de [D-071](../00-governance/decision-register.md#d-071--disponibilidade-de-consultoratendente-para-distribuição-automática). É apenas histórico — **não há campo de status corrente**. O **conjunto de estados** (5), o **estado inicial** (Indisponível) e **quem altera** cada estado foram **decididos** em D-071 (2026-10-05); o enum abaixo é **anterior** e não reflete os 5 estados. A representação do estado atual e do histórico (e a nomenclatura neutra) são definidas no planejamento técnico — [phase-4-plan.md §6](../10-roadmap/phase-4-plan.md) (`PROPOSTO`; execução no F4.2).
 
 | Campo | Tipo | Obrigatório | Notas |
@@ -204,6 +204,37 @@ Conceito de **disponibilidade** do consultor/atendente (BR-14, RF-15), base de [
 | status | enum(available, busy, paused, offline) | sim | **Legado** (4 estados) — substituído pelos 5 estados de D-071 no F4.2 |
 | started_at | timestamptz | sim | |
 | ended_at | timestamptz | não | |
+
+### `user_availability` (estado atual — F4.2, D-077)
+Estado de **disponibilidade atual** do usuário (BR-14, RF-15). **1:1 por usuário/tenant**, criada **sob demanda** na primeira transição; **ausência de linha = `INDISPONÍVEL`**. Detalhe: [phase-4-plan.md §6.1](../10-roadmap/phase-4-plan.md).
+
+| Campo | Tipo | Obrigatório | Notas |
+|---|---|---|---|
+| user_id | UUID (PK, FK users) | sim | |
+| tenant_id | UUID (FK tenants) | sim | |
+| status | enum(available, unavailable, break, lunch, training) | sim | 5 estados de D-071 |
+| since | timestamptz | sim | Desde quando (inclusive em `training`) |
+| set_by_user_id | UUID (FK users) | sim | Sempre um usuário — o Sistema não altera estados |
+| reason | string | não | |
+
+Índices: `(tenant_id, status)`. Sem soft delete.
+
+### `availability_log` (histórico — F4.2, D-077)
+Histórico **append-only** de transições; escrito na **mesma transação** do estado atual e da auditoria. Detalhe: [phase-4-plan.md §6.2](../10-roadmap/phase-4-plan.md).
+
+| Campo | Tipo | Obrigatório | Notas |
+|---|---|---|---|
+| id | UUID | sim | |
+| tenant_id | UUID (FK tenants) | sim | |
+| user_id | UUID (FK users) | sim | |
+| status | enum(available, unavailable, break, lunch, training) | sim | |
+| started_at | timestamptz | sim | |
+| ended_at | timestamptz | não | Nulo = linha corrente |
+| source | enum(user, manager) | sim | Sem `system` |
+| changed_by_user_id | UUID (FK users) | sim | |
+| reason | string | não | |
+
+Índices: `(tenant_id, user_id, started_at desc)`. Sem soft delete.
 
 ### `calls`
 | Campo | Tipo | Obrigatório | Notas |

@@ -6,7 +6,7 @@
 >
 > **Base decidida (não reaberta)**: [D-070](../00-governance/decision-register.md#d-070--definição-de-produto-crm-comercial--atendimentoconversas--whatsapp-sem-call-center-telefônico) (produto), [D-071](../00-governance/decision-register.md#d-071--disponibilidade-de-consultoratendente-para-distribuição-automática) (disponibilidade), [D-072](../00-governance/decision-register.md#d-072--whatsapp-é-uma-frente-própria-fase-5-núcleo-de-conversas-agnóstico-ao-canal-fase-4) (F4 agnóstica / WhatsApp = F5), [D-073](../00-governance/decision-register.md#d-073--módulo-communications-implementado-fora-da-especificação-whatsapp-outbound-e-automações) (módulo legado congelado), [D-074](../00-governance/decision-register.md#d-074--integração-de-whatsapp-configurada-por-tenant-por-conta-de-canal-wa-02) (WhatsApp por tenant), BR-14, BR-27, BR-28. Relação com o discovery do WhatsApp: [../03-architecture/whatsapp-architecture.md](../03-architecture/whatsapp-architecture.md).
 >
-> **Atualização F4.0 (2026-10-05)**: as decisões de produto `VN-01` a `VN-05` e as diretrizes `A1`–`A3` foram **incorporadas** (§0) e registradas em [D-071](../00-governance/decision-register.md#d-071--disponibilidade-de-consultoratendente-para-distribuição-automática), [D-075](../00-governance/decision-register.md#d-075--lead-sem-proprietário-é-um-estado-legítimo-do-negócio) e [D-076](../00-governance/decision-register.md#d-076--fronteira-f4f5-diretrizes-de-planejamento-da-fase-4-aprovadas-a1a3). Não houve novo discovery. O plano abaixo foi **revisto** para refletir as decisões; o que continua sem decisão permanece `PENDENTE`/`VN`/`TD`. **O F4.0 está executado e aguarda aprovação; nenhuma implementação (F4.1 em diante) está autorizada.**
+> **Atualização F4.0 (2026-10-05)**: as decisões de produto `VN-01` a `VN-05` e as diretrizes `A1`–`A3` foram **incorporadas** (§0) e registradas em [D-071](../00-governance/decision-register.md#d-071--disponibilidade-de-consultoratendente-para-distribuição-automática), [D-075](../00-governance/decision-register.md#d-075--lead-sem-proprietário-é-um-estado-legítimo-do-negócio) e [D-076](../00-governance/decision-register.md#d-076--fronteira-f4f5-diretrizes-de-planejamento-da-fase-4-aprovadas-a1a3). Não houve novo discovery. O plano abaixo foi **revisto** para refletir as decisões; o que continua sem decisão permanece `PENDENTE`/`VN`/`TD`. **O F4.0 está concluído. Em 2026-10-05 o Gate de entrada do F4.2 foi fechado (§0.6; [D-077](../00-governance/decision-register.md#d-077--disponibilidade-modelo-de-dados-e-permissões-td-01-td-08)); a execução do F4.2 ainda não está autorizada.**
 
 ## 0. Decisões incorporadas no F4.0 (2026-10-05)
 
@@ -18,7 +18,7 @@
 | VN-02 | Tenant que não utiliza/habilita disponibilidade **mantém o comportamento atual da Fase 3** (elegibilidade D-068); o estado de disponibilidade **não é obrigatório** para o CRM funcionar | D-071 |
 | VN-03 | Ficar `INDISPONÍVEL` **não remove** os Leads já atribuídos; a carteira é mantida; a disponibilidade controla a elegibilidade para **NOVOS** Leads; **sem redistribuição automática** nem mecanismo de "retirar carteira" | D-071 |
 | VN-04 | **Lead sem proprietário é um estado legítimo do negócio** (não é erro, exceção, abandono nem falha de distribuição); `owner_id` continua anulável; distribuição não é obrigatória na criação; fontes além de WhatsApp (cadastro manual, importação, listas do tenant, futuras); sem limite de 300 nem regra especial | D-075 |
-| VN-05 | Consultor altera o próprio estado entre `DISPONÍVEL`, `INDISPONÍVEL`, `PAUSA`, `ALMOÇO`; **não** entra nem sai de `TREINAMENTO`; **Gestor/Admin** coloca e retira de `TREINAMENTO`; o **Sistema** só futuramente, quando houver regra de negócio — **nenhuma regra automática agora** | D-071 |
+| VN-05 | Consultor altera o próprio estado entre `DISPONÍVEL`, `INDISPONÍVEL`, `PAUSA`, `ALMOÇO`; **não** entra nem sai de `TREINAMENTO`; **Gestor/Admin *(= Admin e Gerente — Gate do F4.2)*** coloca e retira de `TREINAMENTO`; o **Sistema** só futuramente, quando houver regra de negócio — **nenhuma regra automática agora** | D-071 |
 
 ### 0.2 `A1`–`A3` — diretrizes de planejamento **aprovadas** ([D-076](../00-governance/decision-register.md#d-076--fronteira-f4f5-diretrizes-de-planejamento-da-fase-4-aprovadas-a1a3))
 
@@ -43,7 +43,26 @@
 
 ### 0.5 O que continua pendente (não decidido)
 
-Resíduos de disponibilidade (`VN-17`); política de distribuição posterior de Leads sem proprietário (`VN-16`); BR-16 (`VN-06`); `business_hours` — formato, feriados, regra de acesso fora do horário e liberação excepcional (`VN-07`/`VN-08`); interações (`VN-09`); visibilidade (`VN-10`); notificações (`VN-11`); conversa — contato desconhecido, encerramento, disposições, filas, SLA (`VN-12`); **ociosidade** — regra de 5 minutos, reinício do contador, próximo consultor, prioridade, mensagens automáticas (`VN-13`); Lead convertido (`VN-14`); papéis (`VN-15`); e todas as decisões técnicas `TD-xx`.
+~~Resíduos de disponibilidade (`VN-17`)~~ (fechados no Gate do F4.2, §0.6); política de distribuição posterior de Leads sem proprietário (`VN-16`, F4.3); BR-16 (`VN-06`); `business_hours` — formato, feriados, regra de acesso fora do horário e liberação excepcional (`VN-07`/`VN-08`); interações (`VN-09`); visibilidade (`VN-10`); notificações (`VN-11`); conversa — contato desconhecido, encerramento, disposições, filas, SLA (`VN-12`); **ociosidade** — regra de 5 minutos, reinício do contador, próximo consultor, prioridade, mensagens automáticas (`VN-13`); Lead convertido (`VN-14`); papéis (`VN-15`); e todas as decisões técnicas `TD-xx`.
+
+### 0.6 Gate de entrada do F4.2 — fechado em 2026-10-05
+
+Decisões de produto e técnicas aprovadas pelo responsável pelo produto (registro: [D-071](../00-governance/decision-register.md#d-071--disponibilidade-de-consultoratendente-para-distribuição-automática) e [D-077](../00-governance/decision-register.md#d-077--disponibilidade-modelo-de-dados-e-permissões-td-01-td-08)):
+
+| Item | Decisão |
+|---|---|
+| TD-01 | `user_availability` (estado atual, 1:1 por usuário/tenant) + `availability_log` (histórico append-only); linha criada sob demanda; ausência de linha = `INDISPONÍVEL`; transição + histórico + auditoria na mesma transação |
+| TD-08 | `availability:read`, `availability:update`, `availability:manage`; **sem** `availability:training` |
+| VN-17.1 | Sem registro = `INDISPONÍVEL`; ao habilitar, existentes sem registro continuam `INDISPONÍVEIS`; sem transição automática para `DISPONÍVEL` |
+| VN-17.2 | Admin e Gerente colocam/retiram terceiros de `TREINAMENTO`; **não** alteram arbitrariamente os demais estados de terceiros; usuário altera o próprio estado pelas regras já decididas; sem escopo por equipe/filial |
+| VN-17.3 | `TREINAMENTO` sem duração automática; termina só por remoção manual de Admin/Gerente; registrar desde quando; sem worker/timer/`ends_at` |
+| VN-17.4 | `manage`: admin, gerente · `read`: admin, gerente, supervisor, diretor · `update`: vendedor, backoffice · Admin/Gerente alteram o próprio estado · **`operador` fora** (papéis legados de Call Center pendentes) |
+| VN-17.5 | Habilitar = `tenant_settings:update` (só Admin); sem `availability:configure` |
+| Flag desabilitada | Seletor oculto; escritas bloqueadas pela API; distribuição ignora a disponibilidade; estados preservados e retomados ao reativar; novos usuários sem registro = `INDISPONÍVEL`; sem reset |
+
+**Derivações técnicas (`PROPOSTO` — confirmar na revisão do F4.2; não foram decididas pelo responsável pelo produto)**: (1) o próprio estado exige `availability:update` **ou** `availability:manage`; (2) a retirada de `TREINAMENTO` leva a `INDISPONÍVEL`; (3) a via de terceiros não aceita o próprio usuário como alvo e ninguém entra em `TREINAMENTO` pela via do próprio estado; (4) a via de terceiros só aceita `TREINAMENTO` (entrar) e `INDISPONÍVEL` (retirar, somente a partir de `TREINAMENTO`), para usuário ativo do mesmo tenant; (5) `GET /availability/me` devolve `enabled`; (6) com a flag desabilitada, escritas respondem 409 `AVAILABILITY_DISABLED` e leituras seguem; (7) `source` ∈ {`user`, `manager`}, sem `system`. Ver [D-077](../00-governance/decision-register.md#d-077--disponibilidade-modelo-de-dados-e-permissões-td-01-td-08).
+
+**Continua fora do F4.2 (não bloqueia)**: `VN-16` (distribuição posterior de Leads sem proprietário — F4.3); `VN-07`/`VN-08` (`business_hours` segue separado da disponibilidade); P1 (**P1 não bloqueia o F4.2**: todo ator é um usuário autenticado; sem worker); BR-16/`VN-06`; ociosidade; conversas; notificações; WhatsApp.
 
 ## 1. Estado atual (real)
 
@@ -135,10 +154,10 @@ Conceitos documentados que **não existem no código**: `conversations`, `messag
 
 | Estado | Itens |
 |---|---|
-| `DECIDIDO` | 5 estados de disponibilidade; só *Disponível* recebe distribuição; disponibilidade global por usuário; consultor controla o próprio status, **exceto Treinamento** (só Gestor/Admin põem e retiram; consultor não entra nem sai; Sistema só futuramente); `business_hours` configurável por tenant, **não** altera status, **pode** restringir acesso a Leads/Conversas com liberação excepcional do Admin; Lead ≠ Cliente; ociosidade é de atendimento de **Cliente**, não de Lead; "Só mais um momento" deve ser considerado para evitar transferência indevida; "regra de 5 minutos" será detalhada depois; F4 agnóstica a canal; WhatsApp por tenant; módulo legado congelado; **(F4.0, 2026-10-05)** novo consultor inicia `INDISPONÍVEL`, sem transição automática por login/logout; tenant sem disponibilidade = comportamento da Fase 3; indisponibilidade não remove nem redistribui a carteira; consultor altera o próprio estado exceto Treinamento (Gestor/Admin); **Lead sem proprietário é estado legítimo**; diretrizes A1–A3 |
+| `DECIDIDO` | 5 estados de disponibilidade; só *Disponível* recebe distribuição; disponibilidade global por usuário; consultor controla o próprio status, **exceto Treinamento** (só Gestor/Admin *(= Admin e Gerente — Gate do F4.2)* põem e retiram; consultor não entra nem sai; Sistema só futuramente); `business_hours` configurável por tenant, **não** altera status, **pode** restringir acesso a Leads/Conversas com liberação excepcional do Admin; Lead ≠ Cliente; ociosidade é de atendimento de **Cliente**, não de Lead; "Só mais um momento" deve ser considerado para evitar transferência indevida; "regra de 5 minutos" será detalhada depois; F4 agnóstica a canal; WhatsApp por tenant; módulo legado congelado; **(F4.0, 2026-10-05)** novo consultor inicia `INDISPONÍVEL`, sem transição automática por login/logout; tenant sem disponibilidade = comportamento da Fase 3; indisponibilidade não remove nem redistribui a carteira; consultor altera o próprio estado exceto Treinamento (Gestor/Admin); **Lead sem proprietário é estado legítimo**; diretrizes A1–A3 |
 | `PROPOSTO` (neste documento ou no discovery do WhatsApp) | Todos os módulos, tabelas, endpoints, telas e incrementos abaixo. (A fronteira F4/F5 — A1–A3 — foi **aprovada como diretriz de planejamento**, §4/D-076; o critério G7 do Gate da Fase 5 segue pendente) |
 | `PENDENTE` técnica (`TD-xx`, §17) | Representação do estado atual, formato da timeline, biblioteca de fuso horário, armazenamento das exceções, temporizador de ociosidade etc. |
-| `VALIDAÇÃO DE NEGÓCIO` (`VN-xx`, §18) | **`VN-01` a `VN-05` fechados no F4.0.** Restam: resíduos de disponibilidade (`VN-17`), política posterior de leads sem proprietário (`VN-16`), formato/regra de `business_hours`, liberação excepcional, tipos de interação, visibilidade, notificações, ciclo de vida da conversa, todos os detalhes da ociosidade |
+| `VALIDAÇÃO DE NEGÓCIO` (`VN-xx`, §18) | **`VN-01` a `VN-05` fechados no F4.0; `VN-17.1`–`VN-17.5` fechados no Gate do F4.2.** Restam: política posterior de leads sem proprietário (`VN-16`), formato/regra de `business_hours`, liberação excepcional, tipos de interação, visibilidade, notificações, ciclo de vida da conversa, todos os detalhes da ociosidade |
 
 ## 4. Análise da fronteira F4 × F5 (diretrizes A1–A3 **aprovadas em 2026-10-05** — D-076)
 
@@ -185,12 +204,12 @@ Pré-requisitos transversais (entram no F4.0/F4.2): **(P1)** helper para executa
 Convenções (todas seguem o schema atual): `id` UUID v7; `tenant_id` obrigatório e indexado; `created_at/updated_at`; `deleted_at` onde a BR-22 se aplica; toda mutação grava `audit_log` na mesma transação.
 
 ### 6.1 `user_availability` — estado **atual** (1:1 com `users`)
-- **Finalidade**: consulta O(1) para elegibilidade. **Campos**: `user_id` (PK, FK users), `tenant_id`, `status` enum `available|unavailable|break|lunch|training`, `since` timestamptz, `set_by_user_id` (nulo = Sistema), `reason` (opcional). **Índices**: `(tenant_id, status)`. **Soft delete**: não (acompanha o usuário). **Constraints**: PK em `user_id`. **Auditoria**: `availability.changed` (payload: de → para, origem). **Riscos**: dupla escrita atual+log (mitigada por transação); ausência de linha = estado inicial (VN-01).
+- **Finalidade**: consulta O(1) para elegibilidade. **Campos**: `user_id` (PK, FK users), `tenant_id`, `status` enum `available|unavailable|break|lunch|training`, `since` timestamptz, `set_by_user_id` (**não nulo** — o Sistema não altera estados), `reason` (opcional). **Índices**: `(tenant_id, status)`. **Soft delete**: não (acompanha o usuário). **Constraints**: PK em `user_id`. **Criação**: **sob demanda**, na primeira transição; **ausência de linha = `INDISPONÍVEL`** (aprovado, TD-01/VN-17.1) — sem criação no cadastro de usuário e sem backfill. **Auditoria**: `availability.changed` (payload: de → para, origem). **Riscos**: dupla escrita atual+log (mitigada por transação); primeira escrita concorrente (mitigada com `INSERT … ON CONFLICT DO NOTHING` + `SELECT … FOR UPDATE`, padrão já usado em `RoundRobinRepository.lockCursor`). **Estado:** `DECIDIDO` (Gate do F4.2).
 - *Nomenclatura*: identificadores em inglês como o resto do schema; rótulos em português na UI. Substitui conceitualmente `agent_status_log` (vocabulário neutro).
 
 ### 6.2 `availability_log` — histórico (append-only)
-- **Campos**: `id`, `tenant_id`, `user_id`, `status`, `started_at`, `ended_at` (nulo = corrente), `source` enum `user|manager|system`, `changed_by_user_id?`, `reason?`. **Índices**: `(tenant_id, user_id, started_at desc)`. **Soft delete**: não (BR-24 análogo: histórico não se apaga). **Risco**: crescimento — baixo (poucas linhas/dia/usuário).
-- **Alternativa (TD-01)**: só o log com linha aberta e índice único parcial `(user_id) where ended_at is null`; evita dupla escrita mas exige SQL manual (Prisma não modela índice parcial).
+- **Campos**: `id`, `tenant_id`, `user_id`, `status`, `started_at`, `ended_at` (nulo = corrente), `source` enum `user|manager` (**sem `system`**), `changed_by_user_id` (**não nulo**), `reason?`. **Índices**: `(tenant_id, user_id, started_at desc)`. **Soft delete**: não (BR-24 análogo: histórico não se apaga). **Risco**: crescimento — baixo (poucas linhas/dia/usuário).
+- ~~Alternativa (TD-01): só o log com índice único parcial~~ **descartada** (Gate do F4.2): exige SQL manual (o Prisma não modela índice parcial). TD-01 resolvida com a tabela de estado atual + log.
 
 ### 6.3 `tenant_settings` (existente) — novas chaves
 - `crm.availability.enabled` (boolean; **ausência = comportamento atual**, ver §9.6), `crm.business_hours` (schema v1 proposto na §13), `crm.business_hours.access_restriction` (VN-07). Sem migration (tabela existe).
@@ -225,10 +244,10 @@ Convenções: prefixo `/v1`; `tenant_id` **nunca** em payload (contexto do JWT);
 |---|---|---|---|---|---|
 | GET/PUT | `/tenant-settings/business-hours` | Ler/gravar horário do tenant | `tenant_settings:read/update` | PUT: schema v1 → `{configured, business_hours, updated_at}` (GET devolve o mesmo envelope) | 400 formato inválido; 422 `BUSINESS_HOURS_INVALID` (fuso desconhecido, `start` ≥ `end`) — **implementado no F4.1** |
 | GET/PUT | `/tenant-settings/availability` | Ligar/desligar uso de disponibilidade | `tenant_settings:read/update` | `{enabled}` | 400 se não for boolean — **implementado no F4.1** (sem efeito até o F4.3) |
-| GET | `/availability/me` | Estado atual do próprio usuário | autenticado | → `{status, since}` | — |
-| PUT | `/availability/me` | Consultor altera o **próprio** status | `availability:update` | `{status, reason?}` → estado | **403/409 `AVAILABILITY_TRAINING_LOCKED`** se `training` (entrar ou sair); 422 status inválido |
-| GET | `/availability` | Lista de estados do tenant | `availability:read` | filtros `status`, `page` (offset, D-007) | — |
-| PUT | `/users/{id}/availability` | Gestor/Admin altera estado de terceiro (Treinamento decidido; demais estados de terceiros: `VN-17`) | `availability:manage` | `{status, reason?}` | 404 outro tenant; 409 usuário inativo |
+| GET | `/availability/me` | Estado atual do próprio usuário **e se o mecanismo está habilitado** | autenticado | → `{enabled, status, since}` (sem registro: `status=unavailable`, `since=null`) | — |
+| PUT | `/availability/me` | Usuário altera o **próprio** status (Disponível/Indisponível/Pausa/Almoço) | `availability:update` **ou** `availability:manage` (derivação 1, `PROPOSTO`) | `{status, reason?}` → estado | **403 `AVAILABILITY_TRAINING_LOCKED`** ao tentar entrar em `training` ou sair dele; **409 `AVAILABILITY_DISABLED`** com a flag desabilitada; 400 status inválido |
+| GET | `/availability` | Lista de estados dos usuários ativos do tenant (nome, estado, desde quando; sem registro = `unavailable`) | `availability:read` | filtros `status`, `page`/`limit` (offset, D-007) | — |
+| PUT | `/users/{id}/availability` | **Admin/Gerente** colocam (`training`) ou retiram (→ `unavailable`, só a partir de `training`) um **terceiro** de Treinamento. Outros estados de terceiros **não** são aceitos (VN-17.2) | `availability:manage` | `{status, reason?}` | 403 transição não permitida (`AVAILABILITY_THIRD_PARTY_RESTRICTED`, nome proposto); 404 outro tenant; 409 usuário inativo, retirada sem estar em Treinamento ou flag desabilitada; 422 alvo = próprio usuário (derivações 3–4, `PROPOSTO`) |
 | GET | `/users/{id}/availability/history` | Histórico | `availability:read` | cursor | 404 |
 
 ### 7.2 Interações e timeline
@@ -254,7 +273,7 @@ Convenções: prefixo `/v1`; `tenant_id` **nunca** em payload (contexto do JWT);
 Erros comuns: 404 (outro tenant), 409 (estado inválido: fechar conversa já fechada), 422 (validação). Endpoints de F4.7: `POST/GET/DELETE /access-exceptions` (`access_exceptions:manage`).
 
 ### 7.4 Permissões novas (`PROPOSTO`)
-`availability:read|update|manage`, `interactions:create|read|delete`, `dispositions:create|read|update|delete`, `conversations:create|read|update|assign|delete`, `access_exceptions:manage`; reaproveita `tenant_settings:read|update`. **Não** usar `messages:*` (legado — K1). Elegibilidade para receber conversas = `conversations:update` (espelha D-068: a mesma chave que autoriza agir autoriza receber). Quais papéis de fábrica recebem cada chave é `PROPOSTO`/seed, sujeito a VN-05 e VN-10.
+`availability:read|update|manage` (**aprovadas** — TD-08; mapeamento por papel em [D-077](../00-governance/decision-register.md#d-077--disponibilidade-modelo-de-dados-e-permissões-td-01-td-08)), `interactions:create|read|delete`, `dispositions:create|read|update|delete`, `conversations:create|read|update|assign|delete`, `access_exceptions:manage`; reaproveita `tenant_settings:read|update`. **Não** usar `messages:*` (legado — K1). Elegibilidade para receber conversas = `conversations:update` (espelha D-068: a mesma chave que autoriza agir autoriza receber). Quais papéis de fábrica recebem cada chave é `PROPOSTO`/seed, sujeito a VN-05 e VN-10.
 
 ## 8. Frontend proposto (`PROPOSTO`)
 
@@ -276,19 +295,19 @@ Nenhuma dependência nova é necessária (a lista de fusos usa `Intl.supportedVa
 ### 9.1 Mapeamento pedido → proposta
 | Tema | Proposta (`PROPOSTO`) | Decisão de negócio pendente |
 |---|---|---|
-| Estado atual | Tabela 1:1 `user_availability` (§6.1) | **Estado inicial decidido (VN-01)**: novo consultor = `INDISPONÍVEL`. Resíduo (`VN-17`): usuários já existentes ao habilitar — o plano propõe tratar **ausência de linha como `INDISPONÍVEL`** (coerente com a decisão; a confirmar) |
+| Estado atual | Tabela 1:1 `user_availability` (§6.1) | **DECIDIDO** (VN-01 + VN-17.1): sem registro = `INDISPONÍVEL`; existentes sem registro continuam `INDISPONÍVEIS` ao habilitar; sem transição automática para `DISPONÍVEL` |
 | Histórico | `availability_log` append-only na mesma transação | — |
 | 5 estados | Enum `available, unavailable, break, lunch, training`; rótulos PT na UI | — |
 | Nomenclatura neutra | Módulo `availability`; abandona `agent_status_log`/`AgentStatus` | — |
 | Login/logout | **Sem transição automática** na primeira implementação (**decidido**). Contexto técnico: a sessão é por dispositivo (`logout` revoga 1 refresh token; o usuário pode estar logado em outro) e não há noção de presença | **DECIDIDO** (VN-01) |
-| Quem altera | **Decidido (VN-05)**: consultor altera o próprio estado entre Disponível/Indisponível/Pausa/Almoço; Gestor/Admin coloca e retira de Treinamento. **Proposta técnica**: permissões `availability:update` (próprio) e `availability:manage` (Treinamento/terceiros), por permissão e não por nome de papel | **Resíduo (`VN-17`)**: Gestor/Admin sobre os demais estados de terceiros; duração/fim de Treinamento; mapeamento dos papéis de fábrica à permissão |
-| Treinamento | Regra no Service: o consultor (ator do próprio estado) não entra nem sai de `training` ⇒ `AVAILABILITY_TRAINING_LOCKED`; Gestor/Admin sim. O **Sistema não altera estados agora** (sem regras automáticas); a origem `system` pode ficar prevista no log, sem uso | **DECIDIDO** (VN-05) |
+| Quem altera | **Decidido (VN-05)**: consultor altera o próprio estado entre Disponível/Indisponível/Pausa/Almoço; **Admin/Gerente** colocam e retiram de Treinamento. **Aprovado (TD-08)**: `availability:update` (próprio), `availability:manage` (Treinamento de terceiros) e `availability:read`, por permissão e não por nome de papel | **DECIDIDO** (VN-17.2/17.4): Admin e Gerente só colocam/retiram terceiros de Treinamento; permissões por papel em [D-077](../00-governance/decision-register.md#d-077--disponibilidade-modelo-de-dados-e-permissões-td-01-td-08) |
+| Treinamento | Regra no Service: o consultor (ator do próprio estado) não entra nem sai de `training` ⇒ `AVAILABILITY_TRAINING_LOCKED`; Admin/Gerente sim (só em terceiros). **Sem duração automática**: termina por remoção manual; registra-se `since` (VN-17.3). O **Sistema não altera estados agora**; a origem `system` **não** é criada | **DECIDIDO** (VN-05, VN-17.3) |
 | Persistência | Atual + log na mesma `tx` | — |
 | Auditoria | `availability.changed` com de/para/origem; o ator é sempre um usuário — P1/ator Sistema **não** é necessário no F4.2 | — |
 | Impacto na distribuição | §10 | — |
 | `business_hours` | Não altera status (decidido); é lido à parte (§13) | VN-07 |
 | Liberação excepcional | §13.4 | VN-08 |
-| Tenant que não usa disponibilidade | Flag `crm.availability.enabled`, **ausente/false = comportamento atual** (todos os ativos com permissão elegíveis) | **DECIDIDO** (VN-02): sem o mecanismo, vale a Fase 3. Quem habilita a flag: `VN-17` (proposta: `tenant_settings:update`) |
+| Tenant que não usa disponibilidade | Flag `crm.availability.enabled`, **ausente/false = comportamento atual** (todos os ativos com permissão elegíveis) | **DECIDIDO** (VN-02, VN-17.5): sem o mecanismo, vale a Fase 3. Quem habilita: `tenant_settings:update` (só Admin). **Flag desabilitada**: seletor oculto, escritas bloqueadas pela API, distribuição ignora, estados preservados e retomados ao reativar, sem reset |
 | Leads já atribuídos a quem fica indisponível | **Decidido**: a carteira é mantida; nenhuma redistribuição automática nem "retirar carteira" | **DECIDIDO** (VN-03) |
 
 ### 9.2 Máquina de transição (proposta)
@@ -399,7 +418,7 @@ Sem tabela de participantes na F4 (um responsável por vez; histórico em `conve
 - **Aceite**: decisões registradas ✔; documentos coerentes ✔; **aprovação do responsável pelo produto — pendente**.
 - **Fora**: qualquer implementação; ociosidade; regras de conversa; política de `VN-16`.
 
-### F4.1 — Fundação: `tenant-settings` + avaliador de `business_hours` — **implementado em 2026-10-05 (branch `feat/f4-1-tenant-settings`, aguardando aprovação/push)**
+### F4.1 — Fundação: `tenant-settings` + avaliador de `business_hours` — **implementado em 2026-10-05 (branch `feat/f4-1-tenant-settings`, enviada ao origin; aguardando aprovação/merge)**
 - **Objetivo**: P2 e infraestrutura de configuração; **sem mudar comportamento**.
 - **Backend**: `TenantSettingsService` (registro de chaves e schema), `BusinessHoursService`, controller `GET/PUT /tenant-settings/business-hours` e `/availability`; migrar a leitura do round-robin para o serviço; **P1** (contexto de tenant fora de HTTP + ator Sistema) — **não é mais exigido pelo F4.2** (o Sistema não altera estados agora; VN-05); necessário antes do F4.8 e da F5 (webhook/worker); momento de entrega em `TD-13`.
 - **Frontend**: tela `/settings/business-hours`; item de menu (permissão).
@@ -415,17 +434,18 @@ Sem tabela de participantes na F4 (um responsável por vez; histórico em `conve
 - **Contrato**: `GET/PUT /v1/tenant-settings/business-hours` e `/availability` (OpenAPI). GET de horário devolve `{configured, business_hours, updated_at}` (ausente ou fora do formato v1 ⇒ `configured:false`); PUT é idempotente (valor igual não reescreve nem audita); erros: 400 estrutural, 422 `BUSINESS_HOURS_INVALID` semântico. Não há `DELETE` (não previsto no plano): uma vez gravado, o horário só pode ser substituído.
 - **Testes automatizados adicionados**: backend — 21 unit (`business-hours.spec.ts`, `tenant-settings.service.spec.ts`) + 13 e2e (`tenant-settings.e2e-spec.ts`: persistência, 400/422, auditoria, idempotência, RBAC, isolamento entre tenants, linha legada fora do formato, "sem efeito operacional" na distribuição); frontend — 13 (`BusinessHoursPage.test.tsx`) + 2 (`AppShell.test.tsx`).
 
-### F4.2 — Disponibilidade (núcleo)
-- **Objetivo**: estado atual, histórico, transições e controle de Treinamento (D-071).
-- **Backend**: módulo `availability`; permissões; auditoria; evento in-process.
-- **Frontend**: seletor no `AppShell`; painel `/team/availability`; service de usuários.
-- **Banco**: `user_availability`, `availability_log`; enum.
-- **API**: §7.1 (disponibilidade).
-- **Testes**: matriz de transições, trava de Treinamento, RBAC, isolamento, log/`ended_at`, estado inicial `INDISPONÍVEL`, sem transição por login/logout.
-- **Dependências**: F4.1 (configurações do tenant/flag); P1 **não** é necessário.
-- **Decisões necessárias**: VN-01 e VN-05 **fechadas**; resíduos `VN-17` (usuários existentes ao habilitar, demais estados de terceiros, duração de Treinamento, papéis de fábrica, quem habilita a flag) a decidir **antes** de implementar a parte afetada; TD-01, TD-08.
-- **Aceite**: consultor altera o próprio status entre Disponível/Indisponível/Pausa/Almoço (não entra nem sai de Treinamento); Gestor/Admin põem e retiram Treinamento; novo consultor inicia Indisponível; histórico completo; **nenhum efeito na distribuição ainda**.
-- **Fora**: transições automáticas por login/logout/inatividade e quaisquer alterações pelo Sistema; limites de Pausa e alertas (BR-16); distribuição.
+### F4.2 — Disponibilidade (núcleo) — **Gate de entrada fechado em 2026-10-05; execução ainda não autorizada**
+- **Objetivo**: estado atual, histórico, transições e controle de Treinamento (D-071), sem efeito na distribuição.
+- **Backend**: módulo `availability` (service com a transição numa única transação: garantir linha → travar → validar → fechar log aberto → inserir log → atualizar estado → auditar `availability.changed`; estado igual ao atual não grava); permissões `availability:read|update|manage` no seed (mapeamento em [D-077](../00-governance/decision-register.md#d-077--disponibilidade-modelo-de-dados-e-permissões-td-01-td-08)); bloqueio das escritas com a flag desabilitada. **Sem** evento in-process obrigatório e **sem** P1.
+- **Frontend**: seletor no `AppShell` (somente com a flag habilitada e permissão; Treinamento aparece travado e somente leitura); painel `/team/availability` para `availability:read` (e ação de Treinamento para `manage`), oculto com a flag desabilitada; atualização por polling (~30 s); a lista traz o nome do usuário (sem exigir `users:read`).
+- **Banco**: `user_availability`, `availability_log`, enum Postgres de 5 estados (e de `source`); migration revisada à mão.
+- **API**: §7.1 (disponibilidade) e rascunho no `openapi.yaml` (já registrado no Gate).
+- **Testes**: matriz de transições; trava de Treinamento (próprio e terceiros); terceiros só entram/saem de Treinamento; RBAC por papel (incluindo `operador`, `supervisor` e `diretor` sem escrita); isolamento de tenant em todas as rotas; ausência de linha = `INDISPONÍVEL`; flag desabilitada (escritas 409, leitura ok, estados preservados e retomados); idempotência; fechamento do log; **concorrência** (alterações simultâneas do mesmo usuário deixam uma única linha aberta); regressão — Round Robin e e2e existentes sem alteração e teste de que o estado **não** afeta a distribuição até o F4.3; `resetDatabase` com as tabelas novas.
+- **Operacional**: tenants **já existentes** precisam das chaves novas nos papéis de fábrica (rodar o seed idempotente ou passo manual — D-059; papéis de sistema são imutáveis pela API).
+- **Dependências**: F4.1 (flag `crm.availability.enabled`); P1 **não** é necessário.
+- **Decisões**: tudo fechado no Gate (§0.6). Pendentes só as **derivações `PROPOSTO`** (§0.6), a confirmar na revisão antes ou durante a execução.
+- **Aceite**: o usuário altera o próprio estado entre Disponível/Indisponível/Pausa/Almoço (não entra nem sai de Treinamento); Admin/Gerente colocam e retiram terceiros de Treinamento; sem registro = Indisponível; histórico completo e auditado; com a flag desabilitada nada é alterável e nada é perdido; **nenhum efeito na distribuição**.
+- **Fora**: transições automáticas por login/logout/inatividade e quaisquer alterações pelo Sistema; duração/`ends_at` de Treinamento; alteração arbitrária de estados de terceiros; escopo por equipe/filial; limites de Pausa e alertas (BR-16); distribuição (F4.3); `VN-16`; `business_hours` como regra operacional.
 
 ### F4.3 — Distribuição v2 (ativo + Disponível + permissão)
 - **Objetivo**: aplicar D-071 ao Round Robin da F3.4.
@@ -520,14 +540,14 @@ Sem tabela de participantes na F4 (um responsável por vez; histórico em `conve
 
 | ID | Decisão | Proposta / opções | Quando |
 |---|---|---|---|
-| TD-01 | Estado atual da disponibilidade | Tabela 1:1 + log (recomendada) × só log com índice parcial (SQL manual) | F4.0 |
+| TD-01 | ~~Estado atual da disponibilidade~~ **Resolvida (Gate do F4.2, [D-077](../00-governance/decision-register.md#d-077--disponibilidade-modelo-de-dados-e-permissões-td-01-td-08))**: `user_availability` 1:1 + `availability_log` append-only; linha sob demanda; ausência = `INDISPONÍVEL`; mesma transação | — | — |
 | TD-02 | Timeline: `UNION ALL` SQL × merge por fonte; cursor `(occurred_at, source, id)` | Medir no F4.4 | F4.4 |
 | TD-03 | ~~`Conversation`: FKs dedicadas × polimórfico~~ **Resolvida (A3/D-076)**: FKs dedicadas | §11.4 | — |
 | TD-04 | ~~Fuso horário: `Intl` × biblioteca~~ **Resolvida no F4.1**: `Intl` (sem dependência nova; validação do nome IANA e avaliador testados com relógio fixo, incl. horário de verão) | — | — |
 | TD-05 | Exceções de acesso: tabela (recomendada) × chave em settings × permissão | §6.10 | F4.7 |
 | TD-06 | Ociosidade: *delayed job* por conversa × varredura periódica | Após VN-13 | F4.8 |
 | TD-07 | Entrega de notificação: polling (F4) × WebSocket (F5) | Polling | F4.5 |
-| TD-08 | Chaves de permissão (evitar colisão com `messages:*` legado) | §7.4 | F4.0 |
+| TD-08 | ~~Chaves de permissão~~ **Resolvida para a disponibilidade (Gate do F4.2)**: `availability:read|update|manage`, sem `availability:training`. A colisão com `messages:*` legado só importa no F4.6 | §7.4 | F4.6 (parte `messages`) |
 | TD-09 | Unicidade de `external_message_id`: `(tenant, id)` × `(tenant, channel_type, id)` | Incluir `channel_type` | F4.6 |
 | TD-10 | ~~Nome/escopo das chaves em `tenant_settings`~~ **Resolvida no F4.1**: `crm.business_hours` (objeto v1) e `crm.availability.enabled` (boolean) | — | — |
 | TD-11 | Correção do cursor de justiça do Round Robin | §10 | F4.3 |
@@ -544,7 +564,7 @@ Sem tabela de participantes na F4 (um responsável por vez; histórico em `conve
 | VN-02 | ✅ **DECIDIDO (F4.0)**: tenant sem disponibilidade mantém o comportamento da Fase 3; o estado não é obrigatório | — |
 | VN-03 | ✅ **DECIDIDO (F4.0)**: a carteira é mantida; sem redistribuição automática nem "retirar carteira" | — |
 | VN-04 | ✅ **DECIDIDO (F4.0)** — D-075: **Lead sem proprietário é estado legítimo**; `owner_id` anulável; distribuição não obrigatória na criação. *(A política de atribuição posterior é `VN-16`.)* | — |
-| VN-05 | ✅ **DECIDIDO (F4.0)**: consultor altera o próprio estado exceto Treinamento; Gestor/Admin colocam e retiram Treinamento; Sistema só futuramente, sem regras automáticas. *(Resíduos em `VN-17`.)* | — |
+| VN-05 | ✅ **DECIDIDO (F4.0)**: consultor altera o próprio estado exceto Treinamento; Gestor/Admin *(= Admin e Gerente — Gate do F4.2)* colocam e retiram Treinamento; Sistema só futuramente, sem regras automáticas. *(Resíduos em `VN-17`.)* | — |
 | VN-06 | BR-16: limite de Pausa, destinatário do alerta, se Almoço/Treinamento contam | F4.5 |
 | VN-07 | `business_hours`: campos (dias, janelas, feriados), fuso, por tenant único ou por filial/equipe; restrição de acesso ligada por padrão? a quem, bloqueio total ou só escrita, isenção de Admin/gestor; efeito na distribuição | F4.1, F4.3, F4.7 |
 | VN-08 | Liberação excepcional: por usuário/temporária/escopo, duração, motivo obrigatório, quem solicita | F4.7 |
@@ -556,13 +576,13 @@ Sem tabela de participantes na F4 (um responsável por vez; histórico em `conve
 | VN-14 | Lead convertido: destino do vínculo das conversas/interações | F4.4, F4.6 |
 | VN-15 | Renomeação dos papéis "Supervisor/Operador de Call Center" (D-070 pendência 5) | seed/UI |
 | VN-16 | **Política de distribuição posterior de Leads sem proprietário** (D-075): se a criação/importação distribui automaticamente ou mantém sem proprietário (por tenant, origem ou opção de importação); como/quando são atribuídos depois (distribuição em lote, reivindicação pelo consultor, atribuição por Gestor); se haverá filtro/indicador de "sem proprietário" | F4.3 (parcial), incrementos futuros |
-| VN-17 | **Resíduos de disponibilidade**: estado dos usuários já existentes ao habilitar; se Gestor/Admin podem alterar também os demais estados de terceiros; duração/término automático de Treinamento; mapeamento dos papéis de fábrica (gerente, supervisor, diretor) à permissão de gestão; quem habilita o mecanismo no tenant | F4.2 (parte afetada) |
+| VN-17 | ✅ **DECIDIDO (Gate do F4.2, 2026-10-05)** — 17.1 sem registro = `INDISPONÍVEL`; 17.2 Admin/Gerente só colocam/retiram terceiros de Treinamento; 17.3 Treinamento sem duração automática; 17.4 `manage`: admin/gerente, `read`: admin/gerente/supervisor/diretor, `update`: vendedor/backoffice (sem `operador`); 17.5 habilitar = `tenant_settings:update` (Admin). *Derivações `PROPOSTO` a confirmar em [D-077](../00-governance/decision-register.md#d-077--disponibilidade-modelo-de-dados-e-permissões-td-01-td-08).* | — |
 
 ## 19. Riscos
 
 | # | Risco | Mitigação |
 |---|---|---|
-| R1 | Ao habilitar a disponibilidade todos iniciam `INDISPONÍVEL` (VN-01): ninguém recebe Leads até se colocar `DISPONÍVEL` — Leads criados nesse intervalo ficam sem proprietário (**estado legítimo**, D-075) | Flag desligada por padrão (VN-02); aviso/visibilidade na ativação (proposta F4.2/F4.3); sem regra nova |
+| R1 | Ao habilitar a disponibilidade todos iniciam `INDISPONÍVEL` (VN-01/VN-17.1): ninguém recebe Leads até se colocar `DISPONÍVEL` — Leads criados nesse intervalo ficam sem proprietário (**estado legítimo**, D-075) | Flag desligada por padrão (VN-02); o painel de gestão mostra quem está disponível (proposta F4.2/F4.3); sem regra nova |
 | R2 | Ator "Sistema" e execução por tenant fora de HTTP não existem (K4) — **não bloqueiam o F4.2** (o Sistema não altera estados agora), mas bloqueiam a ociosidade (F4.8) e a F5 (webhook/worker) | P1 antes do F4.8/F5 (`TD-13`), com teste |
 | R3 | Conversas com dado pessoal sob RBAC tenant-only (C8) | VN-10 antes de F4.6; não expor leitura sem escopo |
 | R4 | Modelar `Message` sem canal real → retrabalho na F5 | Ajustes A1–A2 (F4.6 condicional e mínimo) |
@@ -578,6 +598,8 @@ Sem tabela de participantes na F4 (um responsável por vez; histórico em `conve
 | R14 | `resetDatabase` e a suíte e2e crescem e ficam lentas | Manter lista atualizada; paralelizar só com isolamento |
 | R15 | Volume de mensagens (D-014) e LGPD (WA-27) | Fora da F4; registrado |
 | R16 | Cenário "lista de centenas de Leads" (D-075): a importação sem `owner_id` hoje distribui tudo pelo round-robin se houver elegíveis (K8) | Documentado; tratamento depende de `VN-16`; não alterar sem decisão |
+| R18 | Treinamento esquecido mantém o usuário fora da distribuição (sem duração automática — VN-17.3) | Painel mostra "desde quando"; remoção manual; nenhuma regra automática (decisão) |
+| R19 | Tenants existentes não têm as chaves `availability:*` nos papéis de fábrica (papéis de sistema são imutáveis pela API) | Rodar o seed idempotente ou passo manual (D-059); coberto no plano de execução do F4.2 |
 | R17 | Sem política posterior (`VN-16`), a carteira "sem proprietário" pode crescer sem mecanismo de escoamento (K9, K10) | Registrado como pendente; não inventar no F4.3; decidir antes de qualquer incremento que a implemente |
 
 ## 20. Critérios de aceite da Fase 4
@@ -597,13 +619,13 @@ Sem tabela de participantes na F4 (um responsável por vez; histórico em `conve
 
 | Documento | Alteração |
 |---|---|
-| decision-register.md | **Feito no F4.0**: D-071 (VN-01/02/03/05), D-075 (VN-04), D-076 (A1–A3), tabela de portões da F4. **Pendente**: demais `VN`/`TD` conforme forem decididas |
-| entities.md / relationships.md | **Parcial no F4.0** (notas em `leads.owner_id` e `agent_status_log`; FKs de `conversations`). **Pendente**: substituir `agent_status_log` por `user_availability` + `availability_log`; `conversations` (lead/opportunity, canal neutro, campos de ociosidade); `messages` (`sender_type`); `interactions`; `conversation_assignments`; `access_exceptions`; remover/marcar legado `queues/calls` conforme VN-12 |
-| openapi.yaml | Corrigir `Interaction.type` (remover `call`); documentar rotas da §7 **antes** de cada código |
-| business-rules.md | **Feito no F4.0**: BR-14 (estado inicial, quem altera, tenant sem disponibilidade, carteira) e BR-29. **Pendente**: BR-05 (efeito do horário na distribuição — C5), BR-16 conforme VN-06; novas regras de conversa/ociosidade **somente** após VN-12/13 |
-| requirements.md | **Feito no F4.0**: RF-12, RF-15. **Pendente**: RF-16/18; seção Notificações |
+| decision-register.md | **Feito no F4.0**: D-071 (VN-01/02/03/05), D-075 (VN-04), D-076 (A1–A3), tabela de portões da F4. **Feito no Gate do F4.2**: D-071 (VN-17), D-077 (TD-01/TD-08). **Pendente**: demais `VN`/`TD` conforme forem decididas |
+| entities.md / relationships.md | **Parcial no F4.0** (notas em `leads.owner_id` e `agent_status_log`; FKs de `conversations`). **Feito no Gate do F4.2**: `user_availability` e `availability_log` (substituem `agent_status_log`). **Pendente**: `conversations` (lead/opportunity, canal neutro, campos de ociosidade); `messages` (`sender_type`); `interactions`; `conversation_assignments`; `access_exceptions`; remover/marcar legado `queues/calls` conforme VN-12 |
+| openapi.yaml | **Feito no Gate do F4.2**: rotas de disponibilidade da §7.1 (rascunho, marcadas "ainda não implementado"). **Pendente**: corrigir `Interaction.type` (remover `call`); documentar as demais rotas da §7 **antes** de cada código |
+| business-rules.md | **Feito no F4.0 e no Gate do F4.2**: BR-14 (estado inicial, quem altera, tenant sem disponibilidade, carteira, Treinamento sem duração, sem registro, mecanismo desabilitado) e BR-29. **Pendente**: BR-05 (efeito do horário na distribuição — C5), BR-16 conforme VN-06; novas regras de conversa/ociosidade **somente** após VN-12/13 |
+| requirements.md | **Feito no F4.0 e no Gate do F4.2**: RF-12, RF-15. **Pendente**: RF-16/18; seção Notificações |
 | roadmap.md | **Feito no F4.0**: fronteira F4/F5 (D-076), estado do F4.0, Lead sem proprietário. **Pendente**: detalhar subincrementos F4.1–F4.8 conforme forem aprovados; reescrever a lista de funcionalidades da F5 |
-| workflows.md / use-cases.md | **Feito no F4.0**: fluxo comercial §1 e UC-01 (Lead sem proprietário). **Pendente**: reescrever §2–4 e UC-05–07 como fluxos de conversa; novos casos (alterar status, registrar interação, fora do horário) |
+| workflows.md / use-cases.md | **Feito no F4.0**: fluxo comercial §1 e UC-01 (Lead sem proprietário). **Feito no Gate do F4.2**: workflow §8 e UC-11 (alterar disponibilidade). **Pendente**: reescrever §2–4 e UC-05–07 como fluxos de conversa; novos casos (alterar status, registrar interação, fora do horário) |
 | personas.md | Matriz sem "Call Center/Telefonia"; papéis (VN-15); escopo de visibilidade (VN-10) |
 | whatsapp-architecture.md | **Feito no F4.0**: notas de status em §3 e no critério G7. **Pendente**: ajustar §4 e F5.0/F5.2 ao concluir a F4 |
 | CLAUDE.md (spec) | "Estado atual" desatualizado (C9) — **não alterado** no F4.0 (fora do escopo pedido) |

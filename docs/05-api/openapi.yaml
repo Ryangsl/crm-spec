@@ -1401,6 +1401,157 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
 
+  /availability/me:
+    get:
+      summary: Estado de disponibilidade do próprio usuário e se o mecanismo está habilitado (autenticado)
+      description: |
+        **Planejado (F4.2) — ainda não implementado.** Sem registro => `status: unavailable`,
+        `since: null` (D-071/VN-17.1). `enabled` espelha `crm.availability.enabled` para que o
+        frontend decida exibir o seletor sem depender de `tenant_settings:read` (só admin).
+      responses:
+        "200":
+          description: Estado atual
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AvailabilityMe" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    put:
+      summary: Altera o próprio estado (availability:update ou availability:manage)
+      description: |
+        **Planejado (F4.2) — ainda não implementado.** Aceita `available`, `unavailable`, `break`
+        e `lunch`. `training` não pode ser assumido nem deixado pelo próprio usuário
+        (`403 AVAILABILITY_TRAINING_LOCKED`). Com o mecanismo desabilitado: `409
+        AVAILABILITY_DISABLED`. Estado igual ao atual não grava nem audita. Estado atual,
+        histórico e auditoria na mesma transação. Sem transição automática por login/logout.
+        (Códigos de erro propostos; confirmar na execução.)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AvailabilityUpdate" }
+      responses:
+        "200":
+          description: Estado gravado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AvailabilityMe" }
+        "400":
+          description: Payload inválido
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Sem permissão, ou tentativa de entrar/sair de `training` (`AVAILABILITY_TRAINING_LOCKED`)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "409":
+          description: Disponibilidade desabilitada no tenant (`AVAILABILITY_DISABLED`)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /availability:
+    get:
+      summary: Lista o estado dos usuários ativos do tenant (availability:read)
+      description: |
+        **Planejado (F4.2) — ainda não implementado.** `availability:read`: admin, gerente,
+        supervisor, diretor. Usuário sem registro aparece como `unavailable` com `since: null`.
+        Devolve o nome do usuário (não exige `users:read`). Paginação por offset (D-007). Sem
+        escopo por equipe/filial (D-058). Leitura segue disponível com o mecanismo desabilitado.
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Limit"
+        - name: status
+          in: query
+          required: false
+          schema: { $ref: "#/components/schemas/AvailabilityStatus" }
+      responses:
+        "200":
+          description: Página de estados
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AvailabilityList" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Sem a permissão `availability:read`
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /users/{id}/availability:
+    put:
+      summary: Admin/Gerente colocam ou retiram um terceiro de Treinamento (availability:manage)
+      description: |
+        **Planejado (F4.2) — ainda não implementado.** `availability:manage`: admin, gerente.
+        Aceita apenas `training` (entrar) e `unavailable` (retirar, **somente** a partir de
+        `training`); qualquer outro estado de terceiro é recusado (D-071/VN-17.2). O próprio
+        usuário não é alvo válido (usa `/availability/me`). Alvo deve ser ativo e do mesmo
+        tenant. `training` não tem duração automática; registra-se `since`. Sem escopo por
+        equipe/filial. (Regras derivadas e códigos de erro `PROPOSTO` — ver D-077.)
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AvailabilityUpdate" }
+      responses:
+        "200":
+          description: Estado gravado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AvailabilityMe" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Sem `availability:manage` ou transição não permitida para terceiros
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Usuário inativo, retirada sem estar em Treinamento ou disponibilidade desabilitada
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "422":
+          description: Alvo é o próprio usuário
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /users/{id}/availability/history:
+    get:
+      summary: Histórico de disponibilidade de um usuário (availability:read)
+      description: |
+        **Planejado (F4.2) — ainda não implementado.** Linhas de `availability_log`, mais
+        recentes primeiro, paginação por cursor.
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Histórico paginado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AvailabilityLogList" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Sem a permissão `availability:read`
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /calls/click-to-call:
     post:
       summary: "[Fora de escopo — D-070] Origina uma chamada ativa a partir do CRM"
@@ -1902,6 +2053,62 @@ components:
       required: [content]
       properties:
         content: { type: string, minLength: 1 }
+
+    AvailabilityStatus:
+      type: string
+      enum: [available, unavailable, break, lunch, training]
+      description: Disponível, Indisponível, Pausa, Almoço, Treinamento (D-071). Só `available` recebe distribuição automática.
+
+    AvailabilityUpdate:
+      type: object
+      required: [status]
+      properties:
+        status: { $ref: "#/components/schemas/AvailabilityStatus" }
+        reason: { type: string, nullable: true }
+
+    AvailabilityMe:
+      type: object
+      properties:
+        enabled: { type: boolean, description: "Espelho de crm.availability.enabled." }
+        status: { $ref: "#/components/schemas/AvailabilityStatus" }
+        since: { type: string, format: date-time, nullable: true }
+
+    AvailabilityListItem:
+      type: object
+      properties:
+        user_id: { type: string, format: uuid }
+        name: { type: string }
+        status: { $ref: "#/components/schemas/AvailabilityStatus" }
+        since: { type: string, format: date-time, nullable: true }
+
+    AvailabilityList:
+      type: object
+      properties:
+        data:
+          type: array
+          items: { $ref: "#/components/schemas/AvailabilityListItem" }
+        page: { type: integer }
+        limit: { type: integer }
+        total: { type: integer }
+
+    AvailabilityLogItem:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        status: { $ref: "#/components/schemas/AvailabilityStatus" }
+        started_at: { type: string, format: date-time }
+        ended_at: { type: string, format: date-time, nullable: true }
+        source: { type: string, enum: [user, manager] }
+        changed_by_user_id: { type: string, format: uuid }
+        reason: { type: string, nullable: true }
+
+    AvailabilityLogList:
+      type: object
+      properties:
+        data:
+          type: array
+          items: { $ref: "#/components/schemas/AvailabilityLogItem" }
+        next_cursor: { type: string, nullable: true }
 
     BusinessHoursWindow:
       type: object

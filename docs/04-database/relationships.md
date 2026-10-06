@@ -49,7 +49,8 @@ appointments N───1 users
 ```
 queues 1───N calls
 queues N───N users        (via queue_members)
-users  1───N agent_status_log
+users  1───1 user_availability   (estado atual — D-077)
+users  1───N availability_log     (histórico append-only — D-077)
 users  1───N calls (agent_id)
 customers 1───N calls
 queues 1───N dispositions
