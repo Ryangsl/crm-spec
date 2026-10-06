@@ -1358,7 +1358,9 @@ paths:
       summary: Lê a flag de uso de disponibilidade do tenant (tenant_settings:read)
       description: |
         Chave `crm.availability.enabled` (F4.1). Ausente = `false` = comportamento da Fase 3
-        (D-071/VN-02). **Sem efeito na distribuição na F4.1** — a aplicação da flag é F4.3.
+        (D-071/VN-02). **Efeito (F4.3, D-078)**: com `true`, o round-robin de Leads só considera usuários
+        `DISPONÍVEL` para **novos** Leads sem `owner_id`; com `false`/ausente a distribuição ignora a
+        disponibilidade.
       responses:
         "200":
           description: Estado da flag
@@ -1829,7 +1831,9 @@ components:
           description: >
             Atribuicao manual do responsavel. Se omitido, o round-robin
             (D-068/BR-05) escolhe automaticamente e pode resultar em
-            owner_id null quando nao ha vendedor elegivel (D-069).
+            owner_id null quando nao ha vendedor elegivel (D-069). Com a flag
+            de disponibilidade do tenant ligada, so usuarios DISPONIVEL sao
+            elegiveis (F4.3, D-078); o owner_id explicito nao e restringido.
       description: >
         customer_id nao faz parte do contrato de criacao — so e preenchido
         via POST /leads/{id}/convert (BR-04/D-065).

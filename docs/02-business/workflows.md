@@ -112,7 +112,7 @@ Admin habilita a disponibilidade no tenant (tenant_settings:update)
   → usuários sem registro continuam INDISPONÍVEIS (nenhuma transição automática)
 Consultor altera o próprio estado (Disponível | Indisponível | Pausa | Almoço)
   → grava estado atual + histórico + auditoria (mesma transação)
-  → só "Disponível" participa da distribuição automática (BR-14, a partir do F4.3)
+  → só "Disponível" participa da distribuição automática (BR-14; vigente desde o F4.3 quando a flag do tenant está ligada — com ela desligada a distribuição ignora o estado; só novos Leads, carteira não redistribuída; ninguém Disponível → Lead sem proprietário)
 Admin/Gerente colocam um consultor em TREINAMENTO
   → o consultor não sai sozinho; sem duração automática
   → Admin/Gerente retiram manualmente (o consultor volta Indisponível — D-077)

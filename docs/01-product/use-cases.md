@@ -63,7 +63,7 @@ No MVP, o atendimento é **registrado manualmente** (o operador atende por fora 
 ### UC-11 Alterar disponibilidade — *Fase 4*
 - **Ator**: Consultor/atendente (próprio estado); Admin/Gerente (Treinamento de terceiros).
 - **Pré-condição**: o tenant habilitou a disponibilidade (`crm.availability.enabled`, por Admin via `tenant_settings:update`). Sem isso o seletor não aparece e a API bloqueia a alteração (estados já registrados são preservados).
-- **Fluxo**: o consultor escolhe Disponível, Indisponível, Pausa ou Almoço → o sistema grava o estado atual e o histórico e audita; só quem está **Disponível** participa da distribuição automática ([D-071](../00-governance/decision-register.md#d-071--disponibilidade-de-consultoratendente-para-distribuição-automática)). Admin/Gerente colocam um consultor em Treinamento e depois o retiram manualmente; o consultor não entra nem sai de Treinamento.
+- **Fluxo**: o consultor escolhe Disponível, Indisponível, Pausa ou Almoço → o sistema grava o estado atual e o histórico e audita; só quem está **Disponível** participa da distribuição automática de novos Leads, com a flag do tenant ligada (F4.3, [D-078](../00-governance/decision-register.md#d-078--distribuição-automática-de-leads-com-disponibilidade-td-11); [D-071](../00-governance/decision-register.md#d-071--disponibilidade-de-consultoratendente-para-distribuição-automática)). Admin/Gerente colocam um consultor em Treinamento e depois o retiram manualmente; o consultor não entra nem sai de Treinamento.
 - **Exceções**: usuário sem registro é Indisponível; não há transição automática por login/logout nem pelo Sistema; ficar Indisponível não retira a carteira; Treinamento não tem duração automática.
 
 ## 4. Fluxo crítico ponta a ponta (referência)
