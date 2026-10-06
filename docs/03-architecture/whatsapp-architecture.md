@@ -59,7 +59,7 @@ Features existentes: `auth`, `customers`, `leads`, `opportunities`, `follow-up`,
 
 ## 3. Fronteira arquitetural F4 × F5 × F6
 
-> **Estado**: `PROPOSTO` — depende de aprovação explícita (item do Gate). O texto atual do roadmap lista "Conversas, Mensagens, Templates" na Fase 5; esta proposta move o **núcleo agnóstico** para a Fase 4 e mantém na Fase 5 apenas o que é específico do canal.
+> **Estado**: `PROPOSTO` para o Gate da Fase 5 — depende de aprovação explícita (G7). **Atualização (2026-10-05)**: as diretrizes de planejamento **A1–A3** da Fase 4 foram aprovadas ([D-076](../00-governance/decision-register.md#d-076--fronteira-f4f5-diretrizes-de-planejamento-da-fase-4-aprovadas-a1a3)): o núcleo `Conversation` pode ser entregue no F4.6 **ou, se suas regras não estiverem fechadas, deslocado para o F5.0**; `channel_account_id`, `file_assets`, `ChannelAdapter` e credenciais ficam na Fase 5; `Conversation` usa `customer_id`/`lead_id`/`opportunity_id`. Isso **não** fecha o G7. O texto atual do roadmap lista "Conversas, Mensagens, Templates" na Fase 5; esta proposta move o **núcleo agnóstico** para a Fase 4 e mantém na Fase 5 apenas o que é específico do canal.
 
 | Capacidade | F4 — Atendimento/Conversas (agnóstico) | F5 — WhatsApp (específico do canal) | F6 — Omnichannel |
 |---|---|---|---|
@@ -88,7 +88,7 @@ Pré-requisitos que a F5 **consome** e que, sem eles, o WhatsApp não pode come�
 
 1. **Modelo `Conversation` e `Message` normalizado**, com `channel_type` extensível, `direction`, `status` (`pending|sent|delivered|read|failed`), `external_message_id` único por tenant (BR-20), `assigned_to`, `attachment_id` opcional, ligação a Customer **ou** Lead (BR-19, BR-28) — e opcional a Opportunity (`PENDENTE` WA-07).
 2. **Ciclo de vida**: abertura, atribuição, transferência, encerramento (com disposição, BR-15), reabertura — com regras de negócio fechadas (`PENDENTE` WA-13, WA-14).
-3. **Disponibilidade (D-071)**: estado corrente por usuário + histórico; permissões (Treinamento só Gestor/Sistema).
+3. **Disponibilidade (D-071)**: estado corrente por usuário + histórico; permissões (Treinamento só Gestor/Admin; o Sistema só futuramente, sem regras automáticas — D-071).
 4. **Motor de distribuição** generalizado a partir do `RoundRobinService`: elegibilidade *ativo + Disponível + permissão* (+ `business_hours` quando configurado), reutilizável para Lead e Conversa; comportamento "nenhum elegível" definido (`PENDENTE` WA-10).
 5. **`business_hours`**: formato, configuração administrativa por tenant, regra de acesso fora do horário e liberação excepcional do Admin (BR-27; detalhes técnicos `PENDENTE` WA-11/WA-12).
 6. **Interface `ChannelAdapter`** (contrato e registro) e um adapter de teste que permita provar o núcleo sem provedor real.
@@ -404,7 +404,7 @@ Implicações: (i) o tenant do webhook vem da conta resolvida, nunca do payload;
 | G4 | **Regras de negócio validadas** | WA-05 a WA-15, WA-22 e WA-27 respondidas pelo responsável pelo produto e refletidas em `business-rules.md` | ❌ não atendido |
 | G5 | **Decisões críticas registradas** | WA-03, WA-24 e demais pendências do catálogo 7.2 aplicáveis resolvidas no Decision Register (WA-02: princípio ✅ em [D-074](../00-governance/decision-register.md#d-074--integração-de-whatsapp-configurada-por-tenant-por-conta-de-canal-wa-02); detalhes na F5; WA-30 na F5.0) | ❌ não atendido |
 | G6 | **Provedor/API definido** | D-011 `DECIDIDO` (WA-01), conta de teste/sandbox disponível, D-024/D-025 revistas | ❌ não atendido |
-| G7 | **Fronteira F4/F5 aprovada** | Seção 3 aprovada; roadmap atualizado ([D-072](../00-governance/decision-register.md#d-072--whatsapp-é-uma-frente-própria-fase-5-núcleo-de-conversas-agnóstico-ao-canal-fase-4)) | ❌ não atendido |
+| G7 | **Fronteira F4/F5 aprovada** | Seção 3 aprovada; roadmap atualizado ([D-072](../00-governance/decision-register.md#d-072--whatsapp-é-uma-frente-própria-fase-5-núcleo-de-conversas-agnóstico-ao-canal-fase-4)) | 🟡 parcial — diretrizes A1–A3 da F4 aprovadas e roadmap com notas ([D-076](../00-governance/decision-register.md#d-076--fronteira-f4f5-diretrizes-de-planejamento-da-fase-4-aprovadas-a1a3)); falta aprovar a seção 3 por inteiro (incl. o deslocamento condicional do núcleo para o F5.0). **Gate continua FECHADO** |
 | G8 | **F4 concluída no que a F5 consome** | Itens 1–10 da seção 4 entregues e aceitos | ❌ não atendido (F4 não iniciada) |
 | G9 | **Módulo legado sob controle (D-073)** | Congelamento registrado e respeitado (✅ 2026-09-30); reconciliação executada na F5.0 | 🟡 parcial — congelamento decidido; reconciliação é escopo da F5.0 |
 | G10 | **OpenAPI antes do código** | Contratos de F5.0/F5.1 documentados em `openapi.yaml` | ❌ não atendido |

@@ -3,8 +3,9 @@
 ## 1. Fluxo comercial ponta a ponta
 
 ```
-Lead recebido
-  → distribuição (round-robin / fila / manual)
+Lead recebido / cadastrado / importado (manual, importação, lista do tenant, WhatsApp futuro…)
+  → atribuição, quando aplicável: distribuição (round-robin / fila / manual)
+       └─ sem proprietário (estado válido — D-075) → aguarda atribuição/distribuição posterior
   → contato (ligação, WhatsApp, e-mail)
   → qualificação (critérios do tenant)
        ├─ desqualificado → motivo → pode ser reaberto quando o contato retornar (D-033)
@@ -16,7 +17,9 @@ Lead recebido
        └─ Perdida → motivo obrigatório → encerrado (estado terminal)
 ```
 
-Regras associadas: [../02-business/business-rules.md](../02-business/business-rules.md) BR-03 a BR-13.
+Regras associadas: [../02-business/business-rules.md](../02-business/business-rules.md) BR-03 a BR-13 e BR-29.
+
+> **Nota (2026-10-05, [D-075](../00-governance/decision-register.md#d-075--lead-sem-proprietário-é-um-estado-legítimo-do-negócio))**: Lead sem proprietário é um estado legítimo — a distribuição não é obrigatória na criação, e um Lead que não converte **permanece Lead** e pode ser trabalhado novamente. A política de distribuição posterior de Leads sem proprietário está pendente (`VN-16`).
 
 ## 2. Fluxo de atendimento receptivo (legado "Call Center") — *telefonia fora de escopo (D-070)*
 

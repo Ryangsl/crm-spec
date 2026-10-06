@@ -60,6 +60,8 @@ dispositions 1───N calls
 
 ```
 customers 1───N conversations
+leads     1───N conversations (lead_id — D-076/A3; Lead não vira Cliente por ter conversa)
+opportunities 1───N conversations (opportunity_id — D-076/A3)
 queues    1───N conversations
 users     1───N conversations (assigned_to)
 conversations 1───N messages

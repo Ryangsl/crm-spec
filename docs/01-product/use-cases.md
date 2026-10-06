@@ -7,8 +7,8 @@ Casos de uso principais, por área. Formato: ator, pré-condição, fluxo princi
 ### UC-01 Captação e distribuição de lead
 - **Ator**: Sistema (integração/formulário) ou Vendedor (cadastro manual).
 - **Pré-condição**: origem do lead configurada (formulário, importação, atendimento receptivo, integração).
-- **Fluxo**: lead é criado → sistema aplica regra de distribuição (round-robin, por fila, manual) → lead é atribuído a um vendedor/equipe → notificação ao responsável.
-- **Exceção**: nenhum vendedor disponível na regra de distribuição → lead cai em fila "não atribuído" e gera alerta ao gerente.
+- **Fluxo**: lead é criado ou importado → quando aplicável, o sistema aplica a regra de distribuição (round-robin, por fila, manual) → lead é atribuído a um vendedor/equipe → notificação ao responsável *(Notificações ainda não definidas — `VN-11`)*.
+- **Variante (não é erro)**: **lead sem proprietário** ([D-075](../00-governance/decision-register.md#d-075--lead-sem-proprietário-é-um-estado-legítimo-do-negócio), BR-29) — cadastro/importação sem consultor associado (ex.: lista com centenas de pessoas) ou nenhum consultor elegível na regra de distribuição → o lead permanece sem proprietário (`owner_id` nulo), aguardando atribuição/distribuição posterior. Na Fase 3 o único registro é o evento de auditoria `lead.unassigned` ([D-069](../00-governance/decision-register.md#d-069--alerta-de-lead-não-atribuído-só-auditoria-sem-módulo-de-notificações)). *Alerta ao gerente: pendente (`VN-11`); política de distribuição posterior: pendente (`VN-16`).*
 
 ### UC-02 Qualificação de lead e conversão em oportunidade
 - **Ator**: Vendedor/Operador.

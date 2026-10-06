@@ -25,7 +25,7 @@ Cada decisão tem um **status**:
 | Fase 1 — Fundação técnica | D-001, D-012, D-017, D-018, D-020, D-021, D-022, D-023 — todas `DECIDIDO`/`PROPOSTO`. Nada pendente. |
 | Fase 2 — Auth/Usuários/Tenants | D-002, D-003, D-004, D-005, D-006, D-016, D-037, D-056 a D-063 — todas `DECIDIDO`. Nada pendente. |
 | Fase 3 — CRM | D-007, D-008, D-031, D-032, D-033, D-034, D-035, D-058, D-065, D-066, D-067, D-068, D-069 — todas `DECIDIDO`. Nada pendente. Decision Gate (2026-09-16) e Implementation Gate (2026-09-16) concluídos. |
-| Fase 4 — Atendimento/Conversas | D-071 — regras de negócio de disponibilidade `DECIDIDO` (consolidadas em 2026-09-29); implementação técnica a planejar na Fase 4. Pendentes, a decidir no incremento que as implementar: fallback e leads já atribuídos (D-071), detalhes da ociosidade de atendimento de Cliente (D-071) e pendências de D-070 (BR-15/16/18, filas, terminologia de papéis). |
+| Fase 4 — Atendimento/Conversas | **F4.0 executado em 2026-10-05 (aguarda aprovação para ser considerado concluído)**: D-071 (disponibilidade — estado inicial, tenant sem disponibilidade, carteira e quem altera cada estado `DECIDIDO`), [D-075](#d-075--lead-sem-proprietário-é-um-estado-legítimo-do-negócio) (Lead sem proprietário) e [D-076](#d-076--fronteira-f4f5-diretrizes-de-planejamento-da-fase-4-aprovadas-a1a3) (A1–A3). Plano técnico em [phase-4-plan.md](../10-roadmap/phase-4-plan.md) (`PROPOSTO`). **Pendentes, a decidir no incremento que os implementar**: `VN-16` (distribuição posterior de leads sem proprietário), `VN-17` (resíduos de disponibilidade), `VN-06`–`VN-15` do plano (inclui `business_hours`, notificações, conversa, ociosidade) e pendências de D-070 (BR-15/16/18, filas, terminologia de papéis). |
 | Fase 5 — WhatsApp/Conversas | D-011, D-013, D-024, D-025, D-039 (D-010 e D-045 — telefonia/discador — estão **fora de escopo**, ver D-070) e o **Gate de entrada** de [D-072](#d-072--whatsapp-é-uma-frente-própria-fase-5-núcleo-de-conversas-agnóstico-ao-canal-fase-4) — integração por tenant/conta ([D-074](#d-074--integração-de-whatsapp-configurada-por-tenant-por-conta-de-canal-wa-02)), módulo legado congelado e reconciliado na F5.0 ([D-073](#d-073--módulo-communications-implementado-fora-da-especificação-whatsapp-outbound-e-automações)) e as pendências restantes `WA-01`–`WA-30` de [whatsapp-architecture.md](../03-architecture/whatsapp-architecture.md). **Implementação bloqueada.** |
 | Fase 6 — Omnichannel | Nenhuma definida hoje; provedores de canais futuros (ex.: D-040) são decididos quando entrarem no roadmap |
 | Fase 7+ | D-038, D-040, D-046, D-049 |
@@ -501,6 +501,8 @@ Quando o round-robin (D-068) não encontra nenhum vendedor elegível, a Fase 3 r
 
 **Motivo**: evitar antecipar o módulo de Notificações (explicitamente Fase 4 no roadmap) só por causa de um único gatilho da Fase 3; o registro de auditoria já é suficiente para rastreabilidade/investigação até lá.
 
+**Nota (2026-10-05, [D-075](#d-075--lead-sem-proprietário-é-um-estado-legítimo-do-negócio))**: o evento `lead.unassigned` é **informativo** — registra que o Lead ficou sem proprietário, mas Lead sem proprietário **não é erro nem falha**; é um estado legítimo do negócio. Esta decisão não muda.
+
 ## Ajuste de escopo de produto (2026-09-21)
 
 Ajuste solicitado pelo responsável pelo produto **após** a implementação das Fases 3.1–3.5. É uma correção de definição de produto e de terminologia — **não altera código, schema, migrations nem decisões anteriores fechadas** (D-031 a D-069).
@@ -527,7 +529,7 @@ O produto **não é** um Call Center telefônico tradicional. Ficam **fora de es
 5. Terminologia dos papéis de fábrica/personas "Supervisor (Call Center)" e "Operador de Call Center" (renomear papéis exige mudança de seed — fora deste ajuste).
 
 ### D-071 — Disponibilidade de consultor/atendente para distribuição automática
-**Status**: regras de negócio `DECIDIDO` (regra base em 2026-09-21; estados, alteração, escopo e `business_hours` consolidados em 2026-09-29) · implementação técnica **a planejar na Fase 4** · detalhes da regra de ociosidade de atendimento de Cliente `VALIDAÇÃO DE NEGÓCIO` (incremento da Fase 4 que implementar atendimento/conversas de Cliente). **Deixa de ser decisão de negócio bloqueante** para o conceito básico de disponibilidade.
+**Status**: regras de negócio `DECIDIDO` (regra base em 2026-09-21; estados, alteração, escopo e `business_hours` consolidados em 2026-09-29; **estado inicial, tenant sem disponibilidade, carteira existente e quem altera cada estado fechados em 2026-10-05, no F4.0**) · implementação técnica **planejada** em [phase-4-plan.md](../10-roadmap/phase-4-plan.md) (`PROPOSTO`; execução a partir do F4.2) · detalhes da regra de ociosidade de atendimento de Cliente `VALIDAÇÃO DE NEGÓCIO` (incremento da Fase 4 que implementar atendimento/conversas de Cliente). **Deixa de ser decisão de negócio bloqueante** para o conceito básico de disponibilidade.
 
 **Regra decidida (2026-09-21)**: a distribuição automática de novos Leads/atendimentos só considera consultores/atendentes **ativos e disponíveis**. Usuário ativo porém **indisponível não integra o conjunto elegível** do Round Robin. A disponibilidade é um estado comercial/de atendimento do usuário — **não é "Call Center"**, **não é atrelada a um papel específico** e é reutilizável por: distribuição de leads, distribuição de conversas de WhatsApp, filas de atendimento e outros canais do Omnichannel. Ver BR-14 e BR-05.
 
@@ -544,21 +546,31 @@ O produto **não é** um Call Center telefônico tradicional. Ficam **fora de es
 
 **Conceito já existente na especificação (reaproveitar, não recriar)**: `agent_status_log` em [entities.md](../04-database/entities.md) (`user_id`, `status` enum `available | busy | paused | offline`, `started_at`, `ended_at`), RF-15 (usuário altera seu status), BR-14/BR-16, `AgentStatus` e o evento `agent.status_changed` em [architecture.md](../03-architecture/architecture.md). Hoje esse conceito está descrito como parte do "Call Center" e não existe no `schema.prisma`. O enum de `entities.md` é anterior a esta consolidação e **não reflete os cinco estados decididos** — será revisto no planejamento técnico da Fase 4. Esta decisão não define enum, campo, tabela nem migration.
 
-**Lacunas levantadas em 2026-09-21 — situação após a consolidação de 2026-09-29**:
+**Consolidação F4.0 (2026-10-05, validada pelo responsável pelo produto — fecha `VN-01` a `VN-05` do plano da Fase 4)**:
+
+1. **Estado inicial (VN-01)**: um **novo consultor inicia como `INDISPONÍVEL`**. Para participar da distribuição automática, ele precisa alterar **manualmente** seu estado para `DISPONÍVEL`. **Não há transição automática por login/logout** nesta primeira implementação.
+2. **Tenant sem disponibilidade (VN-02)**: se o tenant não utilizar/habilitar o mecanismo de disponibilidade, **mantém-se o comportamento atual da Fase 3** — a distribuição segue pelas regras atuais de elegibilidade (D-068). O estado de disponibilidade **não é obrigatório** para o CRM funcionar.
+3. **Carteira existente (VN-03)**: alterar o estado do consultor para `INDISPONÍVEL` **não remove** os Leads já atribuídos a ele; ele mantém a carteira. A disponibilidade controla principalmente a **elegibilidade para receber NOVOS Leads**. **Nenhuma redistribuição automática** da carteira e nenhum mecanismo automático de "retirar carteira" nesta fase. `INDISPONÍVEL` não é perda da carteira.
+4. **Leads sem proprietário (VN-04)**: são um estado legítimo do negócio — ver [D-075](#d-075--lead-sem-proprietário-é-um-estado-legítimo-do-negócio).
+5. **Quem altera os estados (VN-05)**: estados `DISPONÍVEL`, `INDISPONÍVEL`, `PAUSA`, `ALMOÇO`, `TREINAMENTO`. O **consultor** altera o próprio estado entre `DISPONÍVEL`, `INDISPONÍVEL`, `PAUSA` e `ALMOÇO`; **não** pode entrar nem sair de `TREINAMENTO`. **Gestor/Admin** coloca e retira o consultor de `TREINAMENTO`. O papel do **Sistema** pode existir futuramente para alterações automáticas **quando uma regra de negócio for definida** — **nenhuma regra automática é criada agora**. (Refina o item 3 da consolidação de 2026-09-29, que citava "Gestor ou Sistema".)
+
+**Continua `PENDENTE` (não decidido nesta consolidação)**: estado dos usuários **já existentes** quando o tenant habilita disponibilidade (o plano propõe, tecnicamente, tratar ausência de registro como `INDISPONÍVEL`, coerente com o item 1 — **a confirmar**); se Gestor/Admin podem alterar também os **demais** estados de terceiros; duração/término automático de `TREINAMENTO`; mapeamento dos papéis de fábrica (gerente, supervisor, diretor) à permissão de gestão de disponibilidade; quem habilita o mecanismo no tenant — agrupados como `VN-17` em [phase-4-plan.md](../10-roadmap/phase-4-plan.md). Também continuam pendentes: política de distribuição posterior de Leads sem proprietário (`VN-16`), todos os detalhes de `business_hours` (feriados, restrição de acesso, liberação excepcional — `VN-07`/`VN-08`), ociosidade (`VN-13`), BR-16 (`VN-06`), filas, SLA e disposições (`VN-12`) e notificações (`VN-11`).
+
+**Lacunas levantadas em 2026-09-21 — situação após a consolidação de 2026-10-05**:
 
 | # | Lacuna | Situação |
 |---|---|---|
-| 1 | Estado atual vs. histórico (`agent_status_log` é só histórico) | Técnica — planejamento da Fase 4 |
-| 2 | Conjunto de estados e quais contam como disponível | **Resolvida** (itens 1–2). Relação com login/logout/sessão não definida — planejamento da Fase 4 |
-| 3 | Quem altera | **Resolvida** (item 3). Outras transições automáticas (login, logout, inatividade) não definidas |
-| 4 | Escopo por usuário ou por fila/canal | **Resolvida**: global por usuário (item 2) |
-| 5 | Relação com `crm.business_hours` | **Resolvida** (item 4): não altera status; pode restringir acesso. Formato da configuração e da liberação excepcional — etapa de implementação |
-| 6 | Fallback quando o tenant não usar disponibilidade | Não definida — decidir no planejamento da Fase 4 |
-| 7 | Leads já atribuídos a quem fica indisponível | Não definida — permanecem com o dono (comportamento atual) até decisão em contrário |
-| 8 | Nomenclatura neutra (`agent_status_log`/`AgentStatus`) | Técnica — planejamento da Fase 4 (item 7 reforça abandonar o vocabulário de Call Center) |
+| 1 | Estado atual vs. histórico (`agent_status_log` é só histórico) | Técnica — proposta no plano (tabela de estado atual + histórico, `TD-01`); não é regra de negócio |
+| 2 | Conjunto de estados e quais contam como disponível | **Resolvida** (2026-09-29). Relação com login/logout: **resolvida em 2026-10-05** — sem transição automática na primeira implementação |
+| 3 | Quem altera | **Resolvida** (2026-10-05, item 5). Resíduos em `VN-17` |
+| 4 | Escopo por usuário ou por fila/canal | **Resolvida**: global por usuário |
+| 5 | Relação com `crm.business_hours` | **Resolvida** (2026-09-29): não altera status; pode restringir acesso. Formato, feriados, regra de acesso e liberação excepcional — `VN-07`/`VN-08` (pendentes) |
+| 6 | Fallback quando o tenant não usar disponibilidade | **Resolvida** (2026-10-05, item 2): comportamento da Fase 3 |
+| 7 | Leads já atribuídos a quem fica indisponível | **Resolvida** (2026-10-05, item 3): carteira mantida, sem redistribuição |
+| 8 | Nomenclatura neutra (`agent_status_log`/`AgentStatus`) | Técnica — proposta no plano (módulo `availability`); a representação e o enum são definidos no F4.2 |
 
 ### D-072 — WhatsApp é uma frente própria (Fase 5); núcleo de Conversas agnóstico ao canal (Fase 4)
-**Status**: `DECIDIDO` (escopo e fronteira de intenção, 2026-09-30) · fronteira detalhada `PROPOSTO` (aguarda aprovação) · **Gate**: implementação bloqueada até o Gate de entrada
+**Status**: `DECIDIDO` (escopo e fronteira de intenção, 2026-09-30) · fronteira detalhada: **diretrizes de planejamento da Fase 4 aprovadas em 2026-10-05** ([D-076](#d-076--fronteira-f4f5-diretrizes-de-planejamento-da-fase-4-aprovadas-a1a3)) — a aprovação do critério G7 do Gate da Fase 5 continua pendente · **Gate**: implementação bloqueada até o Gate de entrada (inalterado)
 
 O CRM Universal terá integração com o **WhatsApp oficial**, configurada por tenant ([D-074](#d-074--integração-de-whatsapp-configurada-por-tenant-por-conta-de-canal-wa-02)). Por ser uma frente grande e de alto impacto arquitetural, **não é tratada como feature da Fase 4**:
 
@@ -622,6 +634,43 @@ A estrutura `channel_accounts` proposta no discovery ([whatsapp-architecture.md 
 
 **Consequências (sem reabrir decisões fechadas)**: a expressão "WhatsApp oficial único da empresa" usada no briefing do discovery fica **superada** por esta formulação. A convenção de variáveis `WHATSAPP_*` de [D-024](#d-024--convenção-de-variáveis-de-ambiente-de-provedores) (`PROPOSTO`) não pode ser a fonte de credenciais **por tenant** — a revisão é feita na Fase 5 (WA-03). O módulo legado `communications` usa credenciais globais por ambiente e, portanto, diverge deste princípio — tratado em [D-073](#d-073--módulo-communications-implementado-fora-da-especificação-whatsapp-outbound-e-automações).
 
+### D-075 — Lead sem proprietário é um estado legítimo do negócio
+**Status**: `DECIDIDO` (2026-10-05, F4.0) · política detalhada de distribuição posterior `PENDENTE` (`VN-16`)
+
+**Decisão**: o CRM **deve permitir naturalmente** a existência de Leads **sem proprietário** (`owner_id` nulo). Lead sem proprietário **não é necessariamente** erro, exceção, abandono ou falha de distribuição — é um **estado válido do negócio**.
+
+**Cenário real que motiva a decisão**: uma loja recebe uma minuta/lista com cerca de 300 pessoas; elas são cadastradas/importadas e passam a existir como Leads; nesse momento não há necessariamente um consultor associado a cada Lead, e centenas de Leads podem permanecer sem proprietário até serem atribuídos/distribuídos conforme as regras do tenant. É apenas um **exemplo** de negócio: **não há limite de 300** nem regra especial para essa quantidade.
+
+**O modelo deve permitir naturalmente**:
+
+```
+Lead criado/importado → sem proprietário → aguardando atribuição/distribuição → atribuído → trabalhado → convertido em Cliente
+Lead criado/importado → sem proprietário → atribuído posteriormente → permanece como Lead → pode ser trabalhado novamente no futuro
+```
+
+**Consequências**:
+- **Não assumir** que todo Lead tem proprietário na criação; `owner_id` continua **anulável** (já é, no `schema.prisma` e em [entities.md](../04-database/entities.md)).
+- **Distribuição não é requisito obrigatório** para criar um Lead.
+- **Não criar regra automática** apenas para eliminar Leads sem proprietário.
+- Leads podem surgir de **fontes diferentes de WhatsApp**: cadastro manual, importação, listas/minutas fornecidas pelo tenant e outras fontes futuras.
+- A disponibilidade ([D-071](#d-071--disponibilidade-de-consultoratendente-para-distribuição-automática)) afeta a elegibilidade para **novos** Leads e **não** retira a carteira existente; indisponibilidade **não é a única origem** de Lead sem proprietário.
+- **Lead ≠ Cliente** (BR-28): o Lead representa alguém que ainda não é Cliente; se não houver conversão, continua sendo Lead e pode ser trabalhado novamente.
+
+**Compatibilidade (sem reabrir decisões fechadas)**: [D-068](#d-068--estratégia-técnica-de-round-robin-cursor-em-tenant_settings) permanece como o comportamento da Fase 3 (criação sem `owner_id` aciona o round-robin — mantido para tenants sem disponibilidade, [D-071](#d-071--disponibilidade-de-consultoratendente-para-distribuição-automática) item 2); [D-069](#d-069--alerta-de-lead-não-atribuído-só-auditoria-sem-módulo-de-notificações) permanece (evento `lead.unassigned` informativo).
+
+**Lacunas técnicas observadas no código (2026-10-05) — documentadas, não decididas, nada alterado**: (1) a criação e a **importação** de Leads **sempre** acionam o round-robin quando não há `owner_id`, então **não existe forma explícita** de criar/importar Leads deliberadamente sem proprietário quando há consultores elegíveis; (2) a listagem de Leads filtra `owner_id` por igualdade e **não tem filtro "sem proprietário"** (o frontend já rotula "Sem responsável"); (3) **não há atribuição em lote**. Se e como tratar essas lacunas depende da política de `VN-16`.
+
+**Pendente (`VN-16`)**: quando/como Leads sem proprietário são distribuídos depois (distribuição automática em lote, reivindicação pelo consultor, atribuição por Gestor, ações em lote), e se a criação/importação distribui automaticamente ou mantém sem proprietário (por tenant, por origem, por opção na importação). **Não inventado aqui.**
+
+### D-076 — Fronteira F4/F5: diretrizes de planejamento da Fase 4 aprovadas (A1–A3)
+**Status**: `DECIDIDO` como **diretriz de planejamento** (2026-10-05, F4.0) — **não** é nova decisão de negócio e **não** altera o Gate da Fase 5 ([D-072](#d-072--whatsapp-é-uma-frente-própria-fase-5-núcleo-de-conversas-agnóstico-ao-canal-fase-4))
+
+Origem: análise da fronteira F4/F5 em [phase-4-plan.md](../10-roadmap/phase-4-plan.md) §4. Aprovado pelo responsável pelo produto:
+
+- **A1 — Conversation**: o núcleo de `Conversation` **pode** fazer parte do **F4.6**, **agnóstico ao canal** e **sem dependência de WhatsApp**. Se as regras necessárias para Conversation não estiverem fechadas quando o F4.6 chegar, o incremento **pode ser deslocado para o F5.0**. Essa condição é de **planejamento**, não uma nova decisão de negócio.
+- **A2 — Componentes específicos de canal**: **não** implementar na F4 `channel_account_id`, `file_assets`, `ChannelAdapter`, credenciais de canal nem infraestrutura específica de WhatsApp; esses elementos pertencem à **Fase 5** (consistente com [D-074](#d-074--integração-de-whatsapp-configurada-por-tenant-por-conta-de-canal-wa-02)). A F4 prepara o núcleo agnóstico que a F5 consome.
+- **A3 — Vínculos de Conversation**: `Conversation` usa **referências dedicadas** `customer_id`, `lead_id` e `opportunity_id`; **não** reutiliza automaticamente o polimorfismo de [D-031](#d-031--modelagem-polimórfica-de-notastarefascompromissos). Preserva a distinção Lead × Cliente × Oportunidade; **uma Conversation não transforma automaticamente um Lead em Cliente** (BR-28).
+
 ## Regras de negócio validadas pelo responsável pelo produto (Fase 3)
 
 Estas decisões **não devem ser inventadas por nenhum agente** — foram validadas diretamente com o responsável pelo produto em 2026-09-16, no fechamento do Decision Gate da Fase 3. Os documentos correspondentes deixam de carregar `[VALIDAÇÃO DE NEGÓCIO NECESSÁRIA]` e passam a refletir a regra decidida abaixo.
@@ -676,3 +725,4 @@ Toda exclusão continua sendo **soft delete** (BR-22) e continua sendo auditada 
 | 2026-09-29 | Consolidação das regras de negócio de disponibilidade (documentação apenas, sem código/schema). D-071 atualizada: cinco estados (Disponível, Indisponível, Pausa, Almoço, Treinamento); só Disponível recebe distribuição automática; disponibilidade global por usuário; consultor controla o próprio status, exceto Treinamento (só Gestor/Sistema); `business_hours` configurável por tenant, não altera status, pode restringir acesso a Leads/Conversas com liberação excepcional pelo Admin; Lead ≠ Cliente; ociosidade é regra de atendimento de Cliente (não de Lead), detalhes adiados para a Fase 4; produto denominado "CRM Universal". D-071 deixa de bloquear o conceito básico de disponibilidade; implementação técnica fica para a Fase 4. BR-05/14/16 ajustadas, BR-27/28 criadas, RF-15 atualizado. |
 | 2026-09-30 | Discovery e arquitetura do WhatsApp (documentação apenas, sem código/schema/migration/endpoint). D-072 (`DECIDIDO`): WhatsApp é frente própria (Fase 5), Fase 4 agnóstica ao canal, Fase 6 sobre o mesmo núcleo; implementação bloqueada por Gate explícito (10 critérios). D-073 (`VALIDAÇÃO DE NEGÓCIO`): divergência registrada — o módulo `communications` (WhatsApp outbound + automações, commit `3ed66f2`) existe no backend fora da especificação; destino a decidir antes da Fase 5. Novo documento [whatsapp-architecture.md](../03-architecture/whatsapp-architecture.md): estado atual, fronteira F4/F5/F6 (proposta), arquitetura de referência, 30 pendências (WA-01–WA-30), riscos e incrementos F5.0–F5.7. Corrigidas referências "Fase 6" para WhatsApp em integrations, workflows e use-cases. |
 | 2026-09-30 | Ajuste final do discovery do WhatsApp (documentação apenas). D-074 (novo, princípio `DECIDIDO`): a integração de WhatsApp é configurada **por tenant** e por conta de canal (`ChannelAccount` 0..N por tenant) — sem WhatsApp global, sem credencial global, sem número único, sem quantidade fixa; detalhes (máximo, onboarding, UI, modelo comercial, BSP, secrets) ficam na Fase 5. Resolve o princípio de WA-02. D-073: congelamento `DECIDIDO` (sem evolução funcional, sem apagar/refatorar agora, sem duplicar WhatsApp nele); reconciliação na F5.0. Gate F5 (G1–G10) continua **fechado**. |
+| 2026-10-05 | **F4.0 — fechamento de decisões da Fase 4** (documentação apenas, sem código/schema/migration/endpoint). D-071: `VN-01` estado inicial `INDISPONÍVEL`, sem transição automática por login/logout; `VN-02` tenant sem disponibilidade mantém o comportamento da Fase 3; `VN-03` indisponibilidade não remove a carteira nem redistribui; `VN-05` consultor altera o próprio estado exceto `TREINAMENTO` (Gestor/Admin; Sistema só futuramente, sem regras automáticas). D-075 (novo, `DECIDIDO`): **Lead sem proprietário é estado legítimo do negócio** (`VN-04`); lacunas técnicas de criação/importação documentadas; política posterior pendente (`VN-16`). D-076 (novo): diretrizes de planejamento A1–A3 aprovadas (Conversation no F4.6, condicional/deslocável para o F5.0; nada específico de canal na F4; FKs dedicadas `customer_id`/`lead_id`/`opportunity_id`). Mantidas pendentes: ociosidade, `business_hours` (detalhes), SLA, filas, disposições, notificações e demais `VN` do plano. |

@@ -108,7 +108,7 @@ Implementado como **sub-recurso de `customers`** (`GET/POST /v1/customers/{id}/c
 |---|---|---|---|
 | customer_id | UUID (FK customers) | não | Preenchido ao vincular/converter |
 | source_id | UUID (FK lead_sources) | sim | BR-03 |
-| owner_id | UUID (FK users) | não | |
+| owner_id | UUID (FK users) | não | Nulo = **Lead sem proprietário**, estado válido (BR-29, [D-075](../00-governance/decision-register.md#d-075--lead-sem-proprietário-é-um-estado-legítimo-do-negócio)) |
 | status | enum(new, in_progress, qualified, disqualified, converted) | sim | |
 | disqualify_reason | string | não | Obrigatório se status=disqualified (BR-06) |
 
@@ -196,12 +196,12 @@ Implementado como **sub-recurso de `customers`** (`GET/POST /v1/customers/{id}/c
 `queue_id`, `user_id`.
 
 ### `agent_status_log`
-Conceito de **disponibilidade** do consultor/atendente (BR-14, RF-15), base de [D-071](../00-governance/decision-register.md#d-071--disponibilidade-de-consultoratendente-para-distribuição-automática). É apenas histórico — **não há campo de status corrente**; representação do estado atual, conjunto de estados e quem os altera estão pendentes de validação de negócio (D-071).
+Conceito de **disponibilidade** do consultor/atendente (BR-14, RF-15), base de [D-071](../00-governance/decision-register.md#d-071--disponibilidade-de-consultoratendente-para-distribuição-automática). É apenas histórico — **não há campo de status corrente**. O **conjunto de estados** (5), o **estado inicial** (Indisponível) e **quem altera** cada estado foram **decididos** em D-071 (2026-10-05); o enum abaixo é **anterior** e não reflete os 5 estados. A representação do estado atual e do histórico (e a nomenclatura neutra) são definidas no planejamento técnico — [phase-4-plan.md §6](../10-roadmap/phase-4-plan.md) (`PROPOSTO`; execução no F4.2).
 
 | Campo | Tipo | Obrigatório | Notas |
 |---|---|---|---|
 | user_id | UUID (FK users) | sim | |
-| status | enum(available, busy, paused, offline) | sim | Conjunto e semântica sujeitos a D-071 |
+| status | enum(available, busy, paused, offline) | sim | **Legado** (4 estados) — substituído pelos 5 estados de D-071 no F4.2 |
 | started_at | timestamptz | sim | |
 | ended_at | timestamptz | não | |
 
@@ -234,8 +234,10 @@ Conceito de **disponibilidade** do consultor/atendente (BR-14, RF-15), base de [
 ### `conversations`
 | Campo | Tipo | Obrigatório | Notas |
 |---|---|---|---|
-| customer_id | UUID (FK customers) | não | |
-| channel_type | enum(whatsapp, email, sms) | sim | |
+| customer_id | UUID (FK customers) | não | Vínculo dedicado (A3, [D-076](../00-governance/decision-register.md#d-076--fronteira-f4f5-diretrizes-de-planejamento-da-fase-4-aprovadas-a1a3)) |
+| lead_id | UUID (FK leads) | não | A3: vínculo dedicado; Conversation **não** converte Lead em Cliente (BR-28) |
+| opportunity_id | UUID (FK opportunities) | não | A3: vínculo dedicado, quando aplicável |
+| channel_type | enum(whatsapp, email, sms) | sim | Valor neutro/extensível: `PROPOSTO` ([phase-4-plan.md §6.7](../10-roadmap/phase-4-plan.md), `TD-12`). `channel_account_id` e infraestrutura de canal são **da Fase 5** (A2) |
 | queue_id | UUID (FK queues) | não | |
 | status | enum(open, closed) | sim | |
 | assigned_to | UUID (FK users) | não | |
