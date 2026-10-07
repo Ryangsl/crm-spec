@@ -162,6 +162,23 @@ Implementado como **sub-recurso de `customers`** (`GET/POST /v1/customers/{id}/c
 | author_id | UUID (FK users) | sim | |
 | content | text | sim | |
 
+### `interactions` *(F4.4 — D-079)*
+Registro **manual** de contato. A linha do tempo é um *read model* (Interaction + Note): nada é copiado para esta tabela.
+| Campo | Tipo | Obrigatório | Notas |
+|---|---|---|---|
+| entity_type | enum(lead, customer, opportunity) | sim | Polimórfico controlado (D-031) |
+| entity_id | UUID | sim | Validado no service, mesmo tenant |
+| author_id | UUID (FK users) | sim | Sempre o usuário autenticado |
+| channel | text | sim | Texto livre (até 100) |
+| direction | enum(inbound, outbound) | não | |
+| summary | text | sim | Até 5000 |
+| outcome | text | não | Texto livre (até 200) |
+| occurred_at | timestamp | sim | Padrão: agora |
+| created_at | timestamp | sim | |
+| deleted_at | timestamp | não | Soft delete; **sem edição** |
+
+Índices: `(tenant_id, entity_type, entity_id, occurred_at desc)`, `(tenant_id, author_id)`. Sem `call`/telefonia (D-070).
+
 ### `tasks`
 | Campo | Tipo | Obrigatório | Notas |
 |---|---|---|---|

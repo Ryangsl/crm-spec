@@ -215,7 +215,7 @@ Convenções (todas seguem o schema atual): `id` UUID v7; `tenant_id` obrigatór
 - `crm.availability.enabled` (boolean; **ausência = comportamento atual**, ver §9.6), `crm.business_hours` (schema v1 proposto na §13), `crm.business_hours.access_restriction` (VN-07). Sem migration (tabela existe).
 
 ### 6.4 `interactions` — registro manual de atendimento
-- **Finalidade**: fato "houve contato com este Cliente/Lead" registrado por uma pessoa (MVP: "por qual canal, com qual resultado"). **Campos**: `entity_type` (`lead|customer|opportunity`, mesmo enum de D-031), `entity_id`, `author_id`, `channel` (texto curto — catálogo `PENDENTE` VN-09), `direction?` (`inbound|outbound` — VN-09), `summary`, `outcome?`, `occurred_at`, `deleted_at`. **Índices**: `(tenant_id, entity_type, entity_id, occurred_at desc)`, `(tenant_id, author_id)`. **Constraints**: validação de `entity_id` no Service (padrão D-031). **Auditoria**: `interaction.created/deleted`. **Riscos**: sobreposição com Nota — regra de fronteira: *Nota = anotação livre; Interação = evento de contato com data, canal e resultado*.
+- **Finalidade**: fato "houve contato com este Cliente/Lead" registrado por uma pessoa (MVP: "por qual canal, com qual resultado"). **Campos**: `entity_type` (`lead|customer|opportunity`, mesmo enum de D-031), `entity_id`, `author_id`, `channel` (texto livre — **decidido no F4.4**, sem catálogo), `direction?` (`inbound|outbound`, opcional), `summary`, `outcome?`, `occurred_at`, `deleted_at`. **Índices**: `(tenant_id, entity_type, entity_id, occurred_at desc)`, `(tenant_id, author_id)`. **Constraints**: validação de `entity_id` no Service (padrão D-031). **Auditoria**: `interaction.created/deleted`. **Riscos**: sobreposição com Nota — regra de fronteira: *Nota = anotação livre; Interação = evento de contato com data, canal e resultado*.
 
 ### 6.5 `notifications` (já documentada)
 - `user_id`, `type`, `payload jsonb`, `read_at`, `created_at`. **Índice**: `(tenant_id, user_id, read_at, created_at desc)`. Sem soft delete. **Riscos**: retenção indefinida; eventos que geram notificação `PENDENTE` (VN-11).
@@ -347,7 +347,7 @@ Regras de fronteira: Nota = anotação; Interação = evento de contato; Tarefa/
 
 **Cursor da união (TD-02)**: `(occurred_at, source, id)`; implementação por `UNION ALL` em SQL ou por busca por fonte + merge limitado — decidir no F4.4 com medição. Índices por fonte já existem `(tenant, entity_type, entity_id)`.
 
-**Efeito colateral proposto**: um único ponto (`InteractionsService.touch`) atualiza `Customer.lastInteractionAt` quando o negócio definir o que conta como interação (VN-09). Para **Lead** (que não tem esse campo) nada é escrito — coerente com BR-28.
+**Efeito colateral proposto — NÃO adotado no F4.4**: o "escritor único" de `Customer.lastInteractionAt` (`InteractionsService.touch`) foi descartado por decisão do produto ([D-079](../00-governance/decision-register.md#d-079--interações-e-linha-do-tempo-f44)): a semântica atual do campo é mantida e ele não é derivado de Interaction.
 
 ### 11.2 Vínculos e Lead ≠ Cliente
 `Conversation` referencia `customer_id` **ou** `lead_id` (ambos anuláveis) e, opcionalmente, `opportunity_id`. **Nenhuma regra converte Lead em Cliente por existir conversa** (BR-28). Um Lead que não converte **permanece Lead** e pode ser trabalhado novamente ([D-075](../00-governance/decision-register.md#d-075--lead-sem-proprietário-é-um-estado-legítimo-do-negócio)). O que ocorre com a conversa quando o Lead é convertido (migrar? duplicar vínculo?) é **VN-14**. A timeline do Cliente inclui ou não o histórico do Lead de origem: **VN-09**.
@@ -471,7 +471,7 @@ Sem tabela de participantes na F4 (um responsável por vez; histórico em `conve
   - **Desvio consciente de TD-11**: a Fase 3 reinicia do primeiro id quando o último escolhido saiu do conjunto **por permissão/desativação**; isso foi **mantido** para a flag desligada ser idêntica ao comportamento anterior. O problema real de justiça (último escolhido ficou indisponível) está corrigido.
 - **Testes automatizados**: backend — 11 unit (`round-robin.service.spec.ts`: flag off, pular indisponíveis, volta circular, justiça, nenhum elegível, leitura após o lock) e 23 e2e (`distribution-availability.e2e-spec.ts`: flag off/ligada, cada estado, rodízio com pulos, reentrada, cursor, nenhum elegível + auditoria, atribuição manual, importação, carteira intocada, sem atribuição retroativa, isolamento entre tenants incluindo linha de outro `tenant_id`, concorrência com e sem elegíveis e com mudança de estado concorrente). **Dois testes de incrementos anteriores foram substituídos** porque afirmavam o oposto da decisão do F4.3 ("flag ligada não afeta a distribuição"): um em `availability.e2e-spec.ts` (F4.2) e um em `tenant-settings.e2e-spec.ts` (F4.1, mantido só para o horário sem efeito, VN-07). Verificado que o e2e novo **falha** com o filtro desligado (19/23). Resultado: lint/tsc/build ✅; unit **123**, integração **2**, e2e **197**; frontend lint/tsc/build ✅, **165** testes.
 
-### F4.4 — Interações e timeline
+### F4.4 — Interações e timeline — **implementado em 2026-10-06 (branch `feat/f4-4-interactions-timeline`, commits locais, sem push; aguardando revisão)**
 - **Objetivo**: histórico unificado (critério de aceite do roadmap para a F4).
 - **Backend**: `interactions` (entidade + `TimelineService` como read model); `GET /customers|leads|opportunities/{id}/interactions`; escritor único de `lastInteractionAt`.
 - **Frontend**: `TimelineSection` nas 3 páginas de detalhe; `InteractionForm`; `useInfiniteQuery`.
@@ -482,6 +482,14 @@ Sem tabela de participantes na F4 (um responsável por vez; histórico em `conve
 - **Decisões necessárias**: **VN-09**, VN-10 (visibilidade), TD-02.
 - **Aceite**: linha do tempo única de leads, oportunidades e atendimentos manuais por entidade.
 - **Fora**: mensagens/conversas; edição de interação; automações.
+- **Decisões do F4.4** ([D-079](../00-governance/decision-register.md#d-079--interações-e-linha-do-tempo-f44)): timeline = Interactions + Notes; sem herança Lead × Customer (`VN-14` aberta); `channel`/`outcome` texto livre, `direction` opcional, sem edição; `lastInteractionAt` **inalterado** (R13 resolvido por manutenção); tenant-only (`VN-10` para interações); cursor `(timestamp, source, id)` + merge em memória (`TD-02`); P1 fora. **Divergência consciente do plano**: o "escritor único de `lastInteractionAt`" **não** foi implementado (decisão do produto).
+- **Implementado (fatos)**:
+  - **Banco**: migration aditiva `20261006120000_f4_4_interactions` (enum `InteractionDirection`, tabela `interactions`, índices `(tenant, entity_type, entity_id, occurred_at desc)` e `(tenant, author)`); sem alteração em tabelas existentes.
+  - **Backend**: módulo `interactions` (`InteractionsService` create/remove, `TimelineService` read model, `timeline-cursor.ts` puro, 2 controllers). `POST /v1/interactions`, `DELETE /v1/interactions/{id}`, `GET /v1/{customers|leads|opportunities}/{id}/interactions`. `NotesRepository` ganhou `listForTimeline` (e é exportado). Sem notes:read a timeline traz só interações. Seed: `interactions:create|read|delete`.
+  - **Frontend**: `TimelineSection` (carregamento incremental, notas somente leitura, exclusão só de interações) e `InteractionForm` nas três páginas de detalhe; criar/editar/excluir nota invalida a timeline.
+  - **OpenAPI**: removido o legado `call|message|note`; documentadas as 5 rotas, o cursor específico da timeline e os schemas `Interaction`/`InteractionCreate`/`TimelineItem`/`TimelinePage`.
+- **Testes automatizados**: backend — 22 unit (`timeline-cursor.spec`, `timeline.service.spec`, `interactions.service.spec`) e 30 e2e (`interactions-timeline.e2e-spec`: criação por entidade, direction, validação, 404/isolamento de tenant, RBAC, soft delete, auditoria, unificação e ordem, Lead ≠ Customer, fontes excluídas, cursor com empates exatos em todas as fronteiras de página, `has_more`, `lastInteractionAt` intocado); verificado que o e2e **falha** ao quebrar o desempate do cursor. Frontend — 14 (`TimelineSection.test`, `interactions.test`). Resultado: backend lint/tsc/build ✅, unit **145**, integração **2**, e2e **227**; frontend lint/tsc/build ✅, **179** testes. Nenhum teste existente alterado.
+- **Operacional (pendente)**: aplicar a migration (`prisma migrate deploy`) e rodar o seed idempotente nos tenants existentes para receberem `interactions:*`.
 
 ### F4.5 — Notificações (primeira versão)
 - **Objetivo**: entregar o destino para "lead atribuído/conversa atribuída" e alertas.
@@ -553,7 +561,7 @@ Sem tabela de participantes na F4 (um responsável por vez; histórico em `conve
 | ID | Decisão | Proposta / opções | Quando |
 |---|---|---|---|
 | TD-01 | ~~Estado atual da disponibilidade~~ **Resolvida (Gate do F4.2, [D-077](../00-governance/decision-register.md#d-077--disponibilidade-modelo-de-dados-e-permissões-td-01-td-08))**: `user_availability` 1:1 + `availability_log` append-only; linha sob demanda; ausência = `INDISPONÍVEL`; mesma transação | — | — |
-| TD-02 | Timeline: `UNION ALL` SQL × merge por fonte; cursor `(occurred_at, source, id)` | Medir no F4.4 | F4.4 |
+| TD-02 | ~~Timeline: `UNION ALL` SQL × merge por fonte; cursor `(occurred_at, source, id)`~~ **Resolvida no F4.4** ([D-079](../00-governance/decision-register.md#d-079--interações-e-linha-do-tempo-f44)): merge em memória com `limit + 1` por fonte; cursor `(timestamp, source, id)` | — | — |
 | TD-03 | ~~`Conversation`: FKs dedicadas × polimórfico~~ **Resolvida (A3/D-076)**: FKs dedicadas | §11.4 | — |
 | TD-04 | ~~Fuso horário: `Intl` × biblioteca~~ **Resolvida no F4.1**: `Intl` (sem dependência nova; validação do nome IANA e avaliador testados com relógio fixo, incl. horário de verão) | — | — |
 | TD-05 | Exceções de acesso: tabela (recomendada) × chave em settings × permissão | §6.10 | F4.7 |
@@ -580,12 +588,12 @@ Sem tabela de participantes na F4 (um responsável por vez; histórico em `conve
 | VN-06 | BR-16: limite de Pausa, destinatário do alerta, se Almoço/Treinamento contam | F4.5 |
 | VN-07 | `business_hours`: campos (dias, janelas, feriados), fuso, por tenant único ou por filial/equipe; restrição de acesso ligada por padrão? a quem, bloqueio total ou só escrita, isenção de Admin/gestor; efeito na distribuição | F4.1, F4.3, F4.7 |
 | VN-08 | Liberação excepcional: por usuário/temporária/escopo, duração, motivo obrigatório, quem solicita | F4.7 |
-| VN-09 | Interações manuais: catálogo de canais/resultados, direção, o que conta como "interação" para `lastInteractionAt`, editar/excluir, timeline do Cliente inclui histórico do Lead de origem, Tarefas/Compromissos entram na timeline | F4.4 |
-| VN-10 | Visibilidade de interações/conversas: próprio × equipe × tenant (D-058 é tenant-only) | F4.4, F4.6 |
+| VN-09 | Interações manuais: catálogo de canais/resultados, direção, o que conta como "interação" para `lastInteractionAt`, editar/excluir, timeline do Cliente inclui histórico do Lead de origem, Tarefas/Compromissos entram na timeline | F4.4 — **DECIDIDO no F4.4** (D-079): fontes só Interactions + Notes; sem herança Lead × Customer; canal/resultado livres, direção opcional; sem edição; `lastInteractionAt` inalterado |
+| VN-10 | Visibilidade de interações/conversas: próprio × equipe × tenant (D-058 é tenant-only) | F4.4, F4.6 — **DECIDIDO para interações** (D-079): tenant-only; conversas seguem para o F4.6 |
 | VN-11 | Notificações: quais eventos, destinatários, canais | F4.5 |
 | VN-12 | Conversa: contato desconhecido, associação/unicidade de conversa aberta, "finalizada" e disposição obrigatória (BR-15), transferência, reabertura, "claim", filas na F4 ou só F5, SLA (BR-18) | F4.6 |
 | VN-13 | **Ociosidade** (todos os itens da §12) | F4.8 |
-| VN-14 | Lead convertido: destino do vínculo das conversas/interações | F4.4, F4.6 |
+| VN-14 | Lead convertido: destino do vínculo das conversas/interações | F4.4, F4.6 — **ABERTO**: para interações, sem herança (D-079); destino do vínculo das conversas na conversão segue pendente (F4.6) |
 | VN-15 | Renomeação dos papéis "Supervisor/Operador de Call Center" (D-070 pendência 5) | seed/UI |
 | VN-16 | **Política de distribuição posterior de Leads sem proprietário** (D-075): se a criação/importação distribui automaticamente ou mantém sem proprietário (por tenant, origem ou opção de importação); como/quando são atribuídos depois (distribuição em lote, reivindicação pelo consultor, atribuição por Gestor); se haverá filtro/indicador de "sem proprietário" | F4.3 (parcial), incrementos futuros |
 | VN-17 | ✅ **DECIDIDO (Gate do F4.2, 2026-10-05)** — 17.1 sem registro = `INDISPONÍVEL`; 17.2 Admin/Gerente só colocam/retiram terceiros de Treinamento; 17.3 Treinamento sem duração automática; 17.4 `manage`: admin/gerente, `read`: admin/gerente/supervisor/diretor, `update`: vendedor/backoffice (sem `operador`); 17.5 habilitar = `tenant_settings:update` (Admin). *Derivações `PROPOSTO` a confirmar em [D-077](../00-governance/decision-register.md#d-077--disponibilidade-modelo-de-dados-e-permissões-td-01-td-08).* | — |
@@ -606,7 +614,7 @@ Sem tabela de participantes na F4 (um responsável por vez; histórico em `conve
 | R10 | Polling em vez de WebSocket aumenta carga | Intervalos ≥ 30 s; WebSocket só na F5 (D-013) |
 | R11 | Formato de `business_hours` difícil de mudar depois | `schema_version` no valor |
 | R12 | Fuso/DST/virada de dia geram bugs | Avaliador puro + relógio fixo nos testes |
-| R13 | `lastInteractionAt` editável pela API contradiz um escritor de sistema | Decidir no F4.4 se o campo continua aceito |
+| R13 | `lastInteractionAt` editável pela API contradiz um escritor de sistema | **Resolvido no F4.4** (D-079): semântica **mantida**, sem escritor de sistema; campo continua aceito pela API |
 | R14 | `resetDatabase` e a suíte e2e crescem e ficam lentas | Manter lista atualizada; paralelizar só com isolamento |
 | R15 | Volume de mensagens (D-014) e LGPD (WA-27) | Fora da F4; registrado |
 | R16 | Cenário "lista de centenas de Leads" (D-075): a importação sem `owner_id` hoje distribui tudo pelo round-robin se houver elegíveis (K8) | Documentado; tratamento depende de `VN-16`; não alterar sem decisão |

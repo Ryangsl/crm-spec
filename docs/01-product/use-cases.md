@@ -66,6 +66,12 @@ No MVP, o atendimento é **registrado manualmente** (o operador atende por fora 
 - **Fluxo**: o consultor escolhe Disponível, Indisponível, Pausa ou Almoço → o sistema grava o estado atual e o histórico e audita; só quem está **Disponível** participa da distribuição automática de novos Leads, com a flag do tenant ligada (F4.3, [D-078](../00-governance/decision-register.md#d-078--distribuição-automática-de-leads-com-disponibilidade-td-11); [D-071](../00-governance/decision-register.md#d-071--disponibilidade-de-consultoratendente-para-distribuição-automática)). Admin/Gerente colocam um consultor em Treinamento e depois o retiram manualmente; o consultor não entra nem sai de Treinamento.
 - **Exceções**: usuário sem registro é Indisponível; não há transição automática por login/logout nem pelo Sistema; ficar Indisponível não retira a carteira; Treinamento não tem duração automática.
 
+### UC-12 Registrar interação e consultar a linha do tempo — *Fase 4 (F4.4)*
+- **Ator**: Consultor/atendente (registra e consulta); Gerente/Admin (também excluem).
+- **Pré-condição**: Lead, Cliente ou Oportunidade existente no tenant; permissões `interactions:create|read|delete`.
+- **Fluxo**: o atendente registra o contato feito por fora (canal livre, direção opcional, resumo, resultado, data) → o sistema grava e audita → a linha do tempo da entidade mostra Interações e Notas, da mais recente para a mais antiga, com "carregar mais" ([D-079](../00-governance/decision-register.md#d-079--interações-e-linha-do-tempo-f44)).
+- **Exceções**: sem edição de interação (só exclusão, soft delete); a timeline do Cliente **não** inclui o histórico do Lead de origem (VN-14 aberta); sem `notes:read` a timeline mostra só interações; entidade de outro tenant ou excluída → 404.
+
 ## 4. Fluxo crítico ponta a ponta (referência)
 
 ```

@@ -105,6 +105,23 @@ Qualquer ação de escrita relevante (create/update/delete, login, mudança de p
   → consultável por Admin/Diretor via tela de auditoria
 ```
 
+## 7.1 Fluxo de interação manual e linha do tempo (Fase 4 — F4.4)
+
+```
+Consultor atende o contato por fora (telefone, e-mail, presencial…) e registra a interação
+  → escolhe a entidade (Cliente | Lead | Oportunidade), canal (livre), direção (opcional),
+    resumo, resultado (opcional) e quando ocorreu (padrão: agora)
+  → grava + auditoria interaction.created (mesma transação); não há edição
+Qualquer usuário com interactions:read abre o detalhe da entidade
+  → linha do tempo = Interações + Notas dessa entidade, da mais recente para a mais antiga
+  → carregamento incremental por cursor (timestamp, source, id); "carregar mais"
+  → Tarefas, Compromissos, histórico de etapas e audit_log NÃO aparecem
+  → Lead convertido e Cliente têm histórico próprio: nada é herdado entre eles
+Exclusão (interactions:delete) = soft delete + auditoria interaction.deleted → some da timeline
+```
+
+Regras: [business-rules.md](business-rules.md) BR-30; decisão: [D-079](../00-governance/decision-register.md#d-079--interações-e-linha-do-tempo-f44).
+
 ## 8. Fluxo de disponibilidade (Fase 4)
 
 ```

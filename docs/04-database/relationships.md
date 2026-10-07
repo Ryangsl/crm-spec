@@ -36,6 +36,8 @@ opportunities 1───N opportunity_stage_history
 stages    1───N opportunity_stage_history (from_stage_id / to_stage_id)
 
 notes  N───1 (lead | customer | opportunity)   [polimórfico via entity_type/entity_id]
+interactions N───1 (lead | customer | opportunity)   [polimórfico via entity_type/entity_id — F4.4]
+interactions N───1 users (author_id)
 tasks  N───1 (lead | customer | opportunity)   [polimórfico, opcional]
 tasks  N───1 users (assigned_to)
 appointments N───1 (lead | customer | opportunity) [polimórfico, opcional]
@@ -99,13 +101,13 @@ tenants 1───N audit_log (via tenant_id, exceto ações de plataforma)
                                                           │
 customers ──┬── contacts                                 │
      │       ├── leads ──── opportunities ── opportunity_stage_history
-     │       ├── notes / tasks / appointments (polimórfico)
+     │       ├── notes / interactions / tasks / appointments (polimórfico)
      │       └── conversations ── messages
      └── campaign_targets ── campaigns
 ```
 
 ## 8. Observações de modelagem
 
-- Relações **polimórficas** (`notes`, `tasks`, `appointments` referenciando lead/customer/opportunity) são controladas por `entity_type` + `entity_id` na aplicação — não há FK de banco nativa para esse padrão; a integridade é garantida por validação na camada de serviço (ver [../07-backend/backend-architecture.md](../07-backend/backend-architecture.md)). [D-031](../00-governance/decision-register.md#d-031--modelagem-polimórfica-de-notastarefascompromissos) (`DECIDIDO`): manter o polimorfismo com validação na aplicação, coberta por teste automatizado; migrar para tabelas de junção dedicadas apenas se a ausência de FK nativa se mostrar um problema real de integridade em produção.
+- Relações **polimórficas** (`notes`, `interactions`, `tasks`, `appointments` referenciando lead/customer/opportunity) são controladas por `entity_type` + `entity_id` na aplicação — não há FK de banco nativa para esse padrão; a integridade é garantida por validação na camada de serviço (ver [../07-backend/backend-architecture.md](../07-backend/backend-architecture.md)). [D-031](../00-governance/decision-register.md#d-031--modelagem-polimórfica-de-notastarefascompromissos) (`DECIDIDO`): manter o polimorfismo com validação na aplicação, coberta por teste automatizado; migrar para tabelas de junção dedicadas apenas se a ausência de FK nativa se mostrar um problema real de integridade em produção.
 - `leads.customer_id` é preenchido apenas quando o lead é vinculado/convertido — antes disso pode representar um contato ainda não cadastrado como cliente.
 - Toda entidade com `tenant_id` só se relaciona com entidades do mesmo `tenant_id` — validado na camada de serviço, não apenas por FK (FK sozinha não impede relacionar registros de tenants diferentes que compartilham o mesmo espaço de tabelas).

@@ -378,23 +378,102 @@ paths:
 
   /customers/{id}/interactions:
     get:
-      summary: Histórico de interações do cliente (cursor — recurso cronológico)
+      summary: Linha do tempo do cliente (interações + notas) — cursor (interactions:read)
+      description: |
+        Read model (F4.4, D-079): une as **interações** e as **notas** registradas NESTA entidade
+        (D-031), da mais recente para a mais antiga. **Não** inclui tarefas, compromissos,
+        histórico de etapas nem `audit_log`; o histórico de Leads relacionados/convertidos **não** é incluído. Sem `notes:read` o chamador recebe
+        só as interações.
+
+        **Cursor específico da timeline** (não segue o cursor UUID v7 dos demais recursos): opaco,
+        codifica `(timestamp, source, id)` do último item da página — `timestamp` é
+        `occurred_at` (interação) ou `created_at` (nota), `source` é `interaction`|`note` e
+        `id` desempata. Ordem total: `timestamp DESC, source DESC (note antes de interaction),
+        id DESC`. Cada fonte é consultada com `limit + 1` e o merge é feito em memória:
+        `has_more` é verdadeiro quando há mais de `limit` itens no merge. Cursor inválido: 400.
       parameters:
         - $ref: "#/components/parameters/Id"
-        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/TimelineCursor"
         - $ref: "#/components/parameters/Limit"
       responses:
         "200":
-          description: Histórico paginado
+          description: Página da linha do tempo
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    type: array
-                    items: { $ref: "#/components/schemas/Interaction" }
-                  next_cursor: { type: string, nullable: true }
+              schema: { $ref: "#/components/schemas/TimelinePage" }
+        "400":
+          description: Cursor ou limit inválidos
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /leads/{id}/interactions:
+    get:
+      summary: Linha do tempo do lead (interações + notas) — cursor (interactions:read)
+      description: |
+        Read model (F4.4, D-079): une as **interações** e as **notas** registradas NESTA entidade
+        (D-031), da mais recente para a mais antiga. **Não** inclui tarefas, compromissos,
+        histórico de etapas nem `audit_log`. Sem `notes:read` o chamador recebe
+        só as interações.
+
+        **Cursor específico da timeline** (não segue o cursor UUID v7 dos demais recursos): opaco,
+        codifica `(timestamp, source, id)` do último item da página — `timestamp` é
+        `occurred_at` (interação) ou `created_at` (nota), `source` é `interaction`|`note` e
+        `id` desempata. Ordem total: `timestamp DESC, source DESC (note antes de interaction),
+        id DESC`. Cada fonte é consultada com `limit + 1` e o merge é feito em memória:
+        `has_more` é verdadeiro quando há mais de `limit` itens no merge. Cursor inválido: 400.
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/TimelineCursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Página da linha do tempo
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TimelinePage" }
+        "400":
+          description: Cursor ou limit inválidos
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /opportunities/{id}/interactions:
+    get:
+      summary: Linha do tempo da oportunidade (interações + notas) — cursor (interactions:read)
+      description: |
+        Read model (F4.4, D-079): une as **interações** e as **notas** registradas NESTA entidade
+        (D-031), da mais recente para a mais antiga. **Não** inclui tarefas, compromissos,
+        histórico de etapas nem `audit_log`. Sem `notes:read` o chamador recebe
+        só as interações.
+
+        **Cursor específico da timeline** (não segue o cursor UUID v7 dos demais recursos): opaco,
+        codifica `(timestamp, source, id)` do último item da página — `timestamp` é
+        `occurred_at` (interação) ou `created_at` (nota), `source` é `interaction`|`note` e
+        `id` desempata. Ordem total: `timestamp DESC, source DESC (note antes de interaction),
+        id DESC`. Cada fonte é consultada com `limit + 1` e o merge é feito em memória:
+        `has_more` é verdadeiro quando há mais de `limit` itens no merge. Cursor inválido: 400.
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/TimelineCursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Página da linha do tempo
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TimelinePage" }
+        "400":
+          description: Cursor ou limit inválidos
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          $ref: "#/components/responses/NotFound"
 
   /leads:
     get:
@@ -1115,6 +1194,49 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /interactions:
+    post:
+      summary: Registra uma interação manual com um Lead/Cliente/Oportunidade (interactions:create)
+      description: >
+        `entity_type` e `entity_id` são obrigatórios (D-031) e validados no mesmo tenant —
+        entidade inexistente, excluída ou de outro tenant: 404. `author_id` é sempre o usuário
+        autenticado. `channel` e `outcome` são texto livre (sem catálogo); `direction` é
+        opcional; `occurred_at` assume o momento atual. Não há edição. Não altera
+        `Customer.last_interaction_at`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/InteractionCreate" }
+      responses:
+        "201":
+          description: Interação registrada
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Interaction" }
+        "400":
+          description: Payload inválido (campo obrigatório ausente, enum inválido ou campo não permitido)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: Entidade do CRM não encontrada no tenant
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /interactions/{id}:
+    delete:
+      summary: Exclui (soft delete) uma interação (interactions:delete)
+      description: Audita `interaction.deleted`. A interação some da linha do tempo.
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "204":
+          description: Interação excluída (soft delete)
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /tasks:
     get:
       summary: Lista tarefas do tenant (D-031, Follow-up)
@@ -1620,6 +1742,14 @@ components:
       required: false
       description: UUID v7 do último item da página anterior (recursos cronológicos)
       schema: { type: string, format: uuid }
+    TimelineCursor:
+      name: cursor
+      in: query
+      required: false
+      description: >
+        Cursor opaco da linha do tempo (F4.4), devolvido em `next_cursor`. Não é um UUID:
+        codifica (timestamp, source, id) do último item. Cursor inválido: 400.
+      schema: { type: string }
     Page:
       name: page
       in: query
@@ -2275,9 +2405,55 @@ components:
 
     Interaction:
       type: object
-      description: Item de histórico unificado (chamada, mensagem ou nota) do cliente
+      description: >
+        Registro manual de contato com um Lead/Cliente/Oportunidade (F4.4, D-079). Sem edição.
+        Não há tipo `call`: o produto não é um Call Center telefônico (D-070).
       properties:
         id: { type: string, format: uuid }
-        type: { type: string, enum: [call, message, note] }
+        entity_type: { type: string, enum: [lead, customer, opportunity] }
+        entity_id: { type: string, format: uuid }
+        author_id: { type: string, format: uuid, description: "Sempre o usuário autenticado no momento da criação." }
+        channel: { type: string, maxLength: 100, description: "Texto livre (ex.: telefone, e-mail, presencial)." }
+        direction: { type: string, enum: [inbound, outbound], nullable: true }
+        summary: { type: string, maxLength: 5000 }
+        outcome: { type: string, maxLength: 200, nullable: true, description: "Texto livre." }
         occurred_at: { type: string, format: date-time }
+        created_at: { type: string, format: date-time }
+
+    InteractionCreate:
+      type: object
+      required: [entity_type, entity_id, channel, summary]
+      additionalProperties: false
+      properties:
+        entity_type: { type: string, enum: [lead, customer, opportunity] }
+        entity_id: { type: string, format: uuid }
+        channel: { type: string, minLength: 1, maxLength: 100 }
+        direction: { type: string, enum: [inbound, outbound] }
+        summary: { type: string, minLength: 1, maxLength: 5000 }
+        outcome: { type: string, minLength: 1, maxLength: 200 }
+        occurred_at: { type: string, format: date-time, description: "Padrão: momento atual." }
+
+    TimelineItem:
+      type: object
+      description: >
+        Item da linha do tempo: forma única para interação e nota. Para nota, `summary` é o
+        conteúdo, `occurred_at` é a data de criação e `channel`/`direction`/`outcome` são nulos.
+      properties:
+        type: { type: string, enum: [interaction, note] }
+        id: { type: string, format: uuid, description: "Id do registro na fonte (interação ou nota)." }
+        occurred_at: { type: string, format: date-time }
+        author_id: { type: string, format: uuid }
         summary: { type: string }
+        channel: { type: string, nullable: true }
+        direction: { type: string, enum: [inbound, outbound], nullable: true }
+        outcome: { type: string, nullable: true }
+
+    TimelinePage:
+      type: object
+      properties:
+        data:
+          type: array
+          items: { $ref: "#/components/schemas/TimelineItem" }
+        next_cursor: { type: string, nullable: true, description: "Nulo quando não há mais itens." }
+        has_more: { type: boolean }
+
