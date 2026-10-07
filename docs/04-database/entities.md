@@ -327,15 +327,21 @@ Histórico **append-only** de transições; escrito na **mesma transação** do 
 
 ## Grupo: Sistema
 
-### `notifications`
-| Campo | Tipo | Obrigatório |
-|---|---|---|
-| user_id | UUID (FK users) | sim |
-| type | string | sim |
-| payload | jsonb | sim |
-| read_at | timestamptz | não |
+### `notifications` *(F4.5 — D-080)*
+| Campo | Tipo | Obrigatório | Notas |
+|---|---|---|---|
+| tenant_id | UUID (FK tenants) | sim | |
+| user_id | UUID (FK users) | sim | Destinatário; acesso sempre restrito ao próprio usuário |
+| type | string | sim | Texto livre, sem enum (v1: `lead.assigned`) |
+| payload | jsonb | sim | Só o necessário para renderizar (v1: `{lead_name}`) |
+| entity_type | string | não | Referência à entidade (v1: `lead`) |
+| entity_id | UUID | não | |
+| read_at | timestamptz | não | Nulo = não lida |
+| created_at | timestamptz | sim | |
 
-**Não utilizada na Fase 3** (Implementation Gate, 2026-09-16): quando o round-robin não encontra vendedor elegível, a Fase 3 apenas registra o evento no `audit_log` (`AuditModule`, ação `lead.unassigned`) — não grava nesta tabela, não expõe UI de notificações, não cria fila dedicada. `notifications` só passa a ser escrita/lida a partir da "primeira versão de Notificações" da Fase 4 ([roadmap.md](../10-roadmap/roadmap.md)).
+Índice `(tenant_id, user_id, read_at, created_at DESC)`. **Sem soft delete e sem expiração/retenção automática** na v1 (risco de crescimento — [phase-4-plan.md](../10-roadmap/phase-4-plan.md) R18).
+
+**Não utilizada na Fase 3** (Implementation Gate, 2026-09-16): quando o round-robin não encontra vendedor elegível, a Fase 3 apenas registra o evento no `audit_log` (`AuditModule`, ação `lead.unassigned`) — não grava nesta tabela, não expõe UI de notificações, não cria fila dedicada. `notifications` passou a ser escrita/lida na "primeira versão de Notificações" da Fase 4 (**F4.5**, [D-080](../00-governance/decision-register.md#d-080--notificações-v1-somente-leadassigned-f45) — somente o evento `lead.assigned`).
 
 ### `file_assets`
 | Campo | Tipo | Obrigatório |

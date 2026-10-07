@@ -217,7 +217,7 @@ Convenções (todas seguem o schema atual): `id` UUID v7; `tenant_id` obrigatór
 ### 6.4 `interactions` — registro manual de atendimento
 - **Finalidade**: fato "houve contato com este Cliente/Lead" registrado por uma pessoa (MVP: "por qual canal, com qual resultado"). **Campos**: `entity_type` (`lead|customer|opportunity`, mesmo enum de D-031), `entity_id`, `author_id`, `channel` (texto livre — **decidido no F4.4**, sem catálogo), `direction?` (`inbound|outbound`, opcional), `summary`, `outcome?`, `occurred_at`, `deleted_at`. **Índices**: `(tenant_id, entity_type, entity_id, occurred_at desc)`, `(tenant_id, author_id)`. **Constraints**: validação de `entity_id` no Service (padrão D-031). **Auditoria**: `interaction.created/deleted`. **Riscos**: sobreposição com Nota — regra de fronteira: *Nota = anotação livre; Interação = evento de contato com data, canal e resultado*.
 
-### 6.5 `notifications` (já documentada)
+### 6.5 `notifications` (já documentada) — **implementada no F4.5 (v1: só `lead.assigned`, D-080)**
 - `user_id`, `type`, `payload jsonb`, `read_at`, `created_at`. **Índice**: `(tenant_id, user_id, read_at, created_at desc)`. Sem soft delete. **Riscos**: retenção indefinida; eventos que geram notificação `PENDENTE` (VN-11).
 
 ### 6.6 `dispositions` (BR-15) — F4.6
@@ -491,7 +491,7 @@ Sem tabela de participantes na F4 (um responsável por vez; histórico em `conve
 - **Testes automatizados**: backend — 22 unit (`timeline-cursor.spec`, `timeline.service.spec`, `interactions.service.spec`) e 30 e2e (`interactions-timeline.e2e-spec`: criação por entidade, direction, validação, 404/isolamento de tenant, RBAC, soft delete, auditoria, unificação e ordem, Lead ≠ Customer, fontes excluídas, cursor com empates exatos em todas as fronteiras de página, `has_more`, `lastInteractionAt` intocado); verificado que o e2e **falha** ao quebrar o desempate do cursor. Frontend — 14 (`TimelineSection.test`, `interactions.test`). Resultado: backend lint/tsc/build ✅, unit **145**, integração **2**, e2e **227**; frontend lint/tsc/build ✅, **179** testes. Nenhum teste existente alterado.
 - **Operacional (pendente)**: aplicar a migration (`prisma migrate deploy`) e rodar o seed idempotente nos tenants existentes para receberem `interactions:*`.
 
-### F4.5 — Notificações (primeira versão)
+### F4.5 — Notificações (primeira versão) — **implementado em 2026-10-07 (branch `feat/f4-5-notifications`, commits locais, sem push; aguardando revisão)**
 - **Objetivo**: entregar o destino para "lead atribuído/conversa atribuída" e alertas.
 - **Backend**: `notifications` + consumidor de eventos in-process; endpoints §7.3.
 - **Frontend**: sino + lista; polling.
@@ -501,6 +501,14 @@ Sem tabela de participantes na F4 (um responsável por vez; histórico em `conve
 - **Decisões necessárias**: **VN-11** (quais eventos/destinatários), VN-06 se BR-16 entrar.
 - **Aceite**: eventos definidos geram notificações in-app; leitura/contagem funcionam.
 - **Fora**: push/e-mail/WhatsApp; WebSocket.
+- **Decisões do F4.5** ([D-080](../00-governance/decision-register.md#d-080--notificações-v1-somente-leadassigned-f45)): **F4.5 v1 = somente `lead.assigned`**, in-app, polling de 30 s. Destinatário = novo dono (sem auto-notificação; owner nulo não notifica); uma notificação por Lead, inclusive em importação (sem agregação); escrita **na mesma transação** da atribuição (`NotificationsService.create`), independente do `audit_log`. **Sem** scheduler/cron/worker, **sem** event emitter, **sem** BullMQ para notificações, **sem** P1/ator Sistema, **sem** WebSocket. Sem permissões `notifications:*`. **Divergências conscientes do plano**: o "consumidor de eventos in-process" foi substituído pela escrita na transação; e "tarefa vencendo"/"oportunidade parada" (RF-26), lembrete de compromisso e pausa excedida (BR-16/`VN-06`) **não** entram (exigem agendador e P1).
+- **Implementado (fatos)**:
+  - **Banco**: migration aditiva `20261007120000_f4_5_notifications` (tabela `notifications`, índice `(tenant_id, user_id, read_at, created_at DESC)`, FKs para tenant e usuário); sem alteração em tabelas existentes.
+  - **Backend**: módulo `notifications` (`NotificationsService`: `create` na `tx`, `notifyLeadAssigned`, `list`, `unreadCount`, `markRead`, `markAllRead`). Emissão em `LeadsService.create` (round-robin, `owner_id` explícito, importação) e `LeadsService.update` (só quando o dono muda para outro usuário). Rotas `GET /v1/notifications`, `GET /v1/notifications/unread-count`, `POST /v1/notifications/{id}/read`, `POST /v1/notifications/read-all` (200), autenticação sem permissão e sempre escopadas por `(tenant_id, user_id)`.
+  - **Frontend**: `NotificationBell` no `AppShell` (sidebar desktop e header mobile, **sem novo item de menu**), contador (polling 30 s), painel com lista por cursor ("Carregar mais"), abrir = marcar como lida + navegar para o Lead, "Marcar todas como lidas".
+  - **OpenAPI**: 4 rotas, schemas `Notification`/`NotificationPage`/`UnreadCount`/`ReadAllResult` e o cursor de notificações.
+- **Testes automatizados**: backend — 17 unit (`notifications.service.spec`) e 29 e2e (`notifications.e2e-spec`: emissão por fluxo, auto-atribuição, owner nulo, importação, independência do audit, **atomicidade** nos dois sentidos, isolamento de tenant e de usuário, 401/404/400, cursor com empates). Verificado por mutação que o e2e falha ao gravar a notificação fora da transação e ao remover a regra de auto-notificação. Frontend — 19 (`NotificationBell.test`, `AppShell.notifications.test`, serviço). Resultado: backend lint/tsc/build ✅, unit **162**, integração **2**, e2e **256**; frontend lint/tsc/build ✅, **198** testes. **Teste antigo adaptado**: `AppShell.test.tsx` ganhou só `QueryClientProvider` e o mock do serviço no helper (o shell passou a conter o sino); as asserções não mudaram.
+- **Limitações conhecidas / riscos**: (i) **crescimento** da tabela `notifications` (sem expiração/retenção; avaliar política antes de volume real); (ii) **ruído** em importações grandes (uma notificação por Lead; agregação é futuro); (iii) polling de 30 s (latência de até 30 s; WebSocket só na Fase 5).
 
 ### F4.6 — Núcleo de Conversas/Mensagens *(condicional a VN-12; senão → F5.0)*
 - **Objetivo**: núcleo **agnóstico a canal**, exercitado pelo canal `manual`.
@@ -566,7 +574,7 @@ Sem tabela de participantes na F4 (um responsável por vez; histórico em `conve
 | TD-04 | ~~Fuso horário: `Intl` × biblioteca~~ **Resolvida no F4.1**: `Intl` (sem dependência nova; validação do nome IANA e avaliador testados com relógio fixo, incl. horário de verão) | — | — |
 | TD-05 | Exceções de acesso: tabela (recomendada) × chave em settings × permissão | §6.10 | F4.7 |
 | TD-06 | Ociosidade: *delayed job* por conversa × varredura periódica | Após VN-13 | F4.8 |
-| TD-07 | Entrega de notificação: polling (F4) × WebSocket (F5) | Polling | F4.5 |
+| TD-07 | ~~Entrega de notificação: polling (F4) × WebSocket (F5)~~ **Resolvida no F4.5** ([D-080](../00-governance/decision-register.md#d-080--notificações-v1-somente-leadassigned-f45)): in-app com polling de 30 s | — | — |
 | TD-08 | ~~Chaves de permissão~~ **Resolvida para a disponibilidade (Gate do F4.2)**: `availability:read|update|manage`, sem `availability:training`. A colisão com `messages:*` legado só importa no F4.6 | §7.4 | F4.6 (parte `messages`) |
 | TD-09 | Unicidade de `external_message_id`: `(tenant, id)` × `(tenant, channel_type, id)` | Incluir `channel_type` | F4.6 |
 | TD-10 | ~~Nome/escopo das chaves em `tenant_settings`~~ **Resolvida no F4.1**: `crm.business_hours` (objeto v1) e `crm.availability.enabled` (boolean) | — | — |
@@ -590,7 +598,7 @@ Sem tabela de participantes na F4 (um responsável por vez; histórico em `conve
 | VN-08 | Liberação excepcional: por usuário/temporária/escopo, duração, motivo obrigatório, quem solicita | F4.7 |
 | VN-09 | Interações manuais: catálogo de canais/resultados, direção, o que conta como "interação" para `lastInteractionAt`, editar/excluir, timeline do Cliente inclui histórico do Lead de origem, Tarefas/Compromissos entram na timeline | F4.4 — **DECIDIDO no F4.4** (D-079): fontes só Interactions + Notes; sem herança Lead × Customer; canal/resultado livres, direção opcional; sem edição; `lastInteractionAt` inalterado |
 | VN-10 | Visibilidade de interações/conversas: próprio × equipe × tenant (D-058 é tenant-only) | F4.4, F4.6 — **DECIDIDO para interações** (D-079): tenant-only; conversas seguem para o F4.6 |
-| VN-11 | Notificações: quais eventos, destinatários, canais | F4.5 |
+| VN-11 | Notificações: quais eventos, destinatários, canais | F4.5 — **DECIDIDO para a v1** (D-080): só `lead.assigned`, destinatário = novo dono, canal in-app; demais eventos fora |
 | VN-12 | Conversa: contato desconhecido, associação/unicidade de conversa aberta, "finalizada" e disposição obrigatória (BR-15), transferência, reabertura, "claim", filas na F4 ou só F5, SLA (BR-18) | F4.6 |
 | VN-13 | **Ociosidade** (todos os itens da §12) | F4.8 |
 | VN-14 | Lead convertido: destino do vínculo das conversas/interações | F4.4, F4.6 — **ABERTO**: para interações, sem herança (D-079); destino do vínculo das conversas na conversão segue pendente (F4.6) |
@@ -621,6 +629,8 @@ Sem tabela de participantes na F4 (um responsável por vez; histórico em `conve
 | R18 | Treinamento esquecido mantém o usuário fora da distribuição (sem duração automática — VN-17.3) | Painel mostra "desde quando"; remoção manual; nenhuma regra automática (decisão) |
 | R19 | Tenants existentes não têm as chaves `availability:*` nos papéis de fábrica (papéis de sistema são imutáveis pela API) | Rodar o seed idempotente ou passo manual (D-059); coberto no plano de execução do F4.2 |
 | R17 | Sem política posterior (`VN-16`), a carteira "sem proprietário" pode crescer sem mecanismo de escoamento (K9, K10) | Registrado como pendente; não inventar no F4.3; decidir antes de qualquer incremento que a implemente |
+| R18 | Crescimento da tabela `notifications` (sem soft delete e sem expiração/retenção automática na v1) | Registrado (D-080); definir política de retenção antes de volume real — fora do F4.5 |
+| R19 | Ruído de notificações em importações grandes (uma por Lead, sem agregação) | Limitação conhecida (D-080); agregação/digest é futuro |
 
 ## 20. Critérios de aceite da Fase 4
 

@@ -48,7 +48,7 @@
 ### Notificações
 *(Primeira versão na Fase 4, dentro do MVP; regras de gatilho mais elaboradas só na Fase 8.)*
 
-- RF-26: O sistema deve notificar usuários sobre eventos relevantes (lead atribuído, tarefa vencendo, oportunidade parada há X dias).
+- RF-26: O sistema deve notificar usuários sobre eventos relevantes (lead atribuído, tarefa vencendo, oportunidade parada há X dias). **Implementado no F4.5 (v1, parcial)**: somente **lead atribuído** (`lead.assigned`), in-app com polling de 30 s ([BR-31](../02-business/business-rules.md), [D-080](../00-governance/decision-register.md#d-080--notificações-v1-somente-leadassigned-f45)). **Tarefa vencendo** e **oportunidade parada** dependem de agendador e do ator Sistema (P1) e **não** estão implementadas.
 
 ### Auditoria
 - RF-27: O sistema deve registrar log de auditoria (quem, o quê, quando) para criação/edição/exclusão de dados sensíveis e ações administrativas.

@@ -127,6 +127,9 @@ O cursor é o UUID v7 do último item da página ([D-001](../00-governance/decis
 > O produto não é um Call Center telefônico ([D-070](../00-governance/decision-register.md#d-070--definição-de-produto-crm-comercial--atendimentoconversas--whatsapp-sem-call-center-telefônico)): os endpoints de chamada abaixo estão **fora de escopo** e mantidos só por rastreabilidade; o contrato de atendimento por conversa será definido na Fase 4/5.
 `GET /v1/{customers|leads|opportunities}/{id}/interactions?cursor=...&limit=20` (cursor — recurso cronológico; **F4.4**: linha do tempo Interações + Notas, cursor opaco específico `(timestamp, source, id)` — ver [D-079](../00-governance/decision-register.md#d-079--interações-e-linha-do-tempo-f44) e o `openapi.yaml`)
 `POST /v1/interactions` · `DELETE /v1/interactions/{id}`
+
+### Notificações *(F4.5 — D-080)*
+`GET /v1/notifications?cursor=...&limit=20` (cursor opaco `(created_at, id)`, só as do usuário autenticado) · `GET /v1/notifications/unread-count` · `POST /v1/notifications/{id}/read` (404 se não for do usuário) · `POST /v1/notifications/read-all` — sem permissões `notifications:*`.
 `POST /v1/calls/{id}/disposition` `{ "disposition_id": "..." }`
 `POST /v1/calls/click-to-call` `{ "customer_id": "...", "phone": "..." }` — **fora de escopo** (telefonia, D-070; provedor [D-010](../00-governance/decision-register.md#d-010--provedor-de-telefonia) sem fase); não faz parte do MVP.
 

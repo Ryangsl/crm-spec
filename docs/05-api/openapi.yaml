@@ -1237,6 +1237,79 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /notifications:
+    get:
+      summary: Lista as notificações do usuário autenticado — cursor (F4.5, D-080)
+      description: |
+        Somente as notificações **do próprio usuário**, no próprio tenant; mais recente primeiro.
+        Não exige permissão (sem `notifications:*`). v1: único `type` = `lead.assigned`.
+
+        **Cursor específico do recurso**: opaco, codifica `(created_at, id)` do último item da
+        página; ordem `created_at DESC, id DESC`. `next_cursor` é nulo na última página. Cursor
+        inválido ou `limit` fora de 1..100: 400. Não altera a paginação global.
+      parameters:
+        - $ref: "#/components/parameters/NotificationCursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Página de notificações
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NotificationPage" }
+        "400":
+          description: Cursor ou limit inválidos
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /notifications/unread-count:
+    get:
+      summary: Quantidade de notificações não lidas do usuário autenticado
+      description: Usada pelo sino do AppShell (polling de 30 s).
+      responses:
+        "200":
+          description: Contagem
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/UnreadCount" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /notifications/read-all:
+    post:
+      summary: Marca como lidas todas as notificações não lidas do usuário autenticado
+      description: >
+        Afeta só as próprias; idempotente (a segunda chamada devolve `updated: 0`).
+      responses:
+        "200":
+          description: Quantas passaram de não lidas para lidas
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ReadAllResult" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /notifications/{id}/read:
+    post:
+      summary: Marca uma notificação própria como lida
+      description: >
+        Idempotente: repetir não altera o primeiro `read_at`. Notificação de outro usuário ou de
+        outro tenant é indistinguível de inexistente: 404.
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Notificação (com `read_at` preenchido)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Notification" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /tasks:
     get:
       summary: Lista tarefas do tenant (D-031, Follow-up)
@@ -1749,6 +1822,14 @@ components:
       description: >
         Cursor opaco da linha do tempo (F4.4), devolvido em `next_cursor`. Não é um UUID:
         codifica (timestamp, source, id) do último item. Cursor inválido: 400.
+      schema: { type: string }
+    NotificationCursor:
+      name: cursor
+      in: query
+      required: false
+      description: >
+        Cursor opaco de notificações (F4.5), devolvido em `next_cursor`. Não é um UUID: codifica
+        (created_at, id) do último item. Cursor inválido: 400.
       schema: { type: string }
     Page:
       name: page
@@ -2456,4 +2537,39 @@ components:
           items: { $ref: "#/components/schemas/TimelineItem" }
         next_cursor: { type: string, nullable: true, description: "Nulo quando não há mais itens." }
         has_more: { type: boolean }
+
+    Notification:
+      type: object
+      description: >
+        Aviso in-app por usuário (F4.5, D-080). v1: `type` = `lead.assigned` com
+        `entity_type: lead` e `payload: { lead_name }`. Sem soft delete.
+      properties:
+        id: { type: string, format: uuid }
+        type: { type: string, example: "lead.assigned", description: "Texto livre (sem enum)." }
+        entity_type: { type: string, nullable: true, example: lead }
+        entity_id: { type: string, format: uuid, nullable: true }
+        payload:
+          type: object
+          additionalProperties: true
+          description: "Dados mínimos para renderizar; em lead.assigned: { lead_name: string|null }."
+        read_at: { type: string, format: date-time, nullable: true, description: "Nulo = não lida." }
+        created_at: { type: string, format: date-time }
+
+    NotificationPage:
+      type: object
+      properties:
+        data:
+          type: array
+          items: { $ref: "#/components/schemas/Notification" }
+        next_cursor: { type: string, nullable: true, description: "Nulo na última página." }
+
+    UnreadCount:
+      type: object
+      properties:
+        count: { type: integer, minimum: 0 }
+
+    ReadAllResult:
+      type: object
+      properties:
+        updated: { type: integer, minimum: 0 }
 

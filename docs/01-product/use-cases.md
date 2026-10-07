@@ -7,7 +7,7 @@ Casos de uso principais, por área. Formato: ator, pré-condição, fluxo princi
 ### UC-01 Captação e distribuição de lead
 - **Ator**: Sistema (integração/formulário) ou Vendedor (cadastro manual).
 - **Pré-condição**: origem do lead configurada (formulário, importação, atendimento receptivo, integração).
-- **Fluxo**: lead é criado ou importado → quando aplicável, o sistema aplica a regra de distribuição (round-robin, por fila, manual) → lead é atribuído a um vendedor/equipe → notificação ao responsável *(Notificações ainda não definidas — `VN-11`)*.
+- **Fluxo**: lead é criado ou importado → quando aplicável, o sistema aplica a regra de distribuição (round-robin, por fila, manual) → lead é atribuído a um vendedor/equipe → notificação in-app ao novo responsável, exceto se ele mesmo executou a atribuição (F4.5, [D-080](../00-governance/decision-register.md#d-080--notificações-v1-somente-leadassigned-f45)).
 - **Variante (não é erro)**: **lead sem proprietário** ([D-075](../00-governance/decision-register.md#d-075--lead-sem-proprietário-é-um-estado-legítimo-do-negócio), BR-29) — cadastro/importação sem consultor associado (ex.: lista com centenas de pessoas) ou nenhum consultor elegível na regra de distribuição → o lead permanece sem proprietário (`owner_id` nulo), aguardando atribuição/distribuição posterior. Na Fase 3 o único registro é o evento de auditoria `lead.unassigned` ([D-069](../00-governance/decision-register.md#d-069--alerta-de-lead-não-atribuído-só-auditoria-sem-módulo-de-notificações)). *Alerta ao gerente: pendente (`VN-11`); política de distribuição posterior: pendente (`VN-16`).*
 
 ### UC-02 Qualificação de lead e conversão em oportunidade
@@ -71,6 +71,12 @@ No MVP, o atendimento é **registrado manualmente** (o operador atende por fora 
 - **Pré-condição**: Lead, Cliente ou Oportunidade existente no tenant; permissões `interactions:create|read|delete`.
 - **Fluxo**: o atendente registra o contato feito por fora (canal livre, direção opcional, resumo, resultado, data) → o sistema grava e audita → a linha do tempo da entidade mostra Interações e Notas, da mais recente para a mais antiga, com "carregar mais" ([D-079](../00-governance/decision-register.md#d-079--interações-e-linha-do-tempo-f44)).
 - **Exceções**: sem edição de interação (só exclusão, soft delete); a timeline do Cliente **não** inclui o histórico do Lead de origem (VN-14 aberta); sem `notes:read` a timeline mostra só interações; entidade de outro tenant ou excluída → 404.
+
+### UC-13 Receber e abrir notificação de Lead atribuído — *Fase 4 (F4.5)*
+- **Ator**: qualquer usuário autenticado (sem permissão específica).
+- **Pré-condição**: um Lead foi atribuído a esse usuário por outra pessoa ou pelo round-robin (inclusive importação).
+- **Fluxo**: o sino do AppShell mostra o contador de não lidas (atualizado a cada 30 s) → o usuário abre o painel e vê "Lead atribuído a você: {nome}" → ao abrir a notificação ela é marcada como lida e o sistema leva ao Lead; ou usa "marcar todas como lidas" ([D-080](../00-governance/decision-register.md#d-080--notificações-v1-somente-leadassigned-f45)).
+- **Exceções**: quem atribui o Lead a si mesmo não é notificado; Lead sem proprietário não gera notificação; cada usuário só vê as próprias; sem tempo real (até 30 s de latência); importações grandes geram uma notificação por Lead.
 
 ## 4. Fluxo crítico ponta a ponta (referência)
 

@@ -122,6 +122,22 @@ Exclusão (interactions:delete) = soft delete + auditoria interaction.deleted �
 
 Regras: [business-rules.md](business-rules.md) BR-30; decisão: [D-079](../00-governance/decision-register.md#d-079--interações-e-linha-do-tempo-f44).
 
+## 7.2 Fluxo de notificação de Lead atribuído (Fase 4 — F4.5)
+
+```
+Lead é atribuído a um novo dono (round-robin | owner_id explícito/importação | PATCH que troca o dono)
+  → na MESMA transação da atribuição: grava notification (type lead.assigned, entity = lead,
+    payload {lead_name}) para o NOVO dono
+  → não grava se o dono é quem executou a ação, nem se o Lead ficou sem proprietário
+  → se a atribuição ou a notificação falhar, nada é confirmado
+Novo dono (qualquer usuário autenticado; sem permissão específica)
+  → sino no AppShell consulta unread-count a cada 30 s
+  → abre o painel: lista por cursor (mais recente primeiro)
+  → abre uma notificação: é marcada como lida e leva ao Lead; ou "marcar todas como lidas"
+```
+
+Sem scheduler, event bus, fila, WebSocket, push/e-mail ou gatilhos temporais. Regras: [business-rules.md](business-rules.md) BR-31; decisão: [D-080](../00-governance/decision-register.md#d-080--notificações-v1-somente-leadassigned-f45).
+
 ## 8. Fluxo de disponibilidade (Fase 4)
 
 ```

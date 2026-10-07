@@ -49,7 +49,9 @@
 
 - BR-30: **Interação manual e linha do tempo** ([D-079](../00-governance/decision-register.md#d-079--interações-e-linha-do-tempo-f44)). A interação é o registro manual de um contato (canal, direção opcional, resumo, resultado, data) com um Lead, Cliente ou Oportunidade, vinculada à **entidade em que foi registrada** (D-031) — **não** é herdada entre Lead e Cliente (BR-28). Não pode ser editada; exclusão é soft delete e auditada (BR-22/BR-23). A **linha do tempo** da entidade exibe somente **Interações e Notas**, da mais recente para a mais antiga; tarefas, compromissos, histórico de etapas e a trilha de auditoria **não** fazem parte dela. Visibilidade por tenant (D-058). Registrar uma interação **não** altera `Customer.lastInteractionAt`.
 
-> BR-27 e BR-28 foram acrescentadas em 2026-09-29, BR-29 em 2026-10-05 e BR-30 em 2026-10-06, fora da ordem numérica de suas seções, para não renumerar as regras existentes.
+- BR-31: **Notificação de Lead atribuído (v1)** ([D-080](../00-governance/decision-register.md#d-080--notificações-v1-somente-leadassigned-f45)). Toda atribuição efetiva de Lead a um novo dono (round-robin, `owner_id` explícito, importação ou troca de dono) gera **uma notificação in-app para o novo dono**, no mesmo momento e na mesma transação da atribuição. **Não** notifica quem atribuiu o Lead a si mesmo, o dono anterior, gestores ou a equipe, e **não** notifica Lead sem proprietário (BR-29). Cada usuário vê e marca como lidas apenas as próprias notificações (tenant-only, D-058). Notificação é um aviso por usuário — **não** substitui a auditoria (BR-23) nem integra a linha do tempo (BR-30).
+
+> BR-27 e BR-28 foram acrescentadas em 2026-09-29, BR-29 em 2026-10-05, BR-30 em 2026-10-06 e BR-31 em 2026-10-07, fora da ordem numérica de suas seções, para não renumerar as regras existentes.
 
 ## 6. Conversas e Omnichannel
 > WhatsApp é um **canal de conversa** dentro do CRM (não "Call Center"); as regras abaixo valem para o WhatsApp e para canais futuros.
