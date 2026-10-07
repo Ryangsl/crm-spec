@@ -122,6 +122,24 @@ Exclusão (interactions:delete) = soft delete + auditoria interaction.deleted �
 
 Regras: [business-rules.md](business-rules.md) BR-30; decisão: [D-079](../00-governance/decision-register.md#d-079--interações-e-linha-do-tempo-f44).
 
+## 7.3 Fluxo de conversa manual (Fase 4 — F4.6)
+
+```
+Atendente abre o detalhe de um Cliente | Lead | Oportunidade e escolhe "Abrir conversa"
+  → cria a conversa vinculada À ENTIDADE (FK dedicada; ≥1 vínculo, mesmo tenant, coerente)
+  → nasce ABERTA e SEM responsável; Lead continua Lead (nada é convertido)
+  → auditoria conversation.created
+Gerente (conversations:assign) atribui um responsável manualmente (usuário ativo com
+conversations:update) ou remove o responsável → auditoria conversation.assigned (de/para)
+Atendente registra mensagens manualmente (direção opcional; sem envio a canal algum)
+  → só em conversa ABERTA; atualiza last_message_at; mensagem imutável; NÃO vai ao audit_log
+Atendente encerra → conversa fechada (não aceita mensagens nem atribuição) → conversation.closed
+Atendente reabre → volta a aceitar mensagens → conversation.reopened
+Histórico de mensagens: cursor (created_at, id), da mais recente para a mais antiga
+```
+
+Sem distribuição automática, fila, SLA, ociosidade, WhatsApp ou tempo real. Regras: [business-rules.md](business-rules.md) BR-32; decisão: [D-081](../00-governance/decision-register.md#d-081--núcleo-de-conversas-agnóstico-ao-canal-f46).
+
 ## 8. Fluxo de disponibilidade (Fase 4)
 
 ```

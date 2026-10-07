@@ -72,6 +72,12 @@ No MVP, o atendimento é **registrado manualmente** (o operador atende por fora 
 - **Fluxo**: o atendente registra o contato feito por fora (canal livre, direção opcional, resumo, resultado, data) → o sistema grava e audita → a linha do tempo da entidade mostra Interações e Notas, da mais recente para a mais antiga, com "carregar mais" ([D-079](../00-governance/decision-register.md#d-079--interações-e-linha-do-tempo-f44)).
 - **Exceções**: sem edição de interação (só exclusão, soft delete); a timeline do Cliente **não** inclui o histórico do Lead de origem (VN-14 aberta); sem `notes:read` a timeline mostra só interações; entidade de outro tenant ou excluída → 404.
 
+### UC-14 Atender por uma conversa manual — *Fase 4 (F4.6)*
+- **Ator**: Atendente/consultor (abre, registra, encerra, reabre); Gerente (também atribui responsável).
+- **Pré-condição**: Cliente, Lead ou Oportunidade existente no tenant; permissões `conversations:create|read|update` (`assign` para atribuir).
+- **Fluxo**: o atendente abre uma conversa a partir do detalhe da entidade → registra as mensagens do atendimento feito por fora (direção opcional) → o gerente pode atribuir um responsável → ao terminar, encerra; se preciso, reabre ([D-081](../00-governance/decision-register.md#d-081--núcleo-de-conversas-agnóstico-ao-canal-f46)).
+- **Exceções**: conversa encerrada não aceita mensagens nem atribuição (409); vínculos incoerentes (422) ou de outro tenant (404); responsável precisa estar ativo e com `conversations:update` (422); Lead não vira Cliente por ter conversa (BR-28); sem WhatsApp, distribuição automática, SLA ou ociosidade — Fase 5 / futuro.
+
 ## 4. Fluxo crítico ponta a ponta (referência)
 
 ```

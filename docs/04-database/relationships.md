@@ -65,10 +65,10 @@ dispositions 1───N calls
 customers 1───N conversations
 leads     1───N conversations (lead_id — D-076/A3; Lead não vira Cliente por ter conversa)
 opportunities 1───N conversations (opportunity_id — D-076/A3)
-queues    1───N conversations
-users     1───N conversations (assigned_to)
-conversations 1───N messages
-file_assets 1───N messages (attachment_id)
+queues    1───N conversations   [Fase 5 / futuro — `queue_id` não existe no F4.6]
+users     1───N conversations (assigned_to, closed_by — F4.6)
+conversations 1───N messages   [F4.6; messages.sender_user_id → users]
+file_assets 1───N messages (attachment_id)   [Fase 5 — não existe no F4.6]
 ```
 
 ## 5. Campanhas

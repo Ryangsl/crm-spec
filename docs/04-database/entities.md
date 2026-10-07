@@ -279,28 +279,35 @@ Histórico **append-only** de transições; escrito na **mesma transação** do 
 
 > **Nota (2026-09-30, [D-073](../00-governance/decision-register.md#d-073--módulo-communications-implementado-fora-da-especificação-whatsapp-outbound-e-automações))**: o `schema.prisma` já contém `whatsapp_messages` e `automation_rules` (módulo `communications`), **fora** deste modelo documentado. Não substituem `conversations`/`messages` abaixo; a coexistência/migração está `PENDENTE`. O módulo está **congelado** (D-073). Entidades adicionais propostas para o WhatsApp — incluindo `channel_accounts`, conta de canal **por tenant com cardinalidade 0..N** ([D-074](../00-governance/decision-register.md#d-074--integração-de-whatsapp-configurada-por-tenant-por-conta-de-canal-wa-02)) — e `channel_webhook_events` estão em [../03-architecture/whatsapp-architecture.md](../03-architecture/whatsapp-architecture.md) §6.2 e **ainda não fazem parte do modelo**.
 
-### `conversations`
+### `conversations` *(F4.6 — D-081; núcleo agnóstico de canal)*
 | Campo | Tipo | Obrigatório | Notas |
 |---|---|---|---|
-| customer_id | UUID (FK customers) | não | Vínculo dedicado (A3, [D-076](../00-governance/decision-register.md#d-076--fronteira-f4f5-diretrizes-de-planejamento-da-fase-4-aprovadas-a1a3)) |
+| tenant_id | UUID (FK tenants) | sim | |
+| customer_id | UUID (FK customers) | não | Vínculo dedicado (A3, [D-076](../00-governance/decision-register.md#d-076--fronteira-f4f5-diretrizes-de-planejamento-da-fase-4-aprovadas-a1a3)); **pelo menos um** entre customer/lead/opportunity |
 | lead_id | UUID (FK leads) | não | A3: vínculo dedicado; Conversation **não** converte Lead em Cliente (BR-28) |
-| opportunity_id | UUID (FK opportunities) | não | A3: vínculo dedicado, quando aplicável |
-| channel_type | enum(whatsapp, email, sms) | sim | Valor neutro/extensível: `PROPOSTO` ([phase-4-plan.md §6.7](../10-roadmap/phase-4-plan.md), `TD-12`). `channel_account_id` e infraestrutura de canal são **da Fase 5** (A2) |
-| queue_id | UUID (FK queues) | não | |
-| status | enum(open, closed) | sim | |
-| assigned_to | UUID (FK users) | não | |
+| opportunity_id | UUID (FK opportunities) | não | A3: vínculo dedicado |
+| channel_type | string | sim | Texto neutro, padrão `manual` (a API só aceita `manual` no F4.6); a Fase 5 acrescenta valores |
+| status | enum(open, closed) | sim | Padrão `open` |
+| assigned_to | UUID (FK users) | não | Atribuição **manual**; nula = sem responsável |
+| assigned_at | timestamp | não | |
+| closed_at / closed_by | timestamp / UUID (FK users) | não | Preenchidos ao encerrar; limpos ao reabrir |
+| last_message_at | timestamp | não | Atividade da conversa (ordena a lista) |
+| created_at / updated_at | timestamp | sim | |
+| deleted_at | timestamp | não | Reservado (soft delete); **sem endpoint de exclusão** no F4.6 |
 
-### `messages`
+Índices: `(tenant_id, status, assigned_to)`, `(tenant_id, customer_id)`, `(tenant_id, lead_id)`, `(tenant_id, opportunity_id)`, `(tenant_id, last_message_at DESC)`. **Não implementado no F4.6** (aditivo na Fase 5 ou em decisão futura): `channel_account_id`, `external_contact_id`, `queue_id`, `disposition_id`, métricas de última mensagem do cliente/agente.
+
+### `messages` *(F4.6 — D-081)*
 | Campo | Tipo | Obrigatório | Notas |
 |---|---|---|---|
+| tenant_id | UUID (FK tenants) | sim | |
 | conversation_id | UUID (FK conversations) | sim | |
-| direction | enum(inbound, outbound) | sim | |
-| content | text | não | |
-| attachment_id | UUID (FK file_assets) | não | |
-| external_message_id | string | não | Chave de idempotência (BR-20) |
-| status | enum(pending, sent, delivered, read, failed) | sim | |
+| direction | enum(inbound, outbound) | não | Nula = anotação interna |
+| sender_user_id | UUID (FK users) | não | Sempre o usuário autenticado nas mensagens manuais |
+| content | text | sim | 1–5000 |
+| created_at | timestamp | sim | |
 
-Índices: `(tenant_id, external_message_id)` único quando presente.
+Imutável (sem edição e sem soft delete). Índice `(tenant_id, conversation_id, created_at DESC, id DESC)`. **Não implementado no F4.6** (Fase 5, aditivo): `external_message_id` (idempotência, BR-20), `status` de entrega (`pending/sent/delivered/read/failed`), `error_code`, `attachment_id`/`file_assets`, `sender_type`.
 
 ### `message_templates`
 | Campo | Tipo | Obrigatório |
