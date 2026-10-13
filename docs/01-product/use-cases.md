@@ -78,6 +78,13 @@ No MVP, o atendimento é **registrado manualmente** (o operador atende por fora 
 - **Fluxo**: o sino do AppShell mostra o contador de não lidas (atualizado a cada 30 s) → o usuário abre o painel e vê "Lead atribuído a você: {nome}" → ao abrir a notificação ela é marcada como lida e o sistema leva ao Lead; ou usa "marcar todas como lidas" ([D-080](../00-governance/decision-register.md#d-080--notificações-v1-somente-leadassigned-f45)).
 - **Exceções**: quem atribui o Lead a si mesmo não é notificado; Lead sem proprietário não gera notificação; cada usuário só vê as próprias; sem tempo real (até 30 s de latência); importações grandes geram uma notificação por Lead.
 
+### UC-14 Atender por uma conversa manual — *Fase 4 (F4.6)*
+- **Ator**: Atendente/consultor (abre, registra, encerra, reabre); Gerente (também atribui responsável).
+- **Pré-condição**: Cliente, Lead ou Oportunidade existente no tenant; permissões `conversations:create|read|update` (`assign` para atribuir).
+- **Fluxo**: o atendente abre uma conversa a partir do detalhe da entidade → registra as mensagens do atendimento feito por fora (direção opcional) → o gerente pode atribuir um responsável → ao terminar, encerra; se preciso, reabre ([D-081](../00-governance/decision-register.md#d-081--núcleo-de-conversas-agnóstico-ao-canal-f46)).
+- **Exceções**: o contexto CRM da conversa (nomes e estados) só é exibido por recurso a quem tem a leitura dele — sem `customers:read`, `leads:read` ou `opportunities:read` o campo vem nulo e a conversa continua legível (BR-32); conversa encerrada não aceita mensagens nem atribuição (409); vínculos incoerentes (422) ou de outro tenant (404); responsável precisa estar ativo e com `conversations:update` (422); Lead não vira Cliente por ter conversa (BR-28); sem WhatsApp, distribuição automática, SLA ou ociosidade — Fase 5 / futuro.
+
+
 ## 4. Fluxo crítico ponta a ponta (referência)
 
 ```

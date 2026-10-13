@@ -1310,6 +1310,222 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /conversations:
+    post:
+      summary: Abre uma conversa vinculada a Cliente/Lead/Oportunidade (conversations:create)
+      description: |
+        Núcleo de conversas agnóstico ao canal (F4.6, D-081). Informe **pelo menos um** entre
+        `customer_id`, `lead_id` e `opportunity_id` (referências dedicadas — D-076/A3, sem
+        polimorfismo): ausência de todos = 400 `CONVERSATION_REFERENCE_REQUIRED`. Cada vínculo
+        precisa existir **no mesmo tenant** (404 caso contrário) e os informados precisam ser
+        coerentes entre si (lead ↔ cliente, oportunidade ↔ cliente, oportunidade ↔ lead): 422
+        `CONVERSATION_REFERENCE_MISMATCH`. A conversa nasce **aberta e sem responsável**. Abrir
+        conversa **não** converte Lead em Cliente (BR-28) e não altera `last_interaction_at`.
+        `channel_type` aceita só `manual` (a Fase 5 acrescenta canais). Campos extras
+        (`tenant_id`, `status`, `assigned_to`) são recusados (400).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ConversationCreate" }
+      responses:
+        "201":
+          description: Conversa criada
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Conversation" }
+        "400":
+          description: Payload inválido ou nenhum vínculo informado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: Cliente, lead ou oportunidade não encontrado no tenant
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "422":
+          description: Vínculos incoerentes entre si
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+    get:
+      summary: Lista as conversas do tenant — offset (conversations:read)
+      description: >
+        Paginação por **offset** (lista de gestão com filtros — D-007; diverge da proposta de cursor
+        do plano). Ordenada por `last_message_at` decrescente (conversas sem mensagem por último).
+        Visibilidade por tenant (D-058).
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Limit"
+        - { name: status, in: query, required: false, schema: { type: string, enum: [open, closed] } }
+        - { name: assigned_to, in: query, required: false, schema: { type: string, format: uuid } }
+        - { name: unassigned, in: query, required: false, description: "true = só conversas sem responsável", schema: { type: boolean } }
+        - { name: customer_id, in: query, required: false, schema: { type: string, format: uuid } }
+        - { name: lead_id, in: query, required: false, schema: { type: string, format: uuid } }
+        - { name: opportunity_id, in: query, required: false, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Lista paginada de conversas
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ConversationPage" }
+        "400":
+          description: Filtro ou paginação inválidos
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /conversations/{id}:
+    get:
+      summary: Obtém uma conversa com o contexto CRM resumido (conversations:read)
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Conversa encontrada
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Conversation" }
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /conversations/{id}/assign:
+    post:
+      summary: Atribui, troca ou remove o responsável — manual (conversations:assign)
+      description: >
+        `user_id: null` remove o responsável. O responsável precisa estar **ativo** e ter
+        `conversations:update` (422 `CONVERSATION_ASSIGNEE_INELIGIBLE`); usuário de outro tenant
+        ou inexistente: 404. Só em conversa aberta (409 `CONVERSATION_CLOSED`). Repetir o mesmo
+        responsável é idempotente (não audita). Sem distribuição automática.
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ConversationAssign" }
+      responses:
+        "200":
+          description: Conversa atualizada
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Conversation" }
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Conversa encerrada
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "422":
+          description: Responsável inativo ou sem permissão de atendimento
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /conversations/{id}/close:
+    post:
+      summary: Encerra a conversa (conversations:update)
+      description: >
+        Preenche `closed_at`/`closed_by`. Conversa já encerrada: 409 `CONVERSATION_CLOSED`. A
+        disposição obrigatória (BR-15) **não** é exigida no F4.6.
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Conversa encerrada
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Conversation" }
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Conversa já encerrada
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /conversations/{id}/reopen:
+    post:
+      summary: Reabre a conversa (conversations:update)
+      description: >
+        Limpa `closed_at`/`closed_by`. Conversa não encerrada: 409 `CONVERSATION_NOT_CLOSED`.
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Conversa reaberta
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Conversation" }
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Conversa não está encerrada
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /conversations/{id}/messages:
+    get:
+      summary: Histórico de mensagens da conversa — cursor (conversations:read)
+      description: |
+        Da mensagem **mais recente para a mais antiga**. **Cursor opaco** que codifica
+        `(created_at, id)` do último item da página (não é UUID); `next_cursor` é nulo na última
+        página. Cursor inválido ou `limit` fora de 1..100: 400. Conversa de outro tenant:
+        404. Não altera a paginação global. Mensagens **não** aparecem na linha do tempo do F4.4
+        nem no `audit_log`.
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/MessageCursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Página de mensagens
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MessagePage" }
+        "400":
+          description: Cursor ou limit inválidos
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          $ref: "#/components/responses/NotFound"
+    post:
+      summary: Registra uma mensagem manual na conversa (conversations:update)
+      description: >
+        Registro **manual** (não envia nada a nenhum canal). `sender_user_id` é sempre o usuário
+        autenticado; `direction` é opcional (sem ela, anotação interna). Mensagens são imutáveis.
+        Conversa encerrada: 409 `CONVERSATION_CLOSED`. Campos extras (`status`,
+        `external_message_id`, `sender_user_id`…) são recusados (400).
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MessageCreate" }
+      responses:
+        "201":
+          description: Mensagem registrada
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Message" }
+        "400":
+          description: Conteúdo ausente/longo demais ou campo não permitido
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Conversa encerrada
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
   /tasks:
     get:
       summary: Lista tarefas do tenant (D-031, Follow-up)
@@ -1829,6 +2045,14 @@ components:
       required: false
       description: >
         Cursor opaco de notificações (F4.5), devolvido em `next_cursor`. Não é um UUID: codifica
+        (created_at, id) do último item. Cursor inválido: 400.
+      schema: { type: string }
+    MessageCursor:
+      name: cursor
+      in: query
+      required: false
+      description: >
+        Cursor opaco de mensagens (F4.6), devolvido em `next_cursor`. Não é um UUID: codifica
         (created_at, id) do último item. Cursor inválido: 400.
       schema: { type: string }
     Page:
@@ -2572,4 +2796,94 @@ components:
       type: object
       properties:
         updated: { type: integer, minimum: 0 }
+    ConversationCreate:
+      type: object
+      additionalProperties: false
+      description: Pelo menos um entre customer_id, lead_id e opportunity_id.
+      properties:
+        customer_id: { type: string, format: uuid }
+        lead_id: { type: string, format: uuid }
+        opportunity_id: { type: string, format: uuid }
+        channel_type: { type: string, enum: [manual], default: manual }
+
+    ConversationAssign:
+      type: object
+      additionalProperties: false
+      required: [user_id]
+      properties:
+        user_id: { type: string, format: uuid, nullable: true, description: "null remove o responsável." }
+
+    Conversation:
+      type: object
+      description: >
+        Conversa do núcleo agnóstico de canal (F4.6, D-081). `context` resume o vínculo CRM para
+        exibição. Sem campos de canal real, provider, SLA ou fila (Fase 5/futuro).
+      properties:
+        id: { type: string, format: uuid }
+        channel_type: { type: string, example: manual }
+        status: { type: string, enum: [open, closed] }
+        customer_id: { type: string, format: uuid, nullable: true }
+        lead_id: { type: string, format: uuid, nullable: true }
+        opportunity_id: { type: string, format: uuid, nullable: true }
+        context:
+          type: object
+          description: >
+            Resumo do contexto CRM. Cada campo só é preenchido quando o usuário autenticado tem a
+            leitura do recurso correspondente (`customers:read` → `customer_name`; `leads:read` →
+            `lead_name` e `lead_status`; `opportunities:read` → `opportunity_status`); sem a
+            permissão vem `null` (BR-32). A conversa continua legível com `conversations:read` e os
+            ids dos vínculos acima não dependem dessa permissão.
+          properties:
+            customer_name: { type: string, nullable: true }
+            lead_name: { type: string, nullable: true }
+            lead_status: { type: string, nullable: true, enum: [new, in_progress, qualified, disqualified, converted] }
+            opportunity_status: { type: string, nullable: true, enum: [open, won, lost] }
+        assigned_to: { type: string, format: uuid, nullable: true }
+        assigned_at: { type: string, format: date-time, nullable: true }
+        closed_at: { type: string, format: date-time, nullable: true }
+        closed_by: { type: string, format: uuid, nullable: true }
+        last_message_at: { type: string, format: date-time, nullable: true }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    ConversationPage:
+      type: object
+      properties:
+        data:
+          type: array
+          items: { $ref: "#/components/schemas/Conversation" }
+        page: { type: integer }
+        limit: { type: integer }
+        total: { type: integer }
+
+    MessageCreate:
+      type: object
+      additionalProperties: false
+      required: [content]
+      properties:
+        content: { type: string, minLength: 1, maxLength: 5000 }
+        direction: { type: string, enum: [inbound, outbound] }
+
+    Message:
+      type: object
+      description: >
+        Mensagem manual/interna (F4.6). Imutável. Sem status de entrega, id de provider ou anexo
+        (Fase 5).
+      properties:
+        id: { type: string, format: uuid }
+        conversation_id: { type: string, format: uuid }
+        direction: { type: string, enum: [inbound, outbound], nullable: true, description: "Nula = anotação interna." }
+        sender_user_id: { type: string, format: uuid, nullable: true }
+        content: { type: string }
+        created_at: { type: string, format: date-time }
+
+    MessagePage:
+      type: object
+      properties:
+        data:
+          type: array
+          items: { $ref: "#/components/schemas/Message" }
+        next_cursor: { type: string, nullable: true, description: "Nulo na última página." }
+
+
 

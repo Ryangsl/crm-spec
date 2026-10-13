@@ -130,6 +130,11 @@ O cursor é o UUID v7 do último item da página ([D-001](../00-governance/decis
 
 ### Notificações *(F4.5 — D-080)*
 `GET /v1/notifications?cursor=...&limit=20` (cursor opaco `(created_at, id)`, só as do usuário autenticado) · `GET /v1/notifications/unread-count` · `POST /v1/notifications/{id}/read` (404 se não for do usuário) · `POST /v1/notifications/read-all` — sem permissões `notifications:*`.
+
+### Conversas *(F4.6 — D-081)*
+*(O objeto `context` de `Conversation` só traz nome/estado de Cliente, Lead e Oportunidade conforme `customers:read`, `leads:read` e `opportunities:read` do usuário; sem a permissão o campo é `null` — BR-32.)*
+`POST /v1/conversations` · `GET /v1/conversations?page=&limit=&status=&assigned_to=&unassigned=&customer_id=&lead_id=&opportunity_id=` (offset) · `GET /v1/conversations/{id}` · `POST /v1/conversations/{id}/assign` (`{ "user_id": uuid|null }`) · `POST /v1/conversations/{id}/close` · `POST /v1/conversations/{id}/reopen` · `GET /v1/conversations/{id}/messages?cursor=&limit=` (cursor opaco `(created_at, id)`, mais recente primeiro) · `POST /v1/conversations/{id}/messages` (`{ "content": "...", "direction": "inbound|outbound"? }`). Permissões `conversations:create|read|update|assign`; sem rotas de canal/webhook (Fase 5).
+
 `POST /v1/calls/{id}/disposition` `{ "disposition_id": "..." }`
 `POST /v1/calls/click-to-call` `{ "customer_id": "...", "phone": "..." }` — **fora de escopo** (telefonia, D-070; provedor [D-010](../00-governance/decision-register.md#d-010--provedor-de-telefonia) sem fase); não faz parte do MVP.
 

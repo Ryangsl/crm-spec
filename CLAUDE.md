@@ -22,7 +22,7 @@ Ao mudar uma decisão: atualize a entrada no register, atualize os documentos qu
 
 ## Estado atual
 
-**FASE 0 — APROVADA. FASE 1 — APROVADA. FASE 2 — fechada em 2026-09-09, veredito 🟡 APTA COM RESSALVAS (ver [phase-02.md](docs/09-testing/phase-acceptance/phase-02.md)). FASE 3 — CRM Comercial — CONCLUÍDA (3.1–3.6). FASE 4 — Atendimento/Conversas — em andamento: F4.0 (decisões) concluído e F4.1 (configurações do tenant) implementado; estado atual em [PROJECT-CONTEXT.md](PROJECT-CONTEXT.md).**
+**FASE 0 — APROVADA. FASE 1 — APROVADA. FASE 2 — fechada em 2026-09-09, veredito 🟡 APTA COM RESSALVAS (ver [phase-02.md](docs/09-testing/phase-acceptance/phase-02.md)). FASE 3 — CRM Comercial — CONCLUÍDA (3.1–3.6). FASE 4 — Atendimento/Conversas — em andamento: F4.0–F4.4 concluídos e integrados ao `main`; F4.5 (notificações, D-080) e F4.6 (núcleo de conversas, agnóstico ao canal — D-081) implementados em branches independentes e combinados/validados só na branch local `fix/f4-5-f4-6-pre-integration` (**não integrados ao `main`**); **WhatsApp real é a Fase 5 e não foi iniciada**; estado atual em [PROJECT-CONTEXT.md](PROJECT-CONTEXT.md).**
 
 ---
 
