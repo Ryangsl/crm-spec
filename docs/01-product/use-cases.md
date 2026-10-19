@@ -99,3 +99,9 @@ Lead recebido
 ```
 
 Este fluxo é o eixo central do produto e orienta a modelagem de dados ([../04-database/entities.md](../04-database/entities.md)) e os eventos de domínio ([../03-architecture/architecture.md](../03-architecture/architecture.md)).
+
+### UC-15 Conceder liberação excepcional de acesso fora do horário — *Fase 4 (F4.7) — DECIDIDO em 2026-10-13, implementado no F4.7 (working tree, sem commit nem push)*
+- **Ator**: Admin ou Gerente (`access_exceptions:manage`).
+- **Pré-condição**: restrição por horário ativada no tenant; usuário restringido (vendedor/consultor) existente.
+- **Fluxo**: o concedente escolhe o usuário, o escopo (Leads, Conversas ou ambos), informa o motivo (obrigatório) e a expiração (obrigatória, futura, sem teto) → a exceção vale **imediatamente** (sem agendamento) → o usuário volta a acessar o recurso liberado fora do horário → o concedente pode revogá-la antes do prazo.
+- **Exceções**: expiração no passado (422); `expires_at` sem hora ou sem fuso (400 — instante RFC 3339 com fuso); usuário de outro tenant (404); usuário não sujeito à restrição (concessão rejeitada, 422); sem a permissão (403); com várias exceções vale a união; fora do escopo concedido o bloqueio continua; Admin, Gerente, Supervisor e Diretor não precisam de exceção. Decidido em 2026-10-13 ([D-082](../00-governance/decision-register.md#d-082--restrição-por-horário-comercial-e-liberação-excepcional-vn-07-vn-08)); **implementado no working tree, sem commit nem push**. Somente o Admin altera o toggle global; Admin e Gerente concedem, listam e revogam exceções.

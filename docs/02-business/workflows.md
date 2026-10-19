@@ -175,3 +175,27 @@ Mecanismo desabilitado
 ```
 
 Regras: [business-rules.md](business-rules.md) BR-14; decisões: [D-071](../00-governance/decision-register.md#d-071--disponibilidade-de-consultoratendente-para-distribuição-automática) e [D-077](../00-governance/decision-register.md#d-077--disponibilidade-modelo-de-dados-e-permissões-td-01-td-08).
+
+## 9. Fluxo de restrição por horário comercial e liberação excepcional (Fase 4 — F4.7) — *DECIDIDO em 2026-10-13, implementada no F4.7 (working tree, sem commit nem push)*
+
+> Decidido em 2026-10-13 ([D-082](../00-governance/decision-register.md#d-082--restrição-por-horário-comercial-e-liberação-excepcional-vn-07-vn-08)/[D-083](../00-governance/decision-register.md#d-083--exceções-de-acesso-modelo-técnico-e-critério-de-identificação-td-05-td-14)). Implementado no F4.7 (working tree, sem commit nem push).
+
+```
+Somente o Admin ativa ou desativa a restrição do tenant (toggle global, desligado por padrão; o Gerente não o controla)
+  → só é aceito se crm.business_hours for válido; senão a ativação é recusada
+Usuário restringido (vendedor/consultor) acessa Leads ou Conversas
+  → restrição desligada, horário ausente/inválido ou dentro do horário → acesso normal
+  → fora do horário → 403 OUTSIDE_BUSINESS_HOURS (leitura e escrita)
+     salvo exceção ativa para aquele recurso (escopo leads | conversations | all)
+Admin ou Gerente concede uma exceção (direta, sem aprovação)
+  → usuário do mesmo tenant e SUJEITO à restrição (senão a concessão é rejeitada), escopo, motivo obrigatório,
+    início imediato, expiração futura obrigatória (sem teto) → auditada
+  → várias exceções podem coexistir; vale a união das válidas (revoked_at nulo, starts_at ≤ t < expires_at, escopo do recurso);
+    Admin e Gerente listam e revogam; revogar ou expirar uma não afeta as demais
+Frontend consulta o endpoint de status → banner preventivo "fora do horário"
+Admin, Gerente, Supervisor e Diretor: isentos (a isenção prevalece se o usuário também tiver o marcador de restrição)
+Importação e conversão de Leads e os acessos indiretos (notas, tarefas, interações, timeline) ficam fora da restrição inicial
+O horário NÃO altera a disponibilidade (D-071) nem a distribuição de Leads (D-078)
+```
+
+Regras: [business-rules.md](business-rules.md) BR-27 (redação aprovada) e BR-05; consequência conhecida: um consultor Disponível fora do horário pode receber um Lead e não conseguir abri-lo.
