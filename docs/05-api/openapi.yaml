@@ -1526,6 +1526,170 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
 
+  /access-exceptions:
+    post:
+      summary: "[F4.7 — D-082/D-083; implementado no working tree, sem commit] Concede uma liberação excepcional de acesso (access_exceptions:manage)"
+      description: |
+        **Implementado no F4.7 (D-082/D-083).** Concessão **direta**
+        (sem solicitação nem aprovação), a um usuário individual **sujeito à restrição**, por Admin ou Gerente (qualquer usuário do tenant). A concessão a usuário **não sujeito** é rejeitada (422 `ACCESS_EXCEPTION_TARGET_NOT_RESTRICTED` — D-082, A7); expiração fora do futuro: 422 `ACCESS_EXCEPTION_EXPIRY_INVALID`. Início **imediato**, sem agendamento. `reason`
+        é obrigatório (texto livre, 1 a 1.000 caracteres após remover espaços nas pontas); `expires_at` é
+        obrigatório, **futuro**, sem teto de duração, e deve ser um instante RFC 3339 **com fuso**
+        (`2026-10-14T23:00:00Z` ou `2026-10-14T20:00:00-03:00`): data sem hora (`2026-12-31`),
+        hora sem fuso e hora sem segundos são recusadas com 400 (a API não assume meia-noite
+        UTC nem o fuso do servidor); `starts_at` é o instante da concessão. Várias exceções simultâneas são
+        permitidas (valem em união, sem precedência). Concessão auditada.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AccessExceptionCreate" }
+      responses:
+        "201":
+          description: Exceção concedida
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AccessException" }
+        "400":
+          description: "Payload inválido: `reason` vazio ou acima de 1.000 caracteres, `scope` desconhecido, `expires_at` ausente ou fora do formato RFC 3339 com fuso (inclusive data sem hora), campos não previstos (`starts_at`, `granted_by`)"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Sem a permissão `access_exceptions:manage`
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: Usuário inexistente ou de outro tenant
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "422":
+          description: "`ACCESS_EXCEPTION_EXPIRY_INVALID` (`expires_at` não está no futuro) ou `ACCESS_EXCEPTION_TARGET_NOT_RESTRICTED` (usuário não sujeito à restrição — D-082, A7)"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+    get:
+      summary: "[F4.7 — D-082/D-083; implementado no working tree, sem commit] Lista as exceções do tenant (access_exceptions:manage)"
+      description: |
+        **Implementado no F4.7 (D-082/D-083).** Admin e Gerente (`access_exceptions:manage`) listam e revogam qualquer exceção do
+        próprio tenant (D-082, A6 e A8).
+      parameters:
+        - { name: page, in: query, required: false, schema: { type: integer, minimum: 1, default: 1 } }
+        - { name: limit, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+        - { name: user_id, in: query, required: false, schema: { type: string, format: uuid } }
+        - { name: active, in: query, required: false, description: "true = apenas vigentes agora; false = revogadas ou expiradas (ou ainda não iniciadas)", schema: { type: boolean } }
+      responses:
+        "200":
+          description: Exceções do tenant
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AccessExceptionList" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Sem a permissão `access_exceptions:manage`
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /access-exceptions/{id}:
+    delete:
+      summary: "[F4.7 — D-082/D-083; implementado no working tree, sem commit] Revoga antecipadamente uma exceção (access_exceptions:manage)"
+      description: |
+        **Implementado no F4.7 (D-082/D-083).** Não apaga o registro: preenche `revoked_at`. A exceção
+        deixa de valer a partir da **requisição seguinte**; as demais exceções do usuário não são
+        afetadas. Repetir a revogação preserva o primeiro `revoked_at`. Revogação auditada.
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Exceção revogada
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AccessException" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Sem a permissão `access_exceptions:manage`
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /access-status:
+    get:
+      summary: "[F4.7 — D-082/D-083; implementado no working tree, sem commit] Estado do acesso por horário do usuário autenticado (sem permissão específica)"
+      description: |
+        **Implementado no F4.7 (D-082/D-083).** Permite ao frontend exibir um banner preventivo. As rotas
+        de Leads e Conversas respondem `403 OUTSIDE_BUSINESS_HOURS` quando bloqueadas (D-082).
+        Sem `business_hours` válido ou com a restrição desligada, nada é bloqueado.
+      responses:
+        "200":
+          description: Estado do acesso
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AccessStatus" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /tenant-settings/business-hours-restriction:
+    get:
+      summary: "[F4.7 — D-082/D-083; implementado no working tree, sem commit] Lê o toggle de restrição por horário do tenant (tenant_settings:read)"
+      description: |
+        Chave proposta `crm.business_hours.restriction.enabled`. Ausente = `false` (desligada).
+      responses:
+        "200":
+          description: Estado do toggle
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BusinessHoursRestrictionSetting" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Sem a permissão `tenant_settings:read`
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+    put:
+      summary: "[F4.7 — D-082/D-083; implementado no working tree, sem commit] Liga/desliga a restrição por horário do tenant (somente Admin)"
+      description: |
+        **Implementado no F4.7 (D-082).** **Somente o Admin** liga ou desliga; o Gerente não
+        controla o toggle (o mecanismo é detalhe de implementação; a permissão `tenant_settings:update`
+        é a de hoje, só do Admin). Ligar só é aceito com `crm.business_hours` válido (senão 422
+        `BUSINESS_HOURS_REQUIRED`); desligar é sempre aceito. Idempotente. Somente boolean JSON.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BusinessHoursRestrictionSetting" }
+      responses:
+        "200":
+          description: Toggle atualizado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BusinessHoursRestrictionSetting" }
+        "400":
+          description: Valor não booleano
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Sem a permissão `tenant_settings:update`
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "422":
+          description: "`BUSINESS_HOURS_REQUIRED` — horário comercial ausente ou inválido; a restrição não pode ser ativada"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
   /tasks:
     get:
       summary: Lista tarefas do tenant (D-031, Follow-up)
@@ -2796,6 +2960,61 @@ components:
       type: object
       properties:
         updated: { type: integer, minimum: 0 }
+    AccessExceptionCreate:
+      type: object
+      description: "[F4.7 — D-082/D-083; implementado no working tree, sem commit] Concessão direta; o escopo é escolhido por quem concede."
+      required: [user_id, scope, reason, expires_at]
+      properties:
+        user_id: { type: string, format: uuid }
+        scope: { type: string, enum: [leads, conversations, all] }
+        reason: { type: string, minLength: 1, maxLength: 1000, description: "Texto livre obrigatório (espaços nas pontas são removidos antes de validar)." }
+        expires_at: { type: string, format: date-time, description: "Instante RFC 3339 com fuso (`Z` ou `±hh:mm`) e segundos; obrigatório e futuro; sem teto de duração. Data sem hora ou hora sem fuso: 400.", example: "2026-10-14T23:00:00Z" }
+
+    AccessException:
+      type: object
+      description: "[F4.7 — D-082/D-083; implementado no working tree, sem commit]"
+      properties:
+        id: { type: string, format: uuid }
+        user_id: { type: string, format: uuid }
+        granted_by: { type: string, format: uuid }
+        scope: { type: string, enum: [leads, conversations, all] }
+        starts_at: { type: string, format: date-time, description: "Instante da concessão." }
+        expires_at: { type: string, format: date-time }
+        reason: { type: string }
+        revoked_at: { type: string, format: date-time, nullable: true }
+
+    AccessExceptionList:
+      type: object
+      description: "[F4.7 — D-082/D-083; implementado no working tree, sem commit]"
+      properties:
+        data:
+          type: array
+          items: { $ref: "#/components/schemas/AccessException" }
+        page: { type: integer }
+        limit: { type: integer }
+        total: { type: integer }
+
+    AccessStatus:
+      type: object
+      description: "[F4.7 — D-082/D-083; implementado no working tree, sem commit]"
+      properties:
+        restriction_enabled: { type: boolean, description: "Toggle do tenant." }
+        applies_to_me: { type: boolean, description: "O usuário autenticado é sujeito à restrição: possui o marcador de restrição e não o de isenção (a isenção prevalece — D-082, PN-1)." }
+        within_business_hours: { type: boolean, nullable: true, description: "Nulo quando a restrição está desligada ou não há horário válido." }
+        access:
+          type: object
+          description: "Acesso permitido agora, já considerando horário, isenção e exceções vigentes."
+          properties:
+            leads: { type: boolean }
+            conversations: { type: boolean }
+
+    BusinessHoursRestrictionSetting:
+      type: object
+      description: "[F4.7 — D-082/D-083; implementado no working tree, sem commit]"
+      required: [enabled]
+      properties:
+        enabled: { type: boolean }
+
     ConversationCreate:
       type: object
       additionalProperties: false
