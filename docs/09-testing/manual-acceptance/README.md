@@ -120,6 +120,23 @@ recriar esses fixtures primeiro (replicando a estrutura do tenant "Empresa Exemp
 
 Resultado consolidado de cada execução da IA: ver [phase-acceptance/phase-02.md](../phase-acceptance/phase-02.md) (não altera esta tabela — a tabela acima é o painel vivo de quais MATs ainda esperam validação manual).
 
+## Índice — Fase 4, F4.7 (restrição por horário e liberação excepcional)
+
+Preparação do ambiente e dos dados (compartilhada): [F4-7-preparacao-do-ambiente.md](F4-7-preparacao-do-ambiente.md). Em **2026-10-19** os MATs 009 a 016 tiveram uma **execução técnica assistida por IA** (banco descartável, nunca ambiente real; o MAT-014 em Chrome real): **PASSOU nos oito**, com 1 defeito menor de layout (D1, MAT-014), uma correção de roteiro (MAT-014, passo 7.2) e sub-itens não exercitados. Os resultados, o ambiente, as limitações e as evidências estão no [relatório consolidado](../execucao-assistida-f4-7.md) e na seção 8/Histórico de cada MAT. **A seção 9 (validação manual) de cada MAT permanece em branco e o aceite humano está PENDENTE nos oito MATs; nenhum MAT está formalmente aceito.**
+
+| MAT | Nome | Prioridade | Onde pode ser validado | IA (seção 8) | Validação manual (seção 9) |
+|---|---|---|---|---|---|
+| [MAT-009](MAT-009-restricao-toggle-global.md) | Toggle global (somente Admin) | Alta | Ambiente de testes (API) | PASSOU (2026-10-19) | PENDENTE |
+| [MAT-010](MAT-010-restricao-acesso-dentro-fora-horario.md) | Acesso dentro e fora do horário | Crítica | Ambiente de testes (API) | PASSOU (2026-10-19) | PENDENTE |
+| [MAT-011](MAT-011-restricao-isencoes-multiplos-papeis.md) | Isenções e múltiplos papéis | Crítica | Ambiente de testes (API) | PASSOU (2026-10-19) | PENDENTE |
+| [MAT-012](MAT-012-restricao-liberacao-excepcional.md) | Liberação excepcional (conceder, listar, revogar) | Crítica | Ambiente de testes (API) | PASSOU (2026-10-19) | PENDENTE |
+| [MAT-013](MAT-013-restricao-isolamento-tenant.md) | Isolamento entre tenants | Crítica | Ambiente de testes (API) + fixture do tenant B | PASSOU (2026-10-19) | PENDENTE |
+| [MAT-014](MAT-014-restricao-interface.md) | Interface: toggle, banner, `403` e tela de liberações | Alta | **Ambiente integrado** (navegador + screenshots) | PASSOU (2026-10-19, rodada posterior, Chrome real; defeito menor D1) | PENDENTE |
+| [MAT-015](MAT-015-restricao-rotas-excluidas.md) | Rotas excluídas (D-082) e lacunas PN-3 | Média | Ambiente de testes (API) | PASSOU (2026-10-19) | PENDENTE |
+| [MAT-016](MAT-016-restricao-disponibilidade-distribuicao.md) | Disponibilidade e distribuição inalteradas | Alta | Ambiente de testes (API) | PASSOU (2026-10-19) | PENDENTE |
+
+Fora dos MATs e **ainda não validados**: a execução do [runbook dos tenants existentes](../../08-devops/runbook-f4-7-tenant-roles.md) e a ativação do toggle em tenant real (etapas operacionais separadas, com autorização e backup).
+
 ## Padrão obrigatório de um MAT
 
 Todo arquivo `MAT-XXX-*.md` segue esta estrutura, nesta ordem:
