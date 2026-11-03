@@ -1,0 +1,11 @@
+[dados] liberacao leads (motivo 1000 caracteres) -> HTTP 201
+[dados] liberacao conversations (motivo 101 caracteres) -> HTTP 201
+[dados] liberacao all (motivo 328 caracteres) -> HTTP 201
+[ANTES (main, sem correcao) 1280x900] viewport 1280x900 | scrollWidth=7461px bodyScrollWidth=7461px innerWidth=1280px scrollX apos rolar=5000 | sem transbordamento horizontal: NAO
+[ANTES (main, sem correcao) 1280x900] screenshot 2026-11-03-d1-antes-sem-correcao-1280x900.png
+[DEPOIS (com a correcao) 1280x900] viewport 1280x900 | scrollWidth=1280px bodyScrollWidth=1280px innerWidth=1280px scrollX apos rolar=0 | sem transbordamento horizontal: SIM
+[DEPOIS (com a correcao) 1280x900] screenshot 2026-11-03-d1-corrigido-1280x900.png
+[DEPOIS (com a correcao) 390x844 (mobile)] viewport 390x844 | scrollWidth=390px bodyScrollWidth=390px innerWidth=390px scrollX apos rolar=0 | sem transbordamento horizontal: SIM
+[DEPOIS (com a correcao) 390x844 (mobile)] screenshot 2026-11-03-d1-corrigido-390x844.png
+
+[RESUMO D1] antes sem transbordamento: false (esperado false) | depois 1280x900: true | depois 390x844: true

@@ -1,0 +1,197 @@
+######## SETUP
+inicio UTC: 2026-10-19T16:20:43+00:00
+papeis de fabrica no tenant A: ['admin', 'backoffice', 'diretor', 'gerente', 'leitura', 'operador', 'supervisor', 'vendedor']
+  usuario gerente@a.mat.test -> HTTP 201
+  usuario supervisor@a.mat.test -> HTTP 201
+  usuario vendedor@a.mat.test -> HTTP 201
+  usuario multi@a.mat.test -> HTTP 201
+  usuario operador@a.mat.test -> HTTP 201
+lead e conversa de fixture criados: 01a154f7 01a154f7
+tenant B: papeis ['admin', 'backoffice', 'diretor', 'gerente', 'leitura', 'operador', 'supervisor', 'vendedor'] | lead-sources visiveis em B: 0
+
+######## MAT-009 toggle global
+[MAT-009] OK  1 ler toggle (ausente = desligado) | admin GET /v1/tenant-settings/business-hours-restriction -> HTTP 200 | {"enabled": false}
+[MAT-009] OK  2 ativar sem horario valido | admin PUT /v1/tenant-settings/business-hours-restriction -> HTTP 422 BUSINESS_HOURS_REQUIRED | {"error": {"code": "BUSINESS_HOURS_REQUIRED", "message": "Configure um horario de funcionamento valido antes de ativar a restricao por horario.", "details": []}}
+[MAT-009] OK  3 desligar sem horario e aceito | admin PUT /v1/tenant-settings/business-hours-restriction -> HTTP 200 | {"enabled": false}
+[MAT-009] OK  4 horario invalido (inicio >= fim) e recusado pela API | admin PUT /v1/tenant-settings/business-hours -> HTTP 422 BUSINESS_HOURS_INVALID | {"error": {"code": "BUSINESS_HOURS_INVALID", "message": "Horario de funcionamento invalido.", "details": [{"field": "weekly[0]", "issue": "start deve ser anterior a end (janelas que atravessam a meia-noite nao sao suportadas)."}]}}
+[MAT-009] OK  5 definir horario valido | admin PUT /v1/tenant-settings/business-hours -> HTTP 200
+[MAT-009] OK  6 ativar com horario valido | admin PUT /v1/tenant-settings/business-hours-restriction -> HTTP 200 | {"enabled": true}
+[MAT-009] OK  7 ativar de novo (idempotente) | admin PUT /v1/tenant-settings/business-hours-restriction -> HTTP 200 | {"enabled": true}
+[MAT-009] OK  8 ler toggle ligado | admin GET /v1/tenant-settings/business-hours-restriction -> HTTP 200 | {"enabled": true}
+[MAT-009] OK  9 string 'true' e recusada | admin PUT /v1/tenant-settings/business-hours-restriction -> HTTP 400 VALIDATION_ERROR | {"error": {"code": "VALIDATION_ERROR", "message": "Erro de validacao.", "details": [{"field": "unknown", "issue": "enabled must be a boolean value"}]}}
+[SQL] auditoria do toggle (esperado 2: ligar na 1a vez e desligar? ver nota): 2
+[MAT-009] OK  10 gerente le o toggle | gerente GET /v1/tenant-settings/business-hours-restriction -> HTTP 403 FORBIDDEN | {"error": {"code": "FORBIDDEN", "message": "Forbidden", "details": []}}
+[MAT-009] OK  11 gerente altera o toggle | gerente PUT /v1/tenant-settings/business-hours-restriction -> HTTP 403 FORBIDDEN | {"error": {"code": "FORBIDDEN", "message": "Forbidden", "details": []}}
+[MAT-009] OK  10 vendedor le o toggle | vendedor GET /v1/tenant-settings/business-hours-restriction -> HTTP 403 FORBIDDEN | {"error": {"code": "FORBIDDEN", "message": "Forbidden", "details": []}}
+[MAT-009] OK  11 vendedor altera o toggle | vendedor PUT /v1/tenant-settings/business-hours-restriction -> HTTP 403 FORBIDDEN | {"error": {"code": "FORBIDDEN", "message": "Forbidden", "details": []}}
+[MAT-009] OK  10 supervisor le o toggle | supervisor GET /v1/tenant-settings/business-hours-restriction -> HTTP 403 FORBIDDEN | {"error": {"code": "FORBIDDEN", "message": "Forbidden", "details": []}}
+[MAT-009] OK  11 supervisor altera o toggle | supervisor PUT /v1/tenant-settings/business-hours-restriction -> HTTP 403 FORBIDDEN | {"error": {"code": "FORBIDDEN", "message": "Forbidden", "details": []}}
+[MAT-009] OK  10 operador le o toggle | operador GET /v1/tenant-settings/business-hours-restriction -> HTTP 403 FORBIDDEN | {"error": {"code": "FORBIDDEN", "message": "Forbidden", "details": []}}
+[MAT-009] OK  11 operador altera o toggle | operador PUT /v1/tenant-settings/business-hours-restriction -> HTTP 403 FORBIDDEN | {"error": {"code": "FORBIDDEN", "message": "Forbidden", "details": []}}
+[MAT-009] OK  10 multi le o toggle | multi GET /v1/tenant-settings/business-hours-restriction -> HTTP 403 FORBIDDEN | {"error": {"code": "FORBIDDEN", "message": "Forbidden", "details": []}}
+[MAT-009] OK  11 multi altera o toggle | multi PUT /v1/tenant-settings/business-hours-restriction -> HTTP 403 FORBIDDEN | {"error": {"code": "FORBIDDEN", "message": "Forbidden", "details": []}}
+[MAT-009] OK  12 sem token | anonimo GET /v1/tenant-settings/business-hours-restriction -> HTTP 401 UNAUTHORIZED | {"error": {"code": "UNAUTHORIZED", "message": "Unauthorized", "details": []}}
+[MAT-009] OK  13 toggle continua ligado apos as tentativas | admin GET /v1/tenant-settings/business-hours-restriction -> HTTP 200 | {"enabled": true}
+[MAT-009] OK  14 desligar | admin PUT /v1/tenant-settings/business-hours-restriction -> HTTP 200 | {"enabled": false}
+[MAT-009] OK  15 ler desligado | admin GET /v1/tenant-settings/business-hours-restriction -> HTTP 200 | {"enabled": false}
+
+######## MAT-010 acesso dentro e fora do horario (usuario sujeito)
+[MAT-010] OK  1 horario DENTRO + toggle ligado | admin PUT /v1/tenant-settings/business-hours -> HTTP 200
+[MAT-010] OK  1b ligar | admin PUT /v1/tenant-settings/business-hours-restriction -> HTTP 200 | {"enabled": true}
+[MAT-010] OK  2 status do vendedor (dentro) | vendedor GET /v1/access-status -> HTTP 200 | {"restriction_enabled": true, "applies_to_me": true, "within_business_hours": true, "access": {"leads": true, "conversations": true}}
+[MAT-010] OK  3 vendedor lista leads (dentro) | vendedor GET /v1/leads -> HTTP 200
+[MAT-010] OK  4 vendedor lista conversas (dentro) | vendedor GET /v1/conversations -> HTTP 200
+[MAT-010] OK  5 horario FORA | admin PUT /v1/tenant-settings/business-hours -> HTTP 200
+[MAT-010] OK  6 status do vendedor (fora) | vendedor GET /v1/access-status -> HTTP 200 | {"restriction_enabled": true, "applies_to_me": true, "within_business_hours": false, "access": {"leads": false, "conversations": false}}
+[MAT-010] OK  7 listar leads | vendedor GET /v1/leads -> HTTP 403 OUTSIDE_BUSINESS_HOURS
+[MAT-010] OK  8 ler lead | vendedor GET /v1/leads/01a154f7-2065-7b80-9e18-7deddbd443e1 -> HTTP 403 OUTSIDE_BUSINESS_HOURS
+[MAT-010] OK  9 criar lead | vendedor POST /v1/leads -> HTTP 403 OUTSIDE_BUSINESS_HOURS
+[MAT-010] OK  10 editar lead | vendedor PATCH /v1/leads/01a154f7-2065-7b80-9e18-7deddbd443e1 -> HTTP 403 OUTSIDE_BUSINESS_HOURS
+[MAT-010] OK  11 qualificar lead | vendedor POST /v1/leads/01a154f7-2065-7b80-9e18-7deddbd443e1/qualify -> HTTP 403 OUTSIDE_BUSINESS_HOURS
+[MAT-010] OK  12 listar conversas | vendedor GET /v1/conversations -> HTTP 403 OUTSIDE_BUSINESS_HOURS
+[MAT-010] OK  13 ler conversa | vendedor GET /v1/conversations/01a154f7-2075-7c02-a611-6e4c89099e08 -> HTTP 403 OUTSIDE_BUSINESS_HOURS
+[MAT-010] OK  14 listar mensagens | vendedor GET /v1/conversations/01a154f7-2075-7c02-a611-6e4c89099e08/messages -> HTTP 403 OUTSIDE_BUSINESS_HOURS
+[MAT-010] OK  15 enviar mensagem | vendedor POST /v1/conversations/01a154f7-2075-7c02-a611-6e4c89099e08/messages -> HTTP 403 OUTSIDE_BUSINESS_HOURS
+[MAT-010] OK  16 encerrar conversa | vendedor POST /v1/conversations/01a154f7-2075-7c02-a611-6e4c89099e08/close -> HTTP 403 OUTSIDE_BUSINESS_HOURS
+[SQL] leads antes/depois: 1|1
+[SQL] nome do lead intacto: MAT Lead A1
+[SQL] mensagens gravadas: 0
+[MAT-010] OK  17 operador (sem marcador) acessa fora do horario | operador GET /v1/leads -> HTTP 200
+[MAT-010] OK  18 rota sem restricao: /users/me do vendedor | vendedor GET /v1/users/me -> HTTP 200
+[MAT-010] OK  19 permissao antes do horario: operador sem conversations:assign | operador POST /v1/conversations/01a154f7-2075-7c02-a611-6e4c89099e08/assign -> HTTP 403 FORBIDDEN
+[MAT-010] OK  20 desligar o toggle libera o vendedor | admin PUT /v1/tenant-settings/business-hours-restriction -> HTTP 200 | {"enabled": false}
+[MAT-010] OK  20b vendedor acessa | vendedor GET /v1/leads -> HTTP 200
+[MAT-010] OK  21 religar | admin PUT /v1/tenant-settings/business-hours-restriction -> HTTP 200 | {"enabled": true}
+[MAT-010] OK  21b vendedor bloqueado de novo | vendedor GET /v1/leads -> HTTP 403 OUTSIDE_BUSINESS_HOURS
+
+######## MAT-011 precedencia das isencoes e multiplos papeis (fora do horario, restricao ligada)
+[MAT-011] multi: papeis ['gerente', 'vendedor'] | marcadores: ['access_exceptions:manage', 'business_hours:exempt', 'business_hours:restricted']
+[MAT-011] OK  1 admin (isento) acessa leads | admin GET /v1/leads -> HTTP 200
+[MAT-011] OK  2 admin acessa conversas | admin GET /v1/conversations -> HTTP 200
+[MAT-011] OK  3 status de admin | admin GET /v1/access-status -> HTTP 200 | {"restriction_enabled": true, "applies_to_me": false, "within_business_hours": false, "access": {"leads": true, "conversations": true}}
+[MAT-011] OK  1 gerente (isento) acessa leads | gerente GET /v1/leads -> HTTP 200
+[MAT-011] OK  2 gerente acessa conversas | gerente GET /v1/conversations -> HTTP 200
+[MAT-011] OK  3 status de gerente | gerente GET /v1/access-status -> HTTP 200 | {"restriction_enabled": true, "applies_to_me": false, "within_business_hours": false, "access": {"leads": true, "conversations": true}}
+[MAT-011] OK  1 supervisor (isento) acessa leads | supervisor GET /v1/leads -> HTTP 200
+[MAT-011] OK  2 supervisor acessa conversas | supervisor GET /v1/conversations -> HTTP 200
+[MAT-011] OK  3 status de supervisor | supervisor GET /v1/access-status -> HTTP 200 | {"restriction_enabled": true, "applies_to_me": false, "within_business_hours": false, "access": {"leads": true, "conversations": true}}
+[MAT-011] OK  1 multi (isento) acessa leads | multi GET /v1/leads -> HTTP 200
+[MAT-011] OK  2 multi acessa conversas | multi GET /v1/conversations -> HTTP 200
+[MAT-011] OK  3 status de multi | multi GET /v1/access-status -> HTTP 200 | {"restriction_enabled": true, "applies_to_me": false, "within_business_hours": false, "access": {"leads": true, "conversations": true}}
+[MAT-011] OK  4 operador (sem marcador) | operador GET /v1/leads -> HTTP 200
+[MAT-011] OK  5 vendedor puro continua bloqueado | vendedor GET /v1/leads -> HTTP 403 OUTSIDE_BUSINESS_HOURS
+[MAT-011] OK  6 conceder excecao ao multi e rejeitado (nao sujeito) | gerente POST /v1/access-exceptions -> HTTP 422 ACCESS_EXCEPTION_TARGET_NOT_RESTRICTED | {"error": {"code": "ACCESS_EXCEPTION_TARGET_NOT_RESTRICTED", "message": "O usuario nao esta sujeito a restricao por horario; a liberacao nao teria efeito.", "details": []}}
+[MAT-011] OK  7 PATCH users: multi apenas vendedor | admin PATCH /v1/users/01a154f7-1ef8-7691-aa82-997482981112 -> HTTP 200
+[MAT-011] OK  7b multi (so vendedor) bloqueado | multi GET /v1/leads -> HTTP 403 OUTSIDE_BUSINESS_HOURS
+[MAT-011] OK  7c status de multi (so vendedor) | multi GET /v1/access-status -> HTTP 200 | {"restriction_enabled": true, "applies_to_me": true, "within_business_hours": false, "access": {"leads": false, "conversations": false}}
+[MAT-011] OK  7d restaurar vendedor+gerente | admin PATCH /v1/users/01a154f7-1ef8-7691-aa82-997482981112 -> HTTP 200
+[MAT-011] OK  7e multi liberado de novo | multi GET /v1/leads -> HTTP 200
+
+######## MAT-012 liberacao excepcional
+[MAT-012] OK  1 vendedor bloqueado antes | vendedor GET /v1/leads -> HTTP 403 OUTSIDE_BUSINESS_HOURS
+[MAT-012] OK  2 gerente concede escopo leads (1h) | gerente POST /v1/access-exceptions -> HTTP 201 | {"id": "01a154f7-2bd1-7c33-ba71-2d1482edae7b", "user_id": "01a154f7-1ec1-77f3-adb9-159d7f9de413", "granted_by": "01a154f7-1e50-7751-a29e-766b12f822e6", "scope": "leads", "starts_at": "2026-10-19T16:20:47.181Z", "expires_at": "2026-10-19T17:20:47.000Z", "reason...(truncado)
+[MAT-012] OK  3 vendedor acessa leads | vendedor GET /v1/leads -> HTTP 200
+[MAT-012] OK  4 conversas continuam bloqueadas (escopo leads) | vendedor GET /v1/conversations -> HTTP 403 OUTSIDE_BUSINESS_HOURS
+[MAT-012] OK  5 admin concede escopo conversations (1h) | admin POST /v1/access-exceptions -> HTTP 201 | {"id": "01a154f7-2bec-72b0-a159-a104dcff818f", "user_id": "01a154f7-1ec1-77f3-adb9-159d7f9de413", "granted_by": "01a154f6-3c82-7d93-a802-309ae489510b", "scope": "conversations", "starts_at": "2026-10-19T16:20:47.209Z", "expires_at": "2026-10-19T17:20:47.000Z",...(truncado)
+[MAT-012] OK  6 vendedor acessa conversas | vendedor GET /v1/conversations -> HTTP 200
+[MAT-012] OK  7 concede escopo all (excecao simultanea) | gerente POST /v1/access-exceptions -> HTTP 201 | {"id": "01a154f7-2c01-7b41-b8c5-3605df38c14f", "user_id": "01a154f7-1ec1-77f3-adb9-159d7f9de413", "granted_by": "01a154f7-1e50-7751-a29e-766b12f822e6", "scope": "all", "starts_at": "2026-10-19T16:20:47.230Z", "expires_at": "2026-10-19T17:20:47.000Z", "reason":...(truncado)
+[MAT-012] OK  8 listar excecoes | gerente GET /v1/access-exceptions -> HTTP 200
+[MAT-012] total = 3 | escopos na ordem retornada: ['all', 'conversations', 'leads'] | esperado total 3
+[MAT-012] OK  9 filtro active=true | gerente GET /v1/access-exceptions?active=true -> HTTP 200
+[MAT-012] OK  10 filtro user_id + limit | gerente GET /v1/access-exceptions?user_id=01a154f7-1ec1-77f3-adb9-159d7f9de413&limit=1 -> HTTP 200
+[MAT-012] OK  11 revogar a excecao 'all' | gerente DELETE /v1/access-exceptions/01a154f7-2c01-7b41-b8c5-3605df38c14f -> HTTP 200 | {"id": "01a154f7-2c01-7b41-b8c5-3605df38c14f", "user_id": "01a154f7-1ec1-77f3-adb9-159d7f9de413", "granted_by": "01a154f7-1e50-7751-a29e-766b12f822e6", "scope": "all", "starts_at": "2026-10-19T16:20:47.230Z", "expires_at": "2026-10-19T17:20:47.000Z", "reason":...(truncado)
+[MAT-012] OK  11b vendedor ainda acessa (as outras seguem valendo) | vendedor GET /v1/leads -> HTTP 200
+[MAT-012] OK  12 revogar de novo preserva revoked_at | gerente DELETE /v1/access-exceptions/01a154f7-2c01-7b41-b8c5-3605df38c14f -> HTTP 200 | {"id": "01a154f7-2c01-7b41-b8c5-3605df38c14f", "user_id": "01a154f7-1ec1-77f3-adb9-159d7f9de413", "granted_by": "01a154f7-1e50-7751-a29e-766b12f822e6", "scope": "all", "starts_at": "2026-10-19T16:20:47.230Z", "expires_at": "2026-10-19T17:20:47.000Z", "reason":...(truncado)
+[MAT-012] revoked_at igual nas duas revogacoes: 2026-10-19T16:20:47.254Z
+[MAT-012] OK  13 revogar leads | gerente DELETE /v1/access-exceptions/01a154f7-2bd1-7c33-ba71-2d1482edae7b -> HTTP 200
+[MAT-012] OK  13b leads bloqueado de novo; conversas ainda liberada | vendedor GET /v1/leads -> HTTP 403 OUTSIDE_BUSINESS_HOURS
+[MAT-012] OK  13c conversas liberadas pela excecao do admin | vendedor GET /v1/conversations -> HTTP 200
+[MAT-012] OK  14 revogar conversations | admin DELETE /v1/access-exceptions/01a154f7-2bec-72b0-a159-a104dcff818f -> HTTP 200
+[MAT-012] OK  14b tudo bloqueado de novo | vendedor GET /v1/conversations -> HTTP 403 OUTSIDE_BUSINESS_HOURS
+[MAT-012] OK  15 motivo vazio | gerente POST /v1/access-exceptions -> HTTP 400 VALIDATION_ERROR | {"error": {"code": "VALIDATION_ERROR", "message": "Erro de validacao.", "details": [{"field": "unknown", "issue": "reason should not be empty"}]}}
+[MAT-012] OK  16 motivo so espacos | gerente POST /v1/access-exceptions -> HTTP 400 VALIDATION_ERROR
+[MAT-012] OK  16b motivo com exatamente 1000 caracteres e aceito | gerente POST /v1/access-exceptions -> HTTP 201
+[MAT-012] OK  16c revogar a de 1000 caracteres | gerente DELETE /v1/access-exceptions/01a154f7-2c63-75e0-8600-2dffb28f3999 -> HTTP 200
+[MAT-012] OK  17 motivo com 1001 caracteres | gerente POST /v1/access-exceptions -> HTTP 400 VALIDATION_ERROR
+[MAT-012] OK  18 expiracao no passado | gerente POST /v1/access-exceptions -> HTTP 422 ACCESS_EXCEPTION_EXPIRY_INVALID | {"error": {"code": "ACCESS_EXCEPTION_EXPIRY_INVALID", "message": "A expiracao da liberacao deve estar no futuro.", "details": []}}
+[MAT-012] OK  19 expiracao so com data | gerente POST /v1/access-exceptions -> HTTP 400 VALIDATION_ERROR | {"error": {"code": "VALIDATION_ERROR", "message": "Erro de validacao.", "details": [{"field": "unknown", "issue": "expires_at deve ser data e hora com fuso (RFC 3339), ex.: 2026-10-14T23:00:00Z"}]}}
+[MAT-012] OK  20 expiracao sem fuso | gerente POST /v1/access-exceptions -> HTTP 400 VALIDATION_ERROR
+[MAT-012] OK  21 escopo invalido | gerente POST /v1/access-exceptions -> HTTP 400 VALIDATION_ERROR
+[MAT-012] OK  22 campo nao previsto (starts_at) | gerente POST /v1/access-exceptions -> HTTP 400 VALIDATION_ERROR
+[MAT-012] OK  23 alvo nao sujeito: operador | gerente POST /v1/access-exceptions -> HTTP 422 ACCESS_EXCEPTION_TARGET_NOT_RESTRICTED
+[MAT-012] OK  23 alvo nao sujeito: gerente | gerente POST /v1/access-exceptions -> HTTP 422 ACCESS_EXCEPTION_TARGET_NOT_RESTRICTED
+[MAT-012] OK  23 alvo nao sujeito: admin | gerente POST /v1/access-exceptions -> HTTP 422 ACCESS_EXCEPTION_TARGET_NOT_RESTRICTED
+[MAT-012] OK  24 vendedor sem access_exceptions:manage | vendedor POST /v1/access-exceptions -> HTTP 403 FORBIDDEN
+[MAT-012] OK  24b vendedor lista | vendedor GET /v1/access-exceptions -> HTTP 403 FORBIDDEN
+[MAT-012] OK  24 supervisor sem access_exceptions:manage | supervisor POST /v1/access-exceptions -> HTTP 403 FORBIDDEN
+[MAT-012] OK  24b supervisor lista | supervisor GET /v1/access-exceptions -> HTTP 403 FORBIDDEN
+[MAT-012] OK  24 operador sem access_exceptions:manage | operador POST /v1/access-exceptions -> HTTP 403 FORBIDDEN
+[MAT-012] OK  24b operador lista | operador GET /v1/access-exceptions -> HTTP 403 FORBIDDEN
+[MAT-012] OK  25 concede com expiracao em ~30s | gerente POST /v1/access-exceptions -> HTTP 201
+[MAT-012] expires_at da excecao curta: 2026-10-19T16:21:17.000Z
+[MAT-012] OK  25b vendedor acessa dentro da validade | vendedor GET /v1/leads -> HTTP 200
+[MAT-012] OK  25c vendedor bloqueado apos expirar | vendedor GET /v1/leads -> HTTP 403 OUTSIDE_BUSINESS_HOURS
+[SQL] auditoria das excecoes: access_exception.granted|5
+access_exception.revoked|4
+[SQL] excecoes vigentes restantes (limpeza: esperado 0): 0
+
+######## MAT-015 rotas explicitamente excluidas (fora do horario, restricao ligada)
+[MAT-015] OK  1 importar leads | vendedor POST /v1/leads/import -> HTTP 201 | {"total":1,"created":1,"skipped":0,"errors":[]}
+[MAT-015] OK  2 converter lead em cliente | vendedor POST /v1/leads/01a154f7-2065-7b80-9e18-7deddbd443e1/convert -> HTTP 201 | {"id": "01a154f7-2065-7b80-9e18-7deddbd443e1", "status": "converted", "source_id": "01a154f6-3c8f-7560-9f70-ded8f571d5b1", "customer_id": "01a154f7-a944-7750-98bc-79d21e63e03f", "owner_id": "01a154f7-1ec1-77f3-adb9-159d7f9de413", "name": "MAT Lead A1", "docume...(truncado)
+[MAT-015] OK  3a lead-sources com o vendedor de fabrica (sem lead_sources:read) | vendedor GET /v1/lead-sources -> HTTP 403 FORBIDDEN
+[MAT-015] OK  3b papel personalizado sujeito: access-status | fontes GET /v1/access-status -> HTTP 200 | {"restriction_enabled": true, "applies_to_me": true, "within_business_hours": false, "access": {"leads": false, "conversations": false}}
+[MAT-015] OK  3c papel personalizado: lead-sources | fontes GET /v1/lead-sources -> HTTP 200
+[MAT-015] OK  3d papel personalizado: leads (contraste) | fontes GET /v1/leads -> HTTP 403 OUTSIDE_BUSINESS_HOURS
+[MAT-015] OK  4 /users/me | vendedor GET /v1/users/me -> HTTP 200
+[MAT-015] OK  5 /access-status | vendedor GET /v1/access-status -> HTTP 200
+[MAT-015] OK  6 clientes (lacuna PN-3) | vendedor GET /v1/customers -> HTTP 200
+[MAT-015] OK  7 oportunidades (lacuna PN-3) | vendedor GET /v1/opportunities -> HTTP 200
+[MAT-015] OK  8 tarefas (lacuna PN-3) | vendedor GET /v1/tasks -> HTTP 200
+[MAT-015] OK  9 notificacoes | vendedor GET /v1/notifications/unread-count -> HTTP 200
+[MAT-015] OK  10 disponibilidade propria | vendedor GET /v1/availability/me -> HTTP 200
+[MAT-015] OK  11 contraste: lead (rota restrita) segue bloqueado | vendedor GET /v1/leads -> HTTP 403 OUTSIDE_BUSINESS_HOURS
+
+######## MAT-016 disponibilidade e distribuicao nao alteradas (fora do horario, restricao ligada)
+[MAT-016] OK  1 ligar disponibilidade no tenant | admin PUT /v1/tenant-settings/availability -> HTTP 200 | {"enabled": true}
+[MAT-016] OK  2 vendedor fica DISPONIVEL (rota propria, nao restrita) | vendedor PUT /v1/availability/me -> HTTP 200 | {"enabled": true, "status": "available", "since": "2026-10-19T16:21:19.603Z"}
+[SQL] estado/historico de disponibilidade antes: available|1
+[MAT-016] OK  3 gerente cria lead sem owner (distribuicao) | gerente POST /v1/leads -> HTTP 201
+[MAT-016] owner do lead distribuido == vendedor (fora do horario, DISPONIVEL): True
+[MAT-016] OK  5 vendedor ve a notificacao lead.assigned (rota nao restrita) | vendedor GET /v1/notifications/unread-count -> HTTP 200 | {"count": 2}
+[MAT-016] OK  6 mas nao abre o lead (consequencia conhecida) | vendedor GET /v1/leads/01a154f7-aaed-7432-9a5e-e8bffd928ef5 -> HTTP 403 OUTSIDE_BUSINESS_HOURS
+[MAT-016] OK  7 estado de disponibilidade permanece | vendedor GET /v1/availability/me -> HTTP 200 | {"enabled": true, "status": "available", "since": "2026-10-19T16:21:19.603Z"}
+[SQL] estado/historico de disponibilidade depois (iguais ao antes): available|1
+[MAT-016] OK  8 desligar a restricao nao muda o estado | admin PUT /v1/tenant-settings/business-hours-restriction -> HTTP 200
+[SQL] apos desligar restricao: available|1
+[MAT-016] OK  8b religar | admin PUT /v1/tenant-settings/business-hours-restriction -> HTTP 200
+
+######## MAT-013 isolamento entre tenants
+[MAT-013] OK  1 A: gerente concede excecao ao vendedor A | gerente(A) POST /v1/access-exceptions -> HTTP 201
+[MAT-013] OK  2 B: gerente lista (nao ve a de A) | gerente(B) GET /v1/access-exceptions -> HTTP 200 | {"data": [], "page": 1, "limit": 20, "total": 0}
+[MAT-013] OK  3 B: revogar excecao de A | gerente(B) DELETE /v1/access-exceptions/01a154f7-ac08-7fa2-8194-7ed77962ba0a -> HTTP 404 NOT_FOUND | {"error": {"code": "NOT_FOUND", "message": "Not Found", "details": []}}
+[MAT-013] OK  4 B: conceder a usuario de A | gerente(B) POST /v1/access-exceptions -> HTTP 404 NOT_FOUND | {"error": {"code": "NOT_FOUND", "message": "Not Found", "details": []}}
+[MAT-013] OK  5 B: ler lead de A | gerente(B) GET /v1/leads/01a154f7-2065-7b80-9e18-7deddbd443e1 -> HTTP 404 NOT_FOUND
+[MAT-013] OK  6 B: ler conversa de A | gerente(B) GET /v1/conversations/01a154f7-2075-7c02-a611-6e4c89099e08 -> HTTP 404 NOT_FOUND
+[SQL] excecao de A intacta (revoked_at nulo): t
+[MAT-013] OK  7 B: toggle de B independente (desligado) | admin(B) GET /v1/tenant-settings/business-hours-restriction -> HTTP 200 | {"enabled": false}
+[MAT-013] OK  8 B: vendedor B acessa mesmo com A ligado | vendedor(B) GET /v1/leads -> HTTP 200
+[MAT-013] OK  9 B: horario fora + ligar | admin(B) PUT /v1/tenant-settings/business-hours -> HTTP 200
+[MAT-013] OK  9b ligar | admin(B) PUT /v1/tenant-settings/business-hours-restriction -> HTTP 200
+[MAT-013] OK  10 B: vendedor B bloqueado (a excecao de A nao vaza) | vendedor(B) GET /v1/leads -> HTTP 403 OUTSIDE_BUSINESS_HOURS
+[MAT-013] OK  11 A: vendedor A segue liberado pela propria excecao | vendedor(A) GET /v1/leads -> HTTP 200
+[MAT-013] OK  12 B: excecao propria de B nao libera A | gerente(B) POST /v1/access-exceptions -> HTTP 201
+[MAT-013] OK  13 B: vendedor B liberado | vendedor(B) GET /v1/leads -> HTTP 200
+[MAT-013] OK  14 A: lista de A so tem excecoes de A | gerente(A) GET /v1/access-exceptions?limit=100 -> HTTP 200
+[SQL] excecoes por tenant: 01a154f6-3844-74b2-be2c-1f3afa75d66b|6
+tenant-b-mat|1
+[MAT-013] OK  15 limpeza A: revogar excecao | gerente(A) DELETE /v1/access-exceptions/01a154f7-ac08-7fa2-8194-7ed77962ba0a -> HTTP 200
+
+######## RESUMO
+MAT-009: 23 passos conforme o esperado, 0 divergentes
+MAT-010: 24 passos conforme o esperado, 0 divergentes
+MAT-011: 20 passos conforme o esperado, 0 divergentes
+MAT-012: 41 passos conforme o esperado, 0 divergentes
+MAT-013: 16 passos conforme o esperado, 0 divergentes
+MAT-015: 14 passos conforme o esperado, 0 divergentes
+MAT-016: 9 passos conforme o esperado, 0 divergentes
+fim UTC: 2026-10-19T16:21:20+00:00

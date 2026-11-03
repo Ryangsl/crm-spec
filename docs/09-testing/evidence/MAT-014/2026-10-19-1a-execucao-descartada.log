@@ -1,0 +1,81 @@
+[estado inicial] horario FORA (UTC, hoje=1), restricao ligada, liberacoes vigentes revogadas: 0
+[fixture] lead 01a154f7 conversa 01a154f7 cliente 01a154f7 conversa-cliente HTTP 201
+[MAT-014] OK   1 Admin ve "Restricao por horario: ligada" e o botao "Desligar restricao"
+[MAT-014] screenshot 2026-10-19-passo1-admin-toggle-ligada.png
+[MAT-014] OK   2a Admin clica "Desligar restricao": estado "desligada" e botao "Ligar restricao"
+[MAT-014] OK   2a-API confirma toggle false
+[MAT-014] screenshot 2026-10-19-passo2-admin-toggle-desligada.png
+[MAT-014] OK   2b Admin clica "Ligar restricao": volta a "ligada"
+[MAT-014] OK   2b-API confirma toggle true
+[MAT-014] screenshot 2026-10-19-passo2-admin-toggle-religada.png
+[MAT-014] OK   2c Tenant sem horario: aviso "Salve um horario de funcionamento valido acima..." e botao "Ligar restricao" desabilitado
+[MAT-014] screenshot 2026-10-19-passo2-tenant-sem-horario-botao-desabilitado.png
+[MAT-014] OK   1b Gerente: pagina "Acesso restrito" e sem botao de toggle
+[MAT-014] screenshot 2026-10-19-passo1-gerente-acesso-restrito.png
+[MAT-014] OK   1c Perfil so com leitura: ve o estado e "Somente o Admin pode ligar ou desligar a restricao.", sem botao
+[MAT-014] screenshot 2026-10-19-passo1-perfil-somente-leitura.png
+[MAT-014] OK   3 Vendedor fora do horario ve o banner "Fora do horario de funcionamento" (Leads e Conversas) | Fora do horario de funcionamento O acesso a Leads e Conversas esta indisponivel neste horario. Se precisar acessar agora, peca uma liberacao excepcional a um Admin ou Gerente.
+[MAT-014] screenshot 2026-10-19-passo3-vendedor-banner.png
+[MAT-014] OK   3b-contra Restricao desligada: Vendedor NAO ve o banner
+[MAT-014] screenshot 2026-10-19-passo3-vendedor-sem-banner-restricao-desligada.png
+[MAT-014] OK   3c-contra Dentro do horario: Vendedor NAO ve o banner
+[MAT-014] screenshot 2026-10-19-passo3-vendedor-sem-banner-dentro-do-horario.png
+[MAT-014] OK   3d-contra gerente NAO ve o banner
+[MAT-014] OK   3d-contra supervisor NAO ve o banner
+[MAT-014] screenshot 2026-10-19-passo3-supervisor-sem-banner.png
+[MAT-014] OK   3d-contra operador NAO ve o banner
+[MAT-014] OK   4a Com liberacao "leads": o banner cita apenas Conversas | Fora do horario de funcionamento O acesso a Conversas esta indisponivel neste horario. Se precisar acessar agora, peca uma liberacao excepcional a um Admin ou Gerente.
+[MAT-014] screenshot 2026-10-19-passo4-vendedor-banner-parcial-conversas.png
+[MAT-014] OK   4b Com liberacao "all": o banner desaparece
+[MAT-014] screenshot 2026-10-19-passo4-vendedor-sem-banner-com-liberacao-all.png
+[MAT-014] OK   5 /leads: aviso "Fora do horario de funcionamento", sem erro generico
+[MAT-014] screenshot 2026-10-19-passo5-vendedor-leads-lista.png
+[MAT-014] OK   5 /leads/:id: aviso "Fora do horario de funcionamento", sem erro generico
+[MAT-014] screenshot 2026-10-19-passo5-vendedor-lead-detalhe.png
+[MAT-014] OK   5 /conversations: aviso "Fora do horario de funcionamento", sem erro generico
+[MAT-014] screenshot 2026-10-19-passo5-vendedor-conversas-lista.png
+[MAT-014] OK   5 /conversations/:id: aviso "Fora do horario de funcionamento", sem erro generico
+[MAT-014] screenshot 2026-10-19-passo5-vendedor-conversa-detalhe.png
+[MAT-014] OK   5 /customers/:id: aviso "Fora do horario de funcionamento", sem erro generico
+[MAT-014] screenshot 2026-10-19-passo5-vendedor-cliente-detalhe-secao-conversas.png
+[MAT-014] screenshot 2026-10-19-passo5-vendedor-leads-new-lacuna-conhecida.png
+[MAT-014] observacao: /leads/new aberto (lacuna conhecida: sem tratamento especifico do 403 no envio); envio nao exercitado (sem lead_sources:read no vendedor de fabrica)
+[MAT-014] OK   6a Com liberacao "all": /leads carrega e o aviso some
+[MAT-014] screenshot 2026-10-19-passo6-vendedor-leads-com-liberacao.png
+[MAT-014] OK   6a Com liberacao "all": /conversations carrega e o aviso some
+[MAT-014] screenshot 2026-10-19-passo6-vendedor-conversas-com-liberacao.png
+[MAT-014] OK   6b Liberacao revogada: o aviso volta em /leads
+[MAT-014] screenshot 2026-10-19-passo6-vendedor-leads-apos-revogar.png
+[MAT-014] OK   7 Gerente ve o item de menu "Liberacoes"
+[MAT-014] screenshot 2026-10-19-passo7-gerente-tela-liberacoes-inicial.png
+[MAT-014] opcoes de usuario: Selecione... | MAT leitura config | MAT restrito fontes | MAT operador | MAT multi | MAT vendedor | MAT supervisor | MAT gerente
+[MAT-014] ERRO 7.2a Motivo vazio: "Informe o motivo da liberacao."
+[MAT-014] screenshot 2026-10-19-passo7-recusa-motivo-vazio.png
+[MAT-014] ERRO 7.2b Sem "Vale ate": "Informe ate quando a liberacao vale."
+[MAT-014] OK   7.2c Expiracao no passado: "A expiracao deve estar no futuro."
+[MAT-014] screenshot 2026-10-19-passo7-recusa-expiracao-passado.png
+[MAT-014] OK   7.1a Concessao valida (leads): mensagem de sucesso e item "Vigente" na lista
+[MAT-014] screenshot 2026-10-19-passo7-concessao-leads-sucesso.png
+[MAT-014] ERRO 7.1b Segunda concessao (conversations): ambas listadas
+[MAT-014] OK   7.1c API confirma 2 liberacoes vigentes com motivo e escopo corretos | ["conversations","leads"]
+[MAT-014] screenshot 2026-10-19-passo7-duas-liberacoes-vigentes.png
+[MAT-014] OK   7.4 Revogar uma: mensagem "Liberacao revogada" e a outra continua vigente
+[MAT-014] screenshot 2026-10-19-passo7-apos-revogar-uma.png
+[MAT-014] screenshot 2026-10-19-passo7-filtro-vigentes.png
+[MAT-014] screenshot 2026-10-19-passo7-filtro-revogadas-ou-expiradas.png
+[MAT-014] ERRO 7.3 Filtros Todas/Vigentes/Revogadas ou expiradas coerentes (vigentes=1, revogadas=1, todas=2) | vigentes=1 inativas=10 todas=11
+[MAT-014] OK   7b Admin abre a tela de liberacoes (titulo "Liberacoes de acesso", formulario visivel)
+[MAT-014] screenshot 2026-10-19-passo7-admin-tela-liberacoes.png
+[MAT-014] OK   8 supervisor: sem item "Liberacoes" no menu e /settings/access-exceptions mostra "Acesso restrito" (sem lista)
+[MAT-014] screenshot 2026-10-19-passo8-supervisor-acesso-restrito.png
+[MAT-014] OK   8 vendedor: sem item "Liberacoes" no menu e /settings/access-exceptions mostra "Acesso restrito" (sem lista)
+[MAT-014] screenshot 2026-10-19-passo8-vendedor-acesso-restrito.png
+[MAT-014] OK   8 operador: sem item "Liberacoes" no menu e /settings/access-exceptions mostra "Acesso restrito" (sem lista)
+[MAT-014] screenshot 2026-10-19-passo8-operador-acesso-restrito.png
+[MAT-014] OK   8b Admin ve o item "Liberacoes" no menu
+
+[RESUMO MAT-014] 34 de 38 verificacoes conforme o esperado; screenshots: 33
+DIVERGENTE: 7.2a Motivo vazio: "Informe o motivo da liberacao."
+DIVERGENTE: 7.2b Sem "Vale ate": "Informe ate quando a liberacao vale."
+DIVERGENTE: 7.1b Segunda concessao (conversations): ambas listadas
+DIVERGENTE: 7.3 Filtros Todas/Vigentes/Revogadas ou expiradas coerentes (vigentes=1, revogadas=1, todas=2)
