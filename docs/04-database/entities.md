@@ -275,7 +275,7 @@ Histórico **append-only** de transições; escrito na **mesma transação** do 
 | queue_id | UUID (FK queues) | não |
 | name | string | sim |
 
-### `access_exceptions` *(F4.7 — DECIDIDO em 2026-10-13, [D-083](../00-governance/decision-register.md#d-083--exceções-de-acesso-modelo-técnico-e-critério-de-identificação-td-05-td-14); **implementada** na migration `20261014120000_f4_7_access_exceptions`, working tree, sem commit nem push)*
+### `access_exceptions` *(F4.7 — DECIDIDO em 2026-10-13, [D-083](../00-governance/decision-register.md#d-083--exceções-de-acesso-modelo-técnico-e-critério-de-identificação-td-05-td-14); **implementada** na migration `20261014120000_f4_7_access_exceptions`, integrado ao `main` em 2026-10-19)*
 Liberação excepcional de acesso a Leads e/ou Conversas fora do horário comercial (BR-27, decidido em [D-082](../00-governance/decision-register.md#d-082--restrição-por-horário-comercial-e-liberação-excepcional-vn-07-vn-08)). Por usuário, com validade, escopo e revogação. Detalhe: [phase-4-plan.md §6.10](../10-roadmap/phase-4-plan.md).
 
 | Campo | Tipo | Obrigatório | Notas |
@@ -400,7 +400,7 @@ Imutável (sem edição e sem soft delete). Índice `(tenant_id, conversation_id
 
 **Chaves em uso (F4.1)**: `crm.lead_round_robin.cursor` (objeto, D-068), `crm.business_hours` (objeto v1 versionado — [phase-4-plan.md §13](../10-roadmap/phase-4-plan.md); gravado via `PUT /v1/tenant-settings/business-hours`, sem efeito operacional) e `crm.availability.enabled` (boolean; ausente = `false` = comportamento da Fase 3 — D-071/VN-02). Sem tabela nova por configuração.
 
-**Chave do toggle (F4.7, implementada; [D-083](../00-governance/decision-register.md#d-083--exceções-de-acesso-modelo-técnico-e-critério-de-identificação-td-05-td-14); **working tree, sem commit nem push**)**: somente o Admin altera o valor; `crm.business_hours.restriction.enabled` (boolean; ausente = desligada; a ativação é impedida enquanto `crm.business_hours` não for válido).
+**Chave do toggle (F4.7, implementada; [D-083](../00-governance/decision-register.md#d-083--exceções-de-acesso-modelo-técnico-e-critério-de-identificação-td-05-td-14); **integrado ao `main` em 2026-10-19**)**: somente o Admin altera o valor; `crm.business_hours.restriction.enabled` (boolean; ausente = desligada; a ativação é impedida enquanto `crm.business_hours` não for válido).
 
 **Achado no Implementation Gate da Fase 3 (2026-09-16)**: esta tabela está documentada desde a Fase 0, mas **nunca foi criada** no `prisma/schema.prisma` real do `crm-backend` (confirmado por ausência do model `TenantSettings`). A Fase 3 depende dela para a estratégia de round-robin ([D-068](../00-governance/decision-register.md#d-068--estratégia-técnica-de-round-robin-cursor-em-tenant_settings)) — a criação desta tabela entra no escopo de schema da Fase 3 (junto com os catálogos de CRM), não é reaproveitamento de algo já existente em produção.
 

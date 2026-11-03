@@ -176,9 +176,9 @@ Mecanismo desabilitado
 
 Regras: [business-rules.md](business-rules.md) BR-14; decisões: [D-071](../00-governance/decision-register.md#d-071--disponibilidade-de-consultoratendente-para-distribuição-automática) e [D-077](../00-governance/decision-register.md#d-077--disponibilidade-modelo-de-dados-e-permissões-td-01-td-08).
 
-## 9. Fluxo de restrição por horário comercial e liberação excepcional (Fase 4 — F4.7) — *DECIDIDO em 2026-10-13, implementada no F4.7 (working tree, sem commit nem push)*
+## 9. Fluxo de restrição por horário comercial e liberação excepcional (Fase 4 — F4.7) — *DECIDIDO em 2026-10-13, implementada no F4.7 e integrado ao `main` em 2026-10-19*
 
-> Decidido em 2026-10-13 ([D-082](../00-governance/decision-register.md#d-082--restrição-por-horário-comercial-e-liberação-excepcional-vn-07-vn-08)/[D-083](../00-governance/decision-register.md#d-083--exceções-de-acesso-modelo-técnico-e-critério-de-identificação-td-05-td-14)). Implementado no F4.7 (working tree, sem commit nem push).
+> Decidido em 2026-10-13 ([D-082](../00-governance/decision-register.md#d-082--restrição-por-horário-comercial-e-liberação-excepcional-vn-07-vn-08)/[D-083](../00-governance/decision-register.md#d-083--exceções-de-acesso-modelo-técnico-e-critério-de-identificação-td-05-td-14)). Implementado no F4.7 e integrado ao `main` em 2026-10-19.
 
 ```
 Somente o Admin ativa ou desativa a restrição do tenant (toggle global, desligado por padrão; o Gerente não o controla)

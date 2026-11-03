@@ -1528,7 +1528,7 @@ paths:
 
   /access-exceptions:
     post:
-      summary: "[F4.7 — D-082/D-083; implementado no working tree, sem commit] Concede uma liberação excepcional de acesso (access_exceptions:manage)"
+      summary: "[F4.7 — D-082/D-083; integrado ao main em 2026-10-19] Concede uma liberação excepcional de acesso (access_exceptions:manage)"
       description: |
         **Implementado no F4.7 (D-082/D-083).** Concessão **direta**
         (sem solicitação nem aprovação), a um usuário individual **sujeito à restrição**, por Admin ou Gerente (qualquer usuário do tenant). A concessão a usuário **não sujeito** é rejeitada (422 `ACCESS_EXCEPTION_TARGET_NOT_RESTRICTED` — D-082, A7); expiração fora do futuro: 422 `ACCESS_EXCEPTION_EXPIRY_INVALID`. Início **imediato**, sem agendamento. `reason`
@@ -1572,7 +1572,7 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
     get:
-      summary: "[F4.7 — D-082/D-083; implementado no working tree, sem commit] Lista as exceções do tenant (access_exceptions:manage)"
+      summary: "[F4.7 — D-082/D-083; integrado ao main em 2026-10-19] Lista as exceções do tenant (access_exceptions:manage)"
       description: |
         **Implementado no F4.7 (D-082/D-083).** Admin e Gerente (`access_exceptions:manage`) listam e revogam qualquer exceção do
         próprio tenant (D-082, A6 e A8).
@@ -1597,7 +1597,7 @@ paths:
 
   /access-exceptions/{id}:
     delete:
-      summary: "[F4.7 — D-082/D-083; implementado no working tree, sem commit] Revoga antecipadamente uma exceção (access_exceptions:manage)"
+      summary: "[F4.7 — D-082/D-083; integrado ao main em 2026-10-19] Revoga antecipadamente uma exceção (access_exceptions:manage)"
       description: |
         **Implementado no F4.7 (D-082/D-083).** Não apaga o registro: preenche `revoked_at`. A exceção
         deixa de valer a partir da **requisição seguinte**; as demais exceções do usuário não são
@@ -1622,7 +1622,7 @@ paths:
 
   /access-status:
     get:
-      summary: "[F4.7 — D-082/D-083; implementado no working tree, sem commit] Estado do acesso por horário do usuário autenticado (sem permissão específica)"
+      summary: "[F4.7 — D-082/D-083; integrado ao main em 2026-10-19] Estado do acesso por horário do usuário autenticado (sem permissão específica)"
       description: |
         **Implementado no F4.7 (D-082/D-083).** Permite ao frontend exibir um banner preventivo. As rotas
         de Leads e Conversas respondem `403 OUTSIDE_BUSINESS_HOURS` quando bloqueadas (D-082).
@@ -1638,7 +1638,7 @@ paths:
 
   /tenant-settings/business-hours-restriction:
     get:
-      summary: "[F4.7 — D-082/D-083; implementado no working tree, sem commit] Lê o toggle de restrição por horário do tenant (tenant_settings:read)"
+      summary: "[F4.7 — D-082/D-083; integrado ao main em 2026-10-19] Lê o toggle de restrição por horário do tenant (tenant_settings:read)"
       description: |
         Chave proposta `crm.business_hours.restriction.enabled`. Ausente = `false` (desligada).
       responses:
@@ -1655,7 +1655,7 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
     put:
-      summary: "[F4.7 — D-082/D-083; implementado no working tree, sem commit] Liga/desliga a restrição por horário do tenant (somente Admin)"
+      summary: "[F4.7 — D-082/D-083; integrado ao main em 2026-10-19] Liga/desliga a restrição por horário do tenant (somente Admin)"
       description: |
         **Implementado no F4.7 (D-082).** **Somente o Admin** liga ou desliga; o Gerente não
         controla o toggle (o mecanismo é detalhe de implementação; a permissão `tenant_settings:update`
@@ -2962,7 +2962,7 @@ components:
         updated: { type: integer, minimum: 0 }
     AccessExceptionCreate:
       type: object
-      description: "[F4.7 — D-082/D-083; implementado no working tree, sem commit] Concessão direta; o escopo é escolhido por quem concede."
+      description: "[F4.7 — D-082/D-083; integrado ao main em 2026-10-19] Concessão direta; o escopo é escolhido por quem concede."
       required: [user_id, scope, reason, expires_at]
       properties:
         user_id: { type: string, format: uuid }
@@ -2972,7 +2972,7 @@ components:
 
     AccessException:
       type: object
-      description: "[F4.7 — D-082/D-083; implementado no working tree, sem commit]"
+      description: "[F4.7 — D-082/D-083; integrado ao main em 2026-10-19]"
       properties:
         id: { type: string, format: uuid }
         user_id: { type: string, format: uuid }
@@ -2985,7 +2985,7 @@ components:
 
     AccessExceptionList:
       type: object
-      description: "[F4.7 — D-082/D-083; implementado no working tree, sem commit]"
+      description: "[F4.7 — D-082/D-083; integrado ao main em 2026-10-19]"
       properties:
         data:
           type: array
@@ -2996,7 +2996,7 @@ components:
 
     AccessStatus:
       type: object
-      description: "[F4.7 — D-082/D-083; implementado no working tree, sem commit]"
+      description: "[F4.7 — D-082/D-083; integrado ao main em 2026-10-19]"
       properties:
         restriction_enabled: { type: boolean, description: "Toggle do tenant." }
         applies_to_me: { type: boolean, description: "O usuário autenticado é sujeito à restrição: possui o marcador de restrição e não o de isenção (a isenção prevalece — D-082, PN-1)." }
@@ -3010,7 +3010,7 @@ components:
 
     BusinessHoursRestrictionSetting:
       type: object
-      description: "[F4.7 — D-082/D-083; implementado no working tree, sem commit]"
+      description: "[F4.7 — D-082/D-083; integrado ao main em 2026-10-19]"
       required: [enabled]
       properties:
         enabled: { type: boolean }
