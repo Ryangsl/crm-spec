@@ -12,7 +12,7 @@
 | ADRs relacionados | [ADR-008](../../adr/ADR-008.md) |
 | Decisions relacionadas | — |
 
-Implementação de referência: [`TenantsService.assertActive`](../../../../crm-backend/src/modules/tenants/tenants.service.ts).
+Implementação de referência: [`TenantsService.assertCanAuthenticate`](../../../../crm-backend/src/modules/tenants/tenants.service.ts).
 
 ## 2. Objetivo
 
