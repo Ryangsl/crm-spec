@@ -8,6 +8,7 @@ O sistema deve funcionar em: desenvolvimento local (Windows/Linux), ambiente Lin
 
 - **Docker + Docker Compose** como unidade de deploy — um único host (VPS) executando: Nginx (proxy reverso/TLS), backend (NestJS), frontend (build estático servido via Nginx ou CDN simples), PostgreSQL, Redis.
 - **Nginx**: terminação TLS, proxy para a API, servir os assets estáticos do frontend (PWA), cabeçalhos de cache apropriados para service worker/manifest.
+- **Endereço por empresa** ([D-088](../00-governance/decision-register.md#d-088--identificação-da-empresa-pelo-endereço-de-acesso), [ADR-012](../adr/ADR-012.md)): cada empresa acessa por um subdomínio da plataforma (DNS e certificado wildcard) ou por domínio próprio verificado. Em todos os endereços, o mesmo `server` serve o frontend e encaminha `/v1` ao backend com `proxy_set_header Host $host;`; o backend identifica a empresa pelo `Host` e não lê `X-Forwarded-Host`. Cadastro dos domínios: [runbook-tenant-domains.md](runbook-tenant-domains.md).
 - Kubernetes e orquestração avançada são explicitamente **fora de escopo** até haver evidência real de necessidade (ver [../03-architecture/scalability.md](../03-architecture/scalability.md)).
 
 ## 3. Variáveis de ambiente e segredos
