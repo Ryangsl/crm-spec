@@ -1636,6 +1636,131 @@ paths:
         "401":
           $ref: "#/components/responses/Unauthorized"
 
+  /branding:
+    get:
+      summary: "[D-086] Identidade visual do tenant do token (sem permissão específica)"
+      description: |
+        Sem personalização, devolve a identidade padrão com o nome da empresa (`is_default: true`).
+        Valor gravado fora da API que não passe nas regras também cai no padrão.
+      responses:
+        "200":
+          description: Identidade em uso
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Branding" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    put:
+      summary: "[D-086] Aplica nome, tema e cores (branding:manage, reservada à plataforma)"
+      description: |
+        Só `#RRGGBB`, tema da lista e nome em texto puro. Cor ausente assume o padrão do tema.
+        Qualquer campo não previsto (ex.: `logo_url`, `css`, `tenant_id`) devolve 400. Segue a
+        política de escrita do Trial (D-085). Atende a solicitação pendente. Auditado (`branding.updated`).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BrandingInput" }
+      responses:
+        "200":
+          description: Identidade gravada
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Branding" }
+        "400":
+          description: Formato inválido ou campo não previsto
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Sem `branding:manage`, ou recusa da política do Trial
+        "422":
+          description: "`BRANDING_INVALID`: contraste abaixo de WCAG AA ou nome inseguro; `details` diz o campo"
+    delete:
+      summary: "[D-086] Restaura a identidade padrão (branding:manage, reservada à plataforma)"
+      description: Apaga a personalização e atende a solicitação pendente. Auditado (`branding.reset`).
+      responses:
+        "204":
+          description: Padrão restaurado
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Sem `branding:manage`, ou recusa da política do Trial
+
+  /branding/request:
+    get:
+      summary: "[D-086] Solicitação de alteração pendente (branding:read)"
+      responses:
+        "200":
+          description: Solicitação pendente, ou `pending` nulo
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BrandingRequest" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Sem `branding:read`
+    post:
+      summary: "[D-086] Solicita alteração da identidade (branding:request, só o papel Admin)"
+      description: |
+        Uma pendente por empresa: nova solicitação substitui a anterior. Texto livre, exibido como
+        texto. Segue a política de escrita do Trial. Auditado (`branding.change_requested`).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [message]
+              additionalProperties: false
+              properties:
+                message: { type: string, minLength: 10, maxLength: 1000 }
+      responses:
+        "201":
+          description: Solicitação registrada
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BrandingRequest" }
+        "400":
+          description: Campo não previsto ou mensagem acima de 1000 caracteres
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Sem `branding:request`, ou recusa da política do Trial
+        "422":
+          description: "`BRANDING_INVALID`: mensagem curta ou com caracteres de controle"
+    delete:
+      summary: "[D-086] Encerra a solicitação sem aplicar (branding:manage, reservada à plataforma)"
+      description: Auditado (`branding.request_dismissed`).
+      responses:
+        "204":
+          description: Solicitação encerrada
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Sem `branding:manage`
+
+  /dashboard/summary:
+    get:
+      summary: "[D-086] Resumo do painel inicial (cada bloco exige a leitura do recurso)"
+      description: |
+        Só números reais do tenant do token. Bloco nulo = sem a leitura do recurso. A variação compara
+        registros criados no período com o período anterior de mesma duração; sem base, nula. Vendas =
+        entradas em etapa de ganho. Dias em UTC; 90 dias agrupa por semana.
+      parameters:
+        - name: period_days
+          in: query
+          schema: { type: integer, enum: [7, 30, 90], default: 30 }
+      responses:
+        "200":
+          description: Resumo
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DashboardSummary" }
+        "400":
+          description: Período fora da lista
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
   /plan:
     get:
       summary: "[D-085] Situação comercial do tenant do token (sem permissão específica)"
@@ -2327,6 +2452,107 @@ components:
           schema: { $ref: "#/components/schemas/Error" }
 
   schemas:
+    BrandingColors:
+      type: object
+      properties:
+        primary: { type: string, pattern: "^#[0-9a-fA-F]{6}$" }
+        secondary: { type: string, pattern: "^#[0-9a-fA-F]{6}$" }
+        button: { type: string, pattern: "^#[0-9a-fA-F]{6}$" }
+        sidebar: { type: string, pattern: "^#[0-9a-fA-F]{6}$" }
+        background: { type: string, pattern: "^#[0-9a-fA-F]{6}$" }
+        surface: { type: string, pattern: "^#[0-9a-fA-F]{6}$" }
+        text: { type: string, pattern: "^#[0-9a-fA-F]{6}$" }
+    BrandingInput:
+      type: object
+      required: [theme]
+      additionalProperties: false
+      properties:
+        display_name: { type: string, nullable: true, minLength: 2, maxLength: 80 }
+        theme: { type: string, enum: [light, dark] }
+        colors: { $ref: "#/components/schemas/BrandingColors" }
+    Branding:
+      type: object
+      required: [display_name, theme, colors, logo_url, favicon_url, is_default, updated_at]
+      properties:
+        display_name: { type: string }
+        theme: { type: string, enum: [light, dark] }
+        colors: { $ref: "#/components/schemas/BrandingColors" }
+        logo_url: { type: string, nullable: true, description: "Sempre nulo: depende de upload seguro" }
+        favicon_url: { type: string, nullable: true, description: "Sempre nulo: depende de upload seguro" }
+        is_default: { type: boolean }
+        updated_at: { type: string, format: date-time, nullable: true }
+    BrandingRequest:
+      type: object
+      required: [pending]
+      properties:
+        pending:
+          type: object
+          nullable: true
+          properties:
+            message: { type: string }
+            requested_at: { type: string, format: date-time }
+            requested_by:
+              type: object
+              properties:
+                id: { type: string }
+                name: { type: string, nullable: true }
+    DashboardSummary:
+      type: object
+      properties:
+        period_days: { type: integer }
+        generated_at: { type: string, format: date-time }
+        customers:
+          type: object
+          nullable: true
+          properties:
+            total: { type: integer }
+            delta_percent: { type: integer, nullable: true }
+        leads:
+          type: object
+          nullable: true
+          properties:
+            total: { type: integer }
+            delta_percent: { type: integer, nullable: true }
+        opportunities:
+          type: object
+          nullable: true
+          properties:
+            open_count: { type: integer }
+            open_value: { type: number }
+            count_delta_percent: { type: integer, nullable: true }
+            value_delta_percent: { type: integer, nullable: true }
+        pipeline:
+          type: object
+          nullable: true
+          properties:
+            id: { type: string }
+            name: { type: string }
+            total_value: { type: number }
+            total_count: { type: integer }
+            stages:
+              type: array
+              items:
+                type: object
+                properties:
+                  id: { type: string }
+                  name: { type: string }
+                  count: { type: integer }
+                  value: { type: number }
+                  percent: { type: integer }
+        evolution:
+          type: object
+          nullable: true
+          properties:
+            bucket: { type: string, enum: [day, week] }
+            points:
+              type: array
+              items:
+                type: object
+                properties:
+                  date: { type: string, format: date-time }
+                  leads: { type: integer, nullable: true }
+                  opportunities: { type: integer, nullable: true }
+                  won: { type: integer, nullable: true }
     PlanSituation:
       type: object
       required: [plan, tenant_status, state, write_allowed, trial, limits, features]

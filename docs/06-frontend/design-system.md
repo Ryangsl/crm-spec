@@ -9,7 +9,9 @@
 ## 2. Fundamentos (tokens)
 
 - Cores, espaçamento, tipografia e raio de borda definidos como tokens Tailwind (`tailwind.config`), nunca valores mágicos no componente.
-- Paleta de marca definitiva: `[VALIDAÇÃO DE NEGÓCIO NECESSÁRIA]` ([D-043](../00-governance/decision-register.md#d-043--paleta-de-marca), antes do primeiro cliente/piloto). **Não bloqueia a Fase 1**: o design system usa uma paleta neutra de placeholder e todas as cores são tokens — trocar a paleta depois é alterar tokens, não componentes.
+- **Identidade Executive** ([D-086](../00-governance/decision-register.md#d-086--identidade-visual-executive-e-personalização-visual-por-tenant), [ADR-011](../adr/ADR-011.md)): tokens em `crm-frontend/src/styles/index.css` (`@theme static`), única fonte de cor. Nenhum componente usa cor literal (teste `design-system.test.tsx`). Primária `#0F62FE`, sidebar `#0B2545`, fundo `#F8FAFC`, superfície branca, bordas `#E2E8F0`, texto `#0F172A` e `#64748B`, estados com variante AA para texto, séries de gráfico fixas (`chart-1..3`, validadas para daltonismo). Tipografia Inter (auto-hospedada), corpo 14px; títulos de página 24/30px. Raios `control`/`card`, sombras `card`/`raised`, alvo de toque 44px e densidade 40px com ponteiro preciso.
+- **Personalização por tenant**: a identidade da empresa sobrepõe os tokens em tempo de execução, derivados de 7 cores e do tema ([tenant-branding.md](../01-product/tenant-branding.md)). Componente consome token; nunca decide cor sozinho.
+- Histórico — paleta de marca definitiva: era `[VALIDAÇÃO DE NEGÓCIO NECESSÁRIA]` ([D-043](../00-governance/decision-register.md#d-043--paleta-de-marca), antes do primeiro cliente/piloto). **Não bloqueia a Fase 1**: o design system usa uma paleta neutra de placeholder e todas as cores são tokens — trocar a paleta depois é alterar tokens, não componentes.
 - Escala de espaçamento e tipografia segue a escala padrão do Tailwind, evitando valores arbitrários fora da escala.
 
 ## 3. Componentes base
@@ -28,6 +30,10 @@
 | Skeleton | Estado de loading |
 | Empty state | Ausência de dados |
 | Painel de status em tempo real | Operadores/filas (supervisão) |
+
+## 3.1 Componentes implementados (crm-frontend/src/components/ui)
+
+Button (`writes` para ações que alteram dados), Input, Select, Textarea, Card (com ação no título), Alert (ícone por tom), Badge e StatusIndicator, Table (colunas secundárias somem em telas pequenas, sem rolagem lateral), Pagination, Breadcrumb, Skeleton, ProgressBar, Modal (folha inferior no celular) e Drawer, Dropdown, Toast, EmptyState e Spinner. Rádio e caixa de seleção usam o controle nativo com a cor da marca. Não criados por não haver uso real: Tabs e Tooltip (o motivo de uma ação indisponível vai no `title` e no aviso da tela).
 
 ## 4. Layout e navegação
 
