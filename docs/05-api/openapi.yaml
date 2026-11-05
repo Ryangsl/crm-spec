@@ -9,15 +9,39 @@ info:
     de todos os módulos, que evolui junto com a implementação. Ver diretrizes
     gerais em api-guidelines.md.
 servers:
-  - url: https://api.{tenant_domain}/v1
+  # D-088 / ADR-012: a API e servida no MESMO endereco de cada empresa (o proxy reverso encaminha /v1 ao
+  # backend preservando o Host); o endereco identifica a empresa no login.
+  - url: https://{tenant_host}/v1
     variables:
-      tenant_domain:
-        default: exemplo.crm.local
+      tenant_host:
+        default: empresa-a.crm-universal.com.br
+        description: Subdominio da plataforma ou dominio proprio verificado da empresa
 
 security:
   - bearerAuth: []
 
 paths:
+  /auth/tenant:
+    get:
+      summary: Empresa do endereço de acesso (tela de login)
+      description: >
+        D-088. Público. Devolve só o nome da empresa cujo domínio verificado é o
+        cabeçalho Host da requisição. Endereço desconhecido, pendente,
+        desativado ou de empresa excluída: 404 TENANT_DOMAIN_NOT_FOUND. Nunca
+        devolve o id do tenant.
+      security: []
+      responses:
+        "200":
+          description: O endereço seleciona uma empresa
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tenant_name: { type: string }
+        "404":
+          $ref: "#/components/responses/TenantDomainNotFound"
+
   /auth/login:
     post:
       summary: Autentica um usuário e emite tokens
@@ -25,6 +49,12 @@ paths:
         O access token (TTL 15 min) volta no corpo. O refresh token (TTL 7 dias,
         rotacionado a cada uso) é entregue em cookie httpOnly Secure e nunca
         aparece no corpo da resposta — ver ADR-008 e D-004/D-005.
+        D-088 / ADR-012: a empresa é identificada ANTES da credencial pelo
+        cabeçalho Host (domínio verificado em tenant_domains), e o e-mail é
+        procurado somente nela; não existe busca global por e-mail. O mesmo
+        e-mail pode existir em empresas diferentes. O corpo não aceita tenant
+        (campo extra = 400). E-mail inexistente e senha errada têm a mesma
+        resposta e o mesmo custo de verificação.
       security: []
       requestBody:
         required: true
@@ -47,8 +77,20 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AccessToken"
+        "400":
+          description: Corpo inválido (inclui campo não previsto, como tenant_id)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: TENANT_NOT_ACTIVE (empresa suspensa), depois de validar a credencial
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          $ref: "#/components/responses/TenantDomainNotFound"
 
   /auth/refresh:
     post:
@@ -60,6 +102,8 @@ paths:
         revoga TODAS as sessões ativas do usuário, não só a reutilizada — a
         granularidade é por usuário, não por dispositivo (o modelo de dados
         não distingue dispositivo ainda).
+        D-088: só renova no endereço da própria empresa; em outro endereço (ou
+        em um que não seleciona empresa) responde 401 sem revogar a sessão.
       security: []
       responses:
         "200":
@@ -121,6 +165,10 @@ paths:
                 $ref: "#/components/schemas/UserList"
     post:
       summary: Cria um usuário
+      description: >
+        D-087: todo papel em role_ids precisa ter permissões contidas nas de
+        quem cria; o papel de fábrica admin só é concedido por quem tem o papel
+        admin. Papel de outro tenant: 409.
       requestBody:
         required: true
         content:
@@ -134,6 +182,13 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/User"
+        "403":
+          $ref: "#/components/responses/RoleAssignmentForbidden"
+        "409":
+          description: EMAIL_ALREADY_IN_USE (no mesmo tenant) ou papel de outro tenant
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
 
   /users/me:
     get:
@@ -164,6 +219,11 @@ paths:
         Escopo deliberadamente restrito a nome e role_ids — e-mail e senha
         ficam fora de um PATCH genérico. role_ids ausente no corpo não altera
         os papéis atuais; role_ids presente SUBSTITUI o conjunto inteiro.
+        D-087: quem altera precisa cobrir as permissões do usuário alvo (alvo
+        Admin exige ser Admin); cada papel concedido ou retirado precisa estar
+        coberto pelas permissões de quem altera, e o papel admin só é concedido
+        ou retirado por Admin. Tirar o papel admin do último Admin ativo: 409
+        LAST_ADMIN. Tudo sob lock por tenant, na mesma transação.
       parameters:
         - $ref: "#/components/parameters/Id"
       requestBody:
@@ -178,21 +238,101 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/User" }
+        "403":
+          $ref: "#/components/responses/RoleAssignmentForbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/LastAdmin"
     delete:
       summary: Desativa um usuário do tenant (não remove o registro)
       description: >
         "Exclusão" de usuário é desativação lógica (status=inactive) —
         distinta do soft delete via deletedAt usado em dados de negócio
-        (Cliente/Lead/Oportunidade/Atendimento).
+        (Cliente/Lead/Oportunidade/Atendimento). Revoga as sessões (D-084).
+        D-087: quem desativa precisa cobrir as permissões do alvo (alvo Admin
+        exige ser Admin); desativar o último Admin ativo: 409 LAST_ADMIN. Não
+        existe reativação na API.
       parameters:
         - $ref: "#/components/parameters/Id"
       responses:
         "204":
           description: Usuário desativado
+        "403":
+          $ref: "#/components/responses/RoleAssignmentForbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/LastAdmin"
+
+  /roles:
+    get:
+      summary: Lista os papéis do tenant (roles:read)
+      responses:
+        "200":
+          description: Papéis com as chaves de permissão
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Role" }
+    post:
+      summary: Cria papel personalizado (roles:manage)
+      description: >
+        Permissões reservadas à plataforma e as exclusivas do papel admin são
+        recusadas (400). D-087: só permissões que quem cria possui (403
+        ROLE_ASSIGNMENT_FORBIDDEN, field permission_keys).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, permission_keys]
+              properties:
+                name: { type: string, minLength: 2 }
+                permission_keys: { type: array, items: { type: string } }
+      responses:
+        "201":
+          description: Papel criado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Role" }
+        "403":
+          $ref: "#/components/responses/RoleAssignmentForbidden"
+
+  /roles/permissions:
+    get:
+      summary: Catálogo de permissões que o tenant pode usar em papéis (roles:read)
+      responses:
+        "200":
+          description: Permissões (sem as reservadas e as exclusivas do admin)
+
+  /roles/{id}:
+    patch:
+      summary: Altera papel personalizado (roles:manage); papéis de sistema são imutáveis
+      description: >
+        D-087: as permissões novas e as atuais do papel precisam estar cobertas
+        pelas de quem altera; ninguém amplia o próprio papel.
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Papel alterado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Role" }
+        "403":
+          $ref: "#/components/responses/RoleAssignmentForbidden"
+    delete:
+      summary: Exclui papel personalizado (roles:manage); mesma regra de cobertura
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "204":
+          description: Papel excluído (soft delete)
+        "403":
+          $ref: "#/components/responses/RoleAssignmentForbidden"
 
   /customers:
     get:
@@ -2450,6 +2590,27 @@ components:
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }
+    TenantDomainNotFound:
+      description: >
+        D-088: TENANT_DOMAIN_NOT_FOUND — o endereço (Host) não é domínio
+        verificado de nenhuma empresa.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    RoleAssignmentForbidden:
+      description: >
+        D-087: FORBIDDEN (sem a permissão da rota), ROLE_ASSIGNMENT_FORBIDDEN
+        (details[0].issue = ADMIN_ROLE_REQUIRES_ADMIN ou ROLE_EXCEEDS_ACTOR) ou
+        USER_MANAGEMENT_FORBIDDEN (ADMIN_ROLE_REQUIRES_ADMIN ou
+        TARGET_EXCEEDS_ACTOR).
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    LastAdmin:
+      description: D-087 — LAST_ADMIN; a empresa precisa manter ao menos um Admin ativo.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
 
   schemas:
     BrandingColors:
@@ -2670,6 +2831,26 @@ components:
         email: { type: string, format: email }
         status: { type: string, enum: [active, inactive] }
         created_at: { type: string, format: date-time }
+        roles:
+          type: array
+          items: { type: string }
+          description: Nomes dos papéis vigentes (D-087), em ordem alfabética.
+        role_ids:
+          type: array
+          items: { type: string, format: uuid }
+          description: Ids dos mesmos papéis, na mesma ordem.
+        permissions:
+          type: array
+          items: { type: string }
+          description: Só em GET /users/me.
+
+    Role:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        is_system: { type: boolean }
+        permissions: { type: array, items: { type: string } }
 
     UserList:
       type: object

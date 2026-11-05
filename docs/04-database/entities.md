@@ -17,6 +17,18 @@ Convenções gerais (UUID, `tenant_id`, timestamps, soft delete) em [database.md
 
 Índices: `document` único. Relacionamentos: 1:N com praticamente todas as entidades via `tenant_id`.
 
+### `tenant_domains` *([D-088](../00-governance/decision-register.md#d-088--identificação-da-empresa-pelo-endereço-de-acesso), [ADR-012](../adr/ADR-012.md); migration `20261106120000_tenant_domains`)*
+| Campo | Tipo | Obrigatório | Notas |
+|---|---|---|---|
+| tenant_id | UUID (FK tenants) | sim | Empresa que o endereço seleciona |
+| hostname | string | sim | **Único no banco inteiro.** Forma canônica: minúsculo, sem porta, sem ponto final (CHECK) |
+| kind | enum(platform_subdomain, custom) | sim | Subdomínio da plataforma (nasce verificado) ou domínio próprio do cliente |
+| status | enum(pending, verified, disabled) | sim | Só `verified` de tenant não excluído seleciona a empresa |
+| verification_token_hash | string | não | Hash do desafio de propriedade de domínio próprio (verificação ainda não implementada) |
+| verified_at | timestamp | não | CHECK: obrigatório quando `verified` |
+
+Só a plataforma cadastra domínios. Índice em `tenant_id`.
+
 ### `plans` *(sem tenant_id)*
 | Campo | Tipo | Obrigatório | Notas |
 |---|---|---|---|
@@ -48,7 +60,7 @@ Convenções gerais (UUID, `tenant_id`, timestamps, soft delete) em [database.md
 | team_id | UUID (FK teams) | não | |
 | branch_id | UUID (FK branches) | não | |
 
-Índices: `(tenant_id, email)` único. Regras: e-mail único por tenant, não globalmente (mesma pessoa pode existir em tenants diferentes com mesmo e-mail).
+Índices: `(tenant_id, email)` único. Regras: e-mail único por tenant, não globalmente (mesma pessoa pode existir em tenants diferentes com mesmo e-mail). Desde a [D-088](../00-governance/decision-register.md#d-088--identificação-da-empresa-pelo-endereço-de-acesso) o login procura o e-mail só na empresa do endereço de acesso, então o mesmo e-mail em duas empresas não bloqueia nenhuma delas.
 
 ### `roles`
 | Campo | Tipo | Obrigatório | Notas |

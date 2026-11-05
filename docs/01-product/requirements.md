@@ -3,7 +3,7 @@
 ## 1. Requisitos Funcionais (RF)
 
 ### Autenticação e Usuários
-- RF-01: O sistema deve permitir login com e-mail/senha, emitindo access token JWT (TTL 15 min) e refresh token (TTL 7 dias, em cookie httpOnly) — ver [ADR-008](../adr/ADR-008.md).
+- RF-01: O sistema deve permitir login com e-mail/senha, emitindo access token JWT (TTL 15 min) e refresh token (TTL 7 dias, em cookie httpOnly) — ver [ADR-008](../adr/ADR-008.md). O login acontece no endereço da empresa, que a identifica ([D-088](../00-governance/decision-register.md#d-088--identificação-da-empresa-pelo-endereço-de-acesso)).
 - RF-02: O sistema deve permitir logout com revogação de refresh token, individual (um dispositivo) e global (todos).
 - RF-03: O sistema deve permitir redefinição de senha. **Sem fase declarada no roadmap e sem implementação** — achado na revisão de fechamento da Fase 2 ([phase-02.md](../09-testing/phase-acceptance/phase-02.md) seção 4), registrado formalmente como [D-064](../00-governance/decision-register.md#d-064--rf-03-redefinição-de-senha-fase-e-fluxo-indefinidos) (`VALIDAÇÃO DE NEGÓCIO`, prazo: antes do primeiro cliente em produção). `[VALIDAÇÃO DE NEGÓCIO NECESSÁRIA]` sobre qual fluxo (admin reseta/usuário troca a própria/"esqueci minha senha" por e-mail — este último depende de D-040, provedor de e-mail, ainda `ADIADO`) e em qual fase entra. Não é critério de aceite de nenhuma fase declarada hoje — não bloqueia a Fase 2 nem o início da Fase 3.
 - RF-04: O sistema deve suportar múltiplos usuários por tenant, cada um com um ou mais papéis.

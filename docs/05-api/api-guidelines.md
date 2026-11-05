@@ -82,7 +82,7 @@ O cursor é o UUID v7 do último item da página ([D-001](../00-governance/decis
 ## 9. Exemplos de contrato (ilustrativos — ver detalhamento completo em [openapi.yaml](openapi.yaml))
 
 ### Login
-`POST /v1/auth/login`
+`POST /v1/auth/login`, sempre no endereço da empresa (o cabeçalho `Host` identifica a empresa: [D-088](../00-governance/decision-register.md#d-088--identificação-da-empresa-pelo-endereço-de-acesso)). O corpo não leva tenant.
 ```json
 // Request
 { "email": "user@empresa.com", "password": "•••••" }
