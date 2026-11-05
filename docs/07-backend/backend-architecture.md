@@ -84,7 +84,7 @@ Request → JWT → Auth Guard → Tenant Context → Service → Repository/Pri
 ## 7. Logging
 
 - Logs estruturados (JSON) via Pino (ver [../03-architecture/architecture.md](../03-architecture/architecture.md) e [observabilidade em deployment.md](../08-devops/deployment.md)), incluindo `request_id`, `tenant_id`, `user_id` quando disponível.
-- Nunca logar senha, token ou segredo de integração, mesmo em nível debug.
+- Nunca logar senha, token ou segredo de integração, mesmo em nível debug. A redação do `pino-http` cobre `cookie`, `set-cookie` (o refresh token trafega em cookie), `authorization`, `proxy-authorization`, `x-hub-signature-256`, `password` e `refresh_token` ([D-084](../00-governance/decision-register.md#d-084--ciclo-de-vida-da-sessão-usuário-e-tenant-ativos-a-cada-requisição-revogação-na-desativação-e-redação-de-cookies-nos-logs)); a lista fica em `src/common/logging/http-logger.config.ts` e tem teste. Ao incluir um novo cabeçalho ou campo sensível, acrescente-o lá.
 
 ## 8. Validação e segurança de entrada
 
