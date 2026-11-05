@@ -396,6 +396,8 @@ Imutável (sem edição e sem soft delete). Índice `(tenant_id, conversation_id
 `tenant_id` estava ausente na versão original desta tabela — corrigido: toda tabela de negócio tem `tenant_id` por convenção ([database.md](database.md) seção 1), e um log de auditoria sem isolamento por tenant contradiria BR-02 diretamente. Sem endpoint de leitura no MVP (só escrita) — ver [D-060](../00-governance/decision-register.md#d-060--auditoria-básica-write-only-nesta-fase).
 
 ### `tenant_settings`
+
+Chave `crm.branding.request`: solicitação de alteração pendente, `{ message, requested_by, requested_at }`, no máximo uma por tenant. Chave `crm.branding` ([D-086](../00-governance/decision-register.md#d-086--identidade-visual-executive-e-personalização-visual-por-tenant)): identidade visual do tenant, `{ display_name, theme, colors }`. Sem linha = identidade padrão.
 | Campo | Tipo | Obrigatório |
 |---|---|---|
 | key | string | sim |
