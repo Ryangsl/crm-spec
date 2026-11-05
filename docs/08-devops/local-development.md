@@ -49,7 +49,7 @@ GRANT CONNECT, TEMPORARY ON DATABASE crm_dev TO crm_dev;
 GRANT CONNECT, TEMPORARY ON DATABASE crm_test TO crm_dev;
 ```
 
-Permissões: só `LOGIN` e a propriedade dos bancos (no PostgreSQL 15+ o dono do banco cria objetos no schema `public`). Sem superusuário, `CREATEDB`, `CREATEROLE` ou `REPLICATION`. A senha fica só no `.env` local.
+A criação é **manual**, por um superusuário, em qualquer ambiente; em produção o procedimento e os pontos pendentes estão em [runbook-database-provisioning.md](runbook-database-provisioning.md). Permissões: só `LOGIN` e a propriedade dos bancos (no PostgreSQL 15+ o dono do banco cria objetos no schema `public`). Sem superusuário, `CREATEDB`, `CREATEROLE` ou `REPLICATION`. A senha fica só no `.env` local.
 
 Os comandos `npm run db:setup`, `db:seed`, `db:migrate` e `db:reset` passam antes por `npm run db:check`, que mostra host, porta e banco e **recusa** banco fora da máquina, com nome de teste ou igual ao `TEST_DATABASE_URL`. Antes da primeira migration, confira também com `npx prisma migrate status`. `db:setup` usa `migrate deploy` e funciona sem CREATEDB; `db:migrate` (`migrate dev`) precisa de banco sombra (CREATEDB ou `shadowDatabaseUrl`), e as migrations do projeto são geradas por `migrate diff`.
 
@@ -58,6 +58,10 @@ Os comandos `npm run db:setup`, `db:seed`, `db:migrate` e `db:reset` passam ante
 O login identifica a empresa pelo endereço. Em desenvolvimento, o seed cria `exemplo.localhost` (Empresa Exemplo) e `trial.localhost` (Empresa Trial); subdomínios de `localhost` resolvem para a própria máquina sem editar o arquivo hosts. Abra `http://exemplo.localhost:5173`. O frontend chama a API na mesma origem (`VITE_API_URL` vazio) e o proxy do Vite encaminha `/v1` ao backend preservando o `Host`. Não abra `http://localhost:5173` para entrar: `localhost` não é endereço de empresa. Outra empresa de teste precisa de uma linha em `tenant_domains` (ver [runbook-tenant-domains.md](runbook-tenant-domains.md)).
 
 Segredos de provedores externos (telefonia/WhatsApp) só existem a partir da Fase 5. A convenção é prefixar por **capacidade, não por marca** (`TELEPHONY_*`, `WHATSAPP_*`), para que trocar de provedor não exija renomear configuração ([D-024](../00-governance/decision-register.md#d-024--convenção-de-variáveis-de-ambiente-de-provedores), `PROPOSTO`) — coerente com a abstração de canal em [../03-architecture/integrations.md](../03-architecture/integrations.md).
+
+### 3.3 Verificação antes de subir a API
+
+`npm run dev` roda antes `npm run dev:check`: conecta ao PostgreSQL e ao Redis do `.env` (no Redis, um `PING`) e, se algum não responder, não sobe a API e diz o que fazer (serviço do PostgreSQL nativo; `docker compose up -d` para o Redis). Não lê nem grava dados. Com a API já no ar, se o Redis cair, o aviso aparece uma vez a cada 30 s e a volta da conexão é registrada.
 
 ## 4. Migrations e seeds
 

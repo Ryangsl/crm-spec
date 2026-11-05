@@ -18,6 +18,7 @@ O sistema deve funcionar em: desenvolvimento local (Windows/Linux), ambiente Lin
 
 ## 4. Migrations em produção
 
+- **Antes da primeira migration**, um superusuário/DBA cria **manualmente** o usuário de aplicação (sem superusuário, `CREATEDB` ou `CREATEROLE`) e o banco, de propriedade dele. A aplicação nunca cria o próprio usuário nem se conecta como superusuário: [runbook-database-provisioning.md](runbook-database-provisioning.md).
 - Migrations do Prisma executadas como etapa explícita do processo de deploy (antes de subir a nova versão da aplicação), nunca automaticamente no boot da aplicação em produção.
 - Toda migration é aditiva sempre que possível (nova coluna nullable, depois backfill, depois `NOT NULL` em migration separada) para permitir rollback seguro.
 
