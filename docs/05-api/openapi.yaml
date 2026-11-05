@@ -1636,6 +1636,89 @@ paths:
         "401":
           $ref: "#/components/responses/Unauthorized"
 
+  /plan:
+    get:
+      summary: "[D-085] Situação comercial do tenant do token (sem permissão específica)"
+      description: |
+        Plano, estado comercial, trial, limites e funcionalidades. Todo usuário do tenant precisa saber
+        se está em modo de consulta. Funcionalidade ainda não construída nunca aparece como disponível.
+
+        **Política de escrita.** Fora das rotas isentas, toda escrita pode responder 403 com
+        `TRIAL_NOT_STARTED`, `TRIAL_EXPIRED`, `FEATURE_NOT_AVAILABLE` ou `PLAN_LIMIT_REACHED` (este
+        último com `plan_limit`). Essas respostas não encerram a sessão. Suspenso ou excluído: 401.
+      responses:
+        "200":
+          description: Situação do plano
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PlanSituation" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /plan/usage:
+    get:
+      summary: "[D-085] Consumo e limites do tenant do token (plan:read)"
+      description: |
+        Mesma contagem usada no bloqueio: usuários ativos e registros não excluídos, somados aos
+        excluídos que ainda têm conversa preservada. Armazenamento: só o limite configurado, com
+        `used: null` e `monitored: false`, porque não existe persistência de arquivos implementada.
+      responses:
+        "200":
+          description: Consumo por recurso
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PlanUsage" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Sem `plan:read`
+
+  /plan/trial/start:
+    post:
+      summary: "[D-085] Inicia a avaliação de 14 dias, uma única vez (plan:manage)"
+      description: |
+        Grava `trial_started_at` e `trial_ends_at`, com auditoria (`trial.started`). Repetir não
+        reinicia. Isenta da política de escrita.
+      responses:
+        "200":
+          description: Situação do plano depois do início
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PlanSituation" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Sem `plan:manage`
+        "409":
+          description: "`TRIAL_ALREADY_STARTED` ou `TRIAL_NOT_APPLICABLE`"
+
+  /plan/conversion:
+    post:
+      summary: "[D-085] Converte o tenant do token para um plano contratado (plan:convert, reservada)"
+      description: |
+        Operação administrativa, sem gateway. Troca o plano e o status para `active` em uma transação,
+        com auditoria (`plan.converted`). Nenhum dado é alterado. `plan:convert` não está em nenhum papel
+        de fábrica e a API de papéis não a concede. Isenta da política de escrita. Não aceita tenant.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ConvertPlanRequest" }
+      responses:
+        "200":
+          description: Situação do plano depois da conversão
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PlanSituation" }
+        "400":
+          description: Corpo inválido, inclusive campo não previsto (ex. `tenant_id`)
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Sem `plan:convert`
+        "422":
+          description: "`INVALID_TARGET_PLAN`: inexistente, excluído, de avaliação ou igual ao atual"
+
   /tenant-settings/business-hours-restriction:
     get:
       summary: "[F4.7 — D-082/D-083; integrado ao main em 2026-10-19] Lê o toggle de restrição por horário do tenant (tenant_settings:read)"
@@ -2244,6 +2327,67 @@ components:
           schema: { $ref: "#/components/schemas/Error" }
 
   schemas:
+    PlanSituation:
+      type: object
+      required: [plan, tenant_status, state, write_allowed, trial, limits, features]
+      properties:
+        plan:
+          type: object
+          properties:
+            code: { type: string, nullable: true, description: "Nulo = plano legado, sem restrição" }
+            name: { type: string }
+        tenant_status: { type: string, enum: [active, trial, suspended] }
+        state:
+          type: string
+          enum: [active, trial_not_started, trial_active, trial_expired, suspended, deleted]
+        write_allowed: { type: boolean }
+        trial:
+          type: object
+          nullable: true
+          description: Nulo fora do status trial.
+          properties:
+            started_at: { type: string, format: date-time, nullable: true }
+            ends_at: { type: string, format: date-time, nullable: true }
+            total_days: { type: integer, nullable: true }
+            days_remaining: { type: integer, nullable: true }
+            near_expiry: { type: boolean, description: "Últimos 3 dias de um trial ativo" }
+        limits:
+          type: object
+          description: Nulo = sem limite no recurso.
+          properties:
+            users: { type: integer, nullable: true }
+            leads: { type: integer, nullable: true }
+            customers: { type: integer, nullable: true }
+            opportunities: { type: integer, nullable: true }
+            storage_bytes: { type: integer, nullable: true }
+        features:
+          type: object
+          additionalProperties: { type: boolean }
+    ResourceUsage:
+      type: object
+      required: [resource, used, limit, percent, state, monitored]
+      properties:
+        resource: { type: string, enum: [users, leads, customers, opportunities, storage_bytes] }
+        used: { type: integer, nullable: true, description: "Nulo quando o consumo não é medido" }
+        limit: { type: integer, nullable: true }
+        percent: { type: integer, nullable: true }
+        state: { type: string, enum: [normal, warning, reached] }
+        monitored: { type: boolean, description: "false = consumo não medido; hoje, só storage_bytes" }
+    PlanUsage:
+      type: object
+      required: [warning_percent, resources]
+      properties:
+        warning_percent: { type: integer }
+        resources:
+          type: array
+          items: { $ref: "#/components/schemas/ResourceUsage" }
+    ConvertPlanRequest:
+      type: object
+      required: [plan_code, reason]
+      additionalProperties: false
+      properties:
+        plan_code: { type: string, maxLength: 64 }
+        reason: { type: string, maxLength: 500, description: "Fica no audit_log" }
     Error:
       type: object
       properties:

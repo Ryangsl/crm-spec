@@ -81,6 +81,14 @@ Request → JWT → Auth Guard → Tenant Context → Service → Repository/Pri
 - Exceções de domínio (`LeadAlreadyConvertedException`, etc.) mapeadas por um `ExceptionFilter` global para o formato de erro padronizado do contrato (ver [../05-api/api-guidelines.md](../05-api/api-guidelines.md) seção 6).
 - Erros não tratados nunca vazam stack trace/detalhe interno para o cliente em produção.
 
+## 6.1 Planos e política comercial
+
+Módulo `plans` ([ADR-010](../adr/ADR-010.md), [D-085](../00-governance/decision-register.md#d-085--trial-comercial-modalidade-de-avaliação-por-empresa)). É a única fonte de regra comercial: nenhum outro módulo contém número de limite nem lê `plans` diretamente.
+
+- `CommercialAccessGuard`, terceiro guard global, decide leitura e escrita a partir do snapshot que o `JwtAuthGuard` já carregou, sem nova consulta. Rota nova de escrita já nasce bloqueada após o vencimento; `@CommercialAccess('exempt'|'write')` é a exceção explícita.
+- Criar registro limitado: chamar `PlansService.assertCanCreate(recurso, tx)` dentro da transação, antes de gravar. Trabalho fora de requisição: `PlansService.allowsBackgroundWork(tenantId, funcionalidade)`.
+- `@RequiresFeature` por controller. Funcionalidade desligada bloqueia a escrita; a leitura só com `blockReads`.
+
 ## 7. Logging
 
 - Logs estruturados (JSON) via Pino (ver [../03-architecture/architecture.md](../03-architecture/architecture.md) e [observabilidade em deployment.md](../08-devops/deployment.md)), incluindo `request_id`, `tenant_id`, `user_id` quando disponível.

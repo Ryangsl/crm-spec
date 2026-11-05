@@ -843,7 +843,7 @@ Migration aditiva `20261008120000_f4_6_conversations` (enums `ConversationStatus
 **Contexto.** O código anterior só consultava o status do usuário e do tenant no **login**. Depois dele, desativar o usuário ou suspender o tenant não encerrava nada: o `refresh` renovava a sessão indefinidamente (cada rotação concede mais 7 dias), o `JwtAuthGuard` só validava a assinatura do access token (15 min) e a leitura de permissões não filtrava o status do usuário. A revogação automática de sessões ao desativar usuário estava listada como fora de escopo da Fase 2 (`crm-backend/CLAUDE.md`). Separadamente, o `redact` do `pino-http` cobria `authorization`, mas não `cookie` nem `set-cookie`, e o refresh token (cookie httpOnly, ADR-008) era gravado em claro nos logs de `/v1/auth/*`.
 
 **Decisão — sessão (ALTA-1).**
-1. **Verificação por requisição.** O `JwtAuthGuard`, depois de validar a assinatura, confirma numa **única consulta por chave primária** que o usuário do token está `active` e não excluído, no tenant do token, e que o tenant está `active` e não excluído (mesma regra do login, `TenantsService.assertActive`). Falhou → `401` idêntico ao de token inválido. **Sem cache**, de propósito: um cache reintroduziria a janela de acesso que se quer fechar. Custo: +1 consulta indexada por requisição autenticada (o `PermissionsGuard` já fazia uma por requisição).
+1. **Verificação por requisição.** O `JwtAuthGuard`, depois de validar a assinatura, confirma numa **única consulta por chave primária** que o usuário do token está `active` e não excluído, no tenant do token, e que o tenant pode autenticar e não está excluído (mesma regra do login, `TenantsService.assertCanAuthenticate`: `active` ou `trial`, ver [D-085](#d-085--trial-comercial-modalidade-de-avaliação-por-empresa)). Falhou → `401` idêntico ao de token inválido. **Sem cache**, de propósito: um cache reintroduziria a janela de acesso que se quer fechar. Custo: +1 consulta indexada por requisição autenticada (o `PermissionsGuard` já fazia uma por requisição).
 2. **Refresh.** `refresh()` recusa (`401 INVALID_REFRESH_TOKEN`, a mesma resposta de qualquer token inválido — não revela o motivo) quando o usuário/tenant gravados no refresh token não estão ativos, e **revoga as demais sessões do usuário** nessa recusa.
 3. **Desativação.** `UsersService.deactivate` revoga **todas** as sessões do usuário **na mesma transação** que grava `status='inactive'` e a auditoria. Reativar o usuário não restaura sessões: refresh tokens revogados não voltam a valer. A revogação usa o motivo existente `logout` (reapresentar o token é só "sessão encerrada", sem varrer a família — D-056); **sem migration**.
 4. **Permissões.** `getPermissionKeys` só considera papéis de usuário `active` e não excluído, para que nenhum serviço trate um inativo como se ainda tivesse seus papéis.
@@ -853,15 +853,75 @@ Migration aditiva `20261008120000_f4_6_conversations` (enums `ConversationStatus
 - **(a) Access token antigo após reativação de usuário.** O access token é um JWT sem estado de sessão (`{sub, tenantId}`): o guard confere a assinatura e o estado **atual** do usuário, não se o token é anterior a uma desativação. Se o usuário for reativado **dentro dos 15 minutos** de validade de um access token emitido antes da desativação, esse token volta a ser aceito até expirar; o refresh token **não** volta (foi revogado no banco). O comportamento está fixado pelo teste e2e `[LIMITACAO ACEITA] reativar o usuario dentro dos 15 min…` (`session-lifecycle.e2e-spec.ts`), que documenta a limitação e deve passar a esperar `401` se ela for um dia corrigida. Fechar a janela exigiria um marcador de invalidação por usuário (migration), **não implementado**.
 - **(b) Refresh token nunca apresentado durante a suspensão do tenant.** Suspender o tenant **não revoga nada no banco**; apenas bloqueia o uso enquanto o status não for `active`. Um refresh token **apresentado** durante a suspensão é recusado e revoga as sessões **daquele usuário** (revogação preguiçosa, por usuário). Sessões de usuários que **não** tentaram renovar durante a suspensão permanecem sem `revoked_at` e, **após a reativação do tenant, podem voltar a funcionar** — no máximo até 7 dias desde a emissão ou a última rotação do token. O resultado depende, portanto, de o usuário ter ou não tentado durante a suspensão.
 - **(c) A suspensão manual não revoga as sessões do tenant.** Não existe revogação global por tenant (`revokeAllForTenant`) nem rotina de suspensão; **não se promete revogação imediata global**. Durante a suspensão o acesso é bloqueado pelo guard (access tokens) e pelo refresh; ao reativar, vale o descrito em (b), e os access tokens ainda dentro dos 15 minutos voltam a ser aceitos.
-- **(d) Tenant `trial`.** A regra de "tenant ativo" é a do login: `trial` e `suspended` são recusados em login, refresh e acesso por token, e `trial` **permanece bloqueado** como estava antes desta correção. O schema define `trial` como valor padrão de `tenants.status` e nenhuma especificação define se `trial` deve ter acesso: **a regra aguarda validação humana de negócio** e não foi alterada (nem o status dos tenants, nem a regra de login).
+- **(d) Tenant `trial`.** *Substituída em 2026-11-05 por [D-085](#d-085--trial-comercial-modalidade-de-avaliação-por-empresa).* A política anterior (`trial` bloqueado, aguardando validação de negócio) não vale mais.
 
-**Melhorias futuras (não implementadas, pendências):** `session_version` / `sessions_invalid_before` (invalidação de access tokens por usuário), `revokeAllForTenant` e rotina de suspensão/reativação de tenant, endpoint administrativo de suspensão/reativação, decisão de negócio sobre `trial`.
+**Melhorias futuras (não implementadas, pendências):** `session_version` / `sessions_invalid_before` (invalidação de access tokens por usuário), `revokeAllForTenant` e rotina de suspensão/reativação de tenant, endpoint administrativo de suspensão/reativação.
 
 **Decisão — logs (ALTA-2).** A lista de redação do `pino-http` (`src/common/logging/http-logger.config.ts`) passa a cobrir `req.headers.cookie`, `res.headers["set-cookie"]`, `req.headers.authorization`, `req.headers["proxy-authorization"]`, `req.headers["x-hub-signature-256"]`, `req.body.password` e `req.body.refresh_token`. O Node normaliza os nomes de cabeçalho para minúsculas, então a caixa enviada pelo cliente não altera o caminho. Os demais campos de diagnóstico (método, URL, status, tempo, user-agent, `tenantId`/`userId`) são preservados.
 
 **Fora desta decisão (continuam pendentes, achados MÉDIA da mesma auditoria):** rate limiting e helmet; rotação atômica do refresh token e política para reuso imediato (multi-aba); importação síncrona de Leads; CI do backend sem e2e; guarda de ambiente do setup dos e2e.
 
-**Validação.** Testes unitários (guard, `refresh`, `deactivate`, consultas, configuração de logs) e e2e `session-lifecycle` (11 casos, um deles documentando a limitação (a)) executados em infraestrutura descartável; ver `PROJECT-CONTEXT.md`. Validação humana: **pendente** — inclusive a aceitação das limitações (a)–(d) e a regra de `trial`.
+**Validação.** Testes unitários (guard, `refresh`, `deactivate`, consultas, configuração de logs) e e2e `session-lifecycle` (11 casos, um deles documentando a limitação (a)) executados em infraestrutura descartável; ver `PROJECT-CONTEXT.md`. Validação humana: **pendente** — inclusive a aceitação das limitações (a)–(c).
+
+### D-085 — Trial comercial: modalidade de avaliação por empresa
+**Status**: `DECIDIDO` (decisão de negócio do responsável pelo produto; revisão funcional aprovada em 2026-11-05) · **Fase**: transversal · **Arquitetura**: [ADR-010](../adr/ADR-010.md) · **Operação**: [runbook](../08-devops/runbook-trial.md) · **Relacionadas**: [D-084](#d-084--ciclo-de-vida-da-sessão-usuário-e-tenant-ativos-a-cada-requisição-revogação-na-desativação-e-redação-de-cookies-nos-logs) (sessões), D-059 (provisionamento manual), D-037 (sem self-service) · **implementado na branch `feat/trial-plans-entitlements`, enviada para integração por PR; merge pendente**.
+
+**Decisão.** Trial é uma **modalidade comercial de avaliação**, por empresa (tenant): acesso temporário para experimentar o ciclo comercial antes de contratar um plano. **`trial` não é sinônimo de `suspended`**: suspensão é uma situação administrativa distinta, e o vencimento do trial nunca grava `suspended`. Substitui a política anterior, de `trial` bloqueado.
+
+**Configuração aprovada.**
+
+| Propriedade | Definição |
+|---|---|
+| Duração | 14 dias, contados da ativação efetiva, uma única vez |
+| Usuários | 3, incluindo o proprietário |
+| Leads | 100 |
+| Clientes | 100 |
+| Oportunidades | 30 |
+| Armazenamento | 100 MB configurados; consumo ainda não monitorado (ver "Armazenamento") |
+| Repetição | Sem reinício |
+| Dados | Preservados; a conversão não perde dados |
+
+**Ciclo de vida e acesso.**
+
+| Situação | Login | Refresh | Access token | Leitura | Escrita |
+|---|---|---|---|---|---|
+| `trial` não iniciado | sim | sim | sim | sim | `403 TRIAL_NOT_STARTED` |
+| `trial` ativo | sim | sim | sim | sim | sim, dentro dos limites |
+| `trial` expirado | sim | sim | sim | sim | `403 TRIAL_EXPIRED` |
+| `active` (contratado) | sim | sim | sim | sim | conforme o plano |
+| `suspended` | `403 TENANT_NOT_ACTIVE` | `401` | `401` | não | não |
+| excluído | `403 TENANT_NOT_ACTIVE` | `401` | `401` | não | não |
+
+**Regras aprovadas.**
+1. **Início.** O tenant nasce com status `trial` sem iniciar a contagem. Apenas o Admin inicia a avaliação (`plan:manage`), por ação explícita no CRM. Repetir não reinicia.
+2. **Não iniciado** permite consulta e bloqueia escrita.
+3. **Expiração** é avaliada pela data a cada consulta, sem job. Depois dela, o tenant mantém o acesso de consulta e perde as operações de escrita; os dados são preservados.
+4. **Consulta comercial.** Todos os usuários do tenant consultam a situação do plano. Admin, Diretor e Gerente consultam o consumo (`plan:read`).
+5. **Limites.** Aviso em 80%, bloqueio de novos registros em 100% (`403 PLAN_LIMIT_REACHED`, com consumo e limite). Enquanto o trial está ativo, registros existentes continuam consultáveis e editáveis. Nada é apagado.
+6. **Registros excluídos** não contam, **salvo os que têm conversa preservada**: a conversa continua acessível depois do soft delete (D-081), e sem isso remover e recriar burlaria o limite. Usuário conta enquanto ativo.
+7. **Notificações.** Marcar como lida continua permitido após a expiração: registra a consulta do próprio usuário, não altera dado de negócio.
+8. **Conversão.** Operação administrativa explícita, sem gateway. Troca o plano e o status para `active` em uma transação auditada (`plan.converted`), valida o plano de destino e preserva dados, usuários e histórico. As datas do trial ficam como histórico, o que também impede um novo início.
+
+**Política de escrita.** Fechada por padrão: todo método que não é GET é escrita. Isentas: `POST /plan/trial/start`, `POST /plan/conversion` e marcar notificação como lida. Inventário de 2026-11-05: nenhum GET grava dado. Um e2e percorre todas as rotas registradas. Jobs e integrações seguem a mesma política: a varredura de automações e o envio de mensagens do legado `communications` não rodam para tenant bloqueado, e mensagem já na fila falha sem nova tentativa.
+
+**Funcionalidades** (`403 FEATURE_NOT_AVAILABLE`). Desligada bloqueia a escrita; a leitura continua, para não quebrar módulos dependentes nem esconder dados de um plano rebaixado. `automations` e `whatsapp` (legado) também bloqueiam a leitura. Plano sem `lead_distribution` cria o Lead sem proprietário (D-075).
+
+| Chave | Existe no código em 2026-11-05? | Trial |
+|---|---|---|
+| `dashboard_basic` | Básico: painel inicial do frontend, sem indicadores (Fase 7) | sim |
+| `customers`, `leads`, `pipeline`, `opportunities`, `conversations` | sim | sim |
+| `lead_distribution` | sim (round-robin, D-068) | sim |
+| `follow_ups` | sim (notas, tarefas, compromissos, interações) | sim |
+| `automations`, `whatsapp` | só no legado `communications` (D-073) | não |
+| `advanced_reports`, `external_integrations` | **não existem**: nunca aparecem como disponíveis, em nenhum plano | não |
+
+**Armazenamento.** O limite de 100 MB está configurado, mas **o consumo efetivo ainda não é monitorado, porque não existe persistência de arquivos implementada** (o único upload, a importação de Leads, é lido em memória e descartado). A API devolve `used: null` e `monitored: false`, e a interface mostra "100 MB configurados, consumo ainda não monitorado": não há consumo simulado, e zero não é apresentado como medição. A futura gravação de arquivos deve informar o consumo medido e chamar `PlansService.assertStorageAvailable`.
+
+**Escolhas técnicas ([ADR-010](../adr/ADR-010.md)).** `plan:convert` é reservada: nenhum papel de fábrica a recebe e a API de papéis não a concede, porque, sem isso, o Admin do tenant se daria um plano pago sem contratar. Valores na tabela `plans`; plano sem `code` é legado, sem restrição, para que nenhum tenant existente mude de comportamento.
+
+**Limitações conhecidas (não impedem o uso).** (a) **Planos pagos não existem**: a conversão exige uma linha em `plans`, e seus limites dependem do negócio. (b) **Contato comercial**: não há página de planos nem endereço definidos; a tela de plano usa `VITE_SALES_CONTACT_URL` quando configurada e, sem ela, orienta a falar com o contato comercial. (c) **Tenants existentes** não recebem `plan:*` sem o passo manual do runbook. (d) As limitações de sessão do D-084 também se aplicam a tenant em trial.
+
+**Validação.** Resultados em `PROJECT-CONTEXT.md`. Testes de banco só em infraestrutura descartável. Revisão funcional aprovada pelo responsável em 2026-11-05. MAT específico do Trial: não criado. Nada foi aplicado em ambiente real.
 
 ## Regras de negócio validadas pelo responsável pelo produto (Fase 3)
 
@@ -932,3 +992,4 @@ Toda exclusão continua sendo **soft delete** (BR-22) e continua sendo auditada 
 | 2026-10-13 | **F4.7 implementado** (autorizado pelo responsável pelo produto; **working tree, sem commit nem push** nos três repositórios). Backend: migration aditiva `20261014120000_f4_7_access_exceptions`, módulo `access-control` (guard de rota, avaliação por fuso/horário, exceções, status), toggle em `tenant-settings` (só Admin), seed dos marcadores e de `access_exceptions:manage`. Frontend: toggle, banner, tratamento do `403 OUTSIDE_BUSINESS_HOURS` e tela de liberações. D-082/D-083 seguem `DECIDIDO`. Nada foi aplicado em ambiente real (sem `migrate deploy`/seed reais, sem MAT). |
 | 2026-10-19 | **F4.7 integrado ao `main`** (PRs #1 mescladas por merge commit: crm-backend `20ec912`, crm-frontend `289373e`, crm-spec `346c485`), com as correções das ressalvas da revisão (runbook dos tenants existentes, `Clock` injetável nos testes e2e, contrato de `expires_at`/`reason`) e a orientação de seed corrigida. D-082/D-083 seguem `DECIDIDO` e **inalteradas**. Nada foi aplicado em ambiente real (sem `migrate deploy`, runbook ou ativação do toggle); MATs 009 a 016 criados, sem validação manual; CI remoto do backend ainda sem confirmação. |
 | 2026-11-04 | **D-084 — ciclo de vida da sessão e redação de cookies nos logs** (correção dos achados ALTA-1 e ALTA-2 da auditoria técnica de 2026-11-03). Documentação: D-084; `security.md` §2; `backend-architecture.md` §7; ADR-008; `PROJECT-CONTEXT.md`. Código na branch `fix/security-session-lifecycle-log-redaction` do `crm-backend` (commit `49c9e9f`), integrada à `main` em 2026-11-05 pelo PR #2 (merge `97f17de`); documentação integrada pelo PR #2 do `crm-spec` (merge `0c82171`). D-056/D-057 inalteradas. |
+| 2026-11-05 | **D-085 — Trial comercial** (decisão de negócio do responsável; revisão funcional aprovada). Substitui a política de `trial` bloqueado registrada no item (d) de D-084, que segue responsável por sessões e logs. Novo [ADR-010](../adr/ADR-010.md) e [runbook](../08-devops/runbook-trial.md). Na branch `feat/trial-plans-entitlements`, enviada para integração por PR; merge pendente. |

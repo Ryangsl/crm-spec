@@ -10,7 +10,9 @@ Convenções gerais (UUID, `tenant_id`, timestamps, soft delete) em [database.md
 | name | string | sim | Razão social/nome fantasia |
 | document | string | sim | CNPJ |
 | plan_id | UUID (FK plans) | sim | |
-| status | enum(active, suspended, trial) | sim | |
+| status | enum(active, suspended, trial) | sim | `trial` = avaliação comercial, `suspended` = decisão administrativa; situações distintas (D-085) |
+| trial_started_at | timestamp | não | Início efetivo da avaliação. Gravado uma única vez; nulo = não iniciada |
+| trial_ends_at | timestamp | não | Fim da avaliação; a expiração é avaliada por esta data, sem job. CHECK: as duas datas existem juntas |
 | settings | jsonb | não | Configurações gerais (ver `tenant_settings` para chave-valor estruturado) |
 
 Índices: `document` único. Relacionamentos: 1:N com praticamente todas as entidades via `tenant_id`.
@@ -18,8 +20,11 @@ Convenções gerais (UUID, `tenant_id`, timestamps, soft delete) em [database.md
 ### `plans` *(sem tenant_id)*
 | Campo | Tipo | Obrigatório | Notas |
 |---|---|---|---|
+| code | string | não | Único. Plano do catálogo comercial (`trial`, ...). Sem `code` = legado, sem restrição (D-085) |
 | name | string | sim | |
-| limits | jsonb | sim | Limites contratados (usuários, filas, mensagens/mês etc.) |
+| limits | jsonb | sim | `users`, `leads`, `customers`, `opportunities`, `storage_bytes`. Ausente = sem limite naquele recurso. Só vale para plano com `code`. `storage_bytes` é só configuração: o consumo ainda não é monitorado |
+| features | jsonb | sim | Funcionalidades ligadas no plano. Ausente = desligada. Só vale para plano com `code` |
+| trial_days | int | não | Preenchido = plano de avaliação |
 
 ### `branches` (filiais)
 | Campo | Tipo | Obrigatório |
