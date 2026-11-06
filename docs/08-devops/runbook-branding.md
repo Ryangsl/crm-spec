@@ -38,6 +38,10 @@ Até lá, a identidade segue aplicada normalmente; só a tela de Identidade Visu
 
 ## 3. Atender uma solicitação
 
+Desde a revisão de 2026-11-05 da D-086, a solicitação pode trazer uma **proposta** (nome, tema e cores, já validados) além da mensagem. Na tela de Identidade Visual, o operador vê a proposta com as cores e a pré-visualização e usa **Carregar proposta no editor**; revisar e **Salvar alterações** aplica e encerra a solicitação.
+
+**Desenvolvimento local:** `npm run dev:platform-operator` (no `crm-backend`, com a trava `db:check`) cria ou atualiza o usuário `operador@plataforma.local` com o papel `operador-plataforma` (`branding:manage`, `branding:read`) na empresa de `exemplo.localhost` (outra: `-- --host trial.localhost`). Nunca use esse comando fora da sua máquina.
+
 1. Ver as solicitações pendentes: linhas `crm.branding.request` em `tenant_settings` (ou a tela de Identidade Visual do tenant, com o operador logado nele). Cada pedido também fica no `audit_log` (`branding.change_requested`).
 2. O operador precisa de um usuário no tenant com um papel próprio contendo `branding:manage` e `branding:read`, concedido por dados. Remova a concessão depois.
 3. Na tela de Identidade Visual: ajustar nome, cores e tema e **Salvar alterações**. Aplicar encerra a solicitação. Para não aplicar, use **Encerrar sem aplicar**.

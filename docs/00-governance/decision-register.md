@@ -940,6 +940,8 @@ Migration aditiva `20261008120000_f4_6_conversations` (enums `ConversationStatus
 
 **Limitações.** Logotipo e favicon dependem de upload seguro. O símbolo da marca é um vetor aproximado da referência; falta o arquivo oficial. A tela da Identidade Visual não tem histórico de versões (a auditoria guarda cada alteração).
 
+**Revisão de 2026-11-05 (decisão do responsável, após os testes locais).** A solicitação do Admin deixa de ser só texto: traz uma **proposta estruturada** (nome de exibição, tema e as sete cores, com pré-visualização), uma mensagem, ou as duas. A proposta passa pelas mesmas regras de formato e contraste da aplicação (`422 BRANDING_INVALID` com o campo `proposal.*`) e não muda a identidade em uso. A plataforma vê a proposta, carrega-a no editor, revisa e salva (aplicar encerra a solicitação) ou encerra sem aplicar. Para testar localmente sem a Central Administrativa, `npm run dev:platform-operator` cria um operador da plataforma no tenant (só desenvolvimento; [runbook-branding.md](../08-devops/runbook-branding.md)).
+
 **Validação.** Resultados em `PROJECT-CONTEXT.md`. Testes de banco só em infraestrutura descartável. Aceite humano: **pendente**.
 
 ### D-087 — Concessão de papéis privilegiados e proteção do último Admin
@@ -955,6 +957,11 @@ Migration aditiva `20261008120000_f4_6_conversations` (enums `ConversationStatus
 5. **Último Admin.** O tenant sempre mantém ao menos um usuário **ativo** com o papel `admin`. Desativar o último ou tirar dele o papel: `409 LAST_ADMIN`. Admin inativo não conta.
 6. **Transacional e sem corrida.** Toda mudança de papéis ou de situação de usuário e toda definição de papel toma um lock por tenant (`pg_advisory_xact_lock`, chave `access-admin:<tenant>`) e faz as verificações e a gravação na mesma transação. Os papéis de quem age são relidos sob o lock e só contam se a pessoa ainda estiver ativa: quem foi desativado enquanto esperava não age mais como Admin.
 7. **Só o backend decide.** O frontend apenas explica de antemão por que uma opção está indisponível.
+
+**Revisão de 2026-11-05 (decisão do responsável, após os testes locais).** Substitui o item 2 e completa o item 3:
+- **O papel de fábrica `admin` é administrado só pela plataforma.** Nenhum usuário do tenant, nem outro Admin, concede ou retira o papel `admin` (`403 ROLE_ASSIGNMENT_FORBIDDEN`, issue `ADMIN_ROLE_PLATFORM_MANAGED`), inclusive ao criar usuário. Hoje a plataforma o faz por passo de dados; no futuro, pela Central Administrativa.
+- **Um Admin só é desativado por outro Admin.** Desativar a si mesmo sendo Admin: `403 USER_MANAGEMENT_FORBIDDEN`, issue `ADMIN_SELF_DEACTIVATION`. A proteção do último Admin continua como rede de segurança.
+- O menu **Administração** aparece só para quem tem o papel Admin (apenas interface; cada ação continua decidida no backend). As Liberações de horário continuam com o Gerente ([D-082](#d-082--restrição-por-horário-comercial-e-liberação-excepcional-vn-07-vn-08)), em item fora desse menu.
 
 **Contrato.** `403 ROLE_ASSIGNMENT_FORBIDDEN` (`details[0].issue`: `ADMIN_ROLE_REQUIRES_ADMIN` ou `ROLE_EXCEEDS_ACTOR`; `field`: `role_ids` ou `permission_keys`), `403 USER_MANAGEMENT_FORBIDDEN` (`ADMIN_ROLE_REQUIRES_ADMIN` ou `TARGET_EXCEEDS_ACTOR`), `409 LAST_ADMIN`. As respostas de usuário passam a trazer `roles` (nomes) e `role_ids`. Ver [openapi.yaml](../05-api/openapi.yaml).
 
@@ -983,6 +990,24 @@ Migration aditiva `20261008120000_f4_6_conversations` (enums `ConversationStatus
 **Escolhas de implementação sem decisão nominal, para validação:** 404 (e não 401) para endereço desconhecido, para a tela de login orientar; cache de 30 s, só no guard das requisições autenticadas (login e refresh sempre consultam o banco); a tela de login mostra o nome cadastrado da empresa (não o nome de exibição da identidade visual); e-mail inexistente e senha errada têm o mesmo custo de verificação (hash de senha fictícia).
 
 **Critérios de aceite.** (a) mesmo e-mail em duas empresas: cada endereço entra na sua, e a senha de uma não abre a outra; (b) endereço desconhecido, IP, domínio pendente ou desativado não selecionam empresa; (c) domínio próprio verificado seleciona como o subdomínio; (d) `tenant_id` no corpo é recusado; (e) token de uma empresa não vale no endereço de outra, e o refresh também não; (f) dados de uma empresa não aparecem na outra, mesmo com o mesmo e-mail; (g) regressão de autenticação, sessão e Trial sem mudança de comportamento, exceto o login de empresa excluída, que passa de 403 a 404. Validação: `test/e2e/rbac-tenant-domains.e2e-spec.ts`, suítes existentes ajustadas para enviar o `Host` e verificação na aplicação real com `exemplo.localhost`, `trial.localhost` e um endereço desconhecido. Aceite humano: **pendente**.
+
+### D-089 — Visibilidade de usuários: lista só para o Admin, nomes por diretório
+**Status**: `DECIDIDO` (decisão do responsável pelo produto, 2026-11-05: "outros cargos não devem enxergar os outros usuários, e-mail"; opção escolhida: só o nome, quando o trabalho exige) · **Fase**: transversal · **implementado na branch `feat/admin-scope-and-branding-proposal`, sem commit nem push**.
+
+**Decisão.**
+1. A lista de usuários com e-mail, situação e papéis (`GET /v1/users`, `GET /v1/users/{id}`) é **só do Admin**: `users:read` sai dos papéis de fábrica Diretor, Gerente, Supervisor e Leitura. Altera a linha "Usuários/Papéis" da matriz de [personas.md](../01-product/personas.md) §3.
+2. Os demais veem **só o nome** dos colegas onde o trabalho exige (responsável de lead, cliente e oportunidade; atribuição de conversas pelo Gerente; destinatário de liberação de horário). Para isso existe `GET /v1/users/directory`, aberto a todo usuário autenticado do tenant, que devolve só `id`, `name` e `status` — sem e-mail, sem papéis.
+3. O `seedTenantRoles` passa a **alinhar** os papéis de fábrica com a lista do código (acrescenta as novas e retira as que saíram); papéis personalizados e os criados pela plataforma não são tocados.
+
+**Tenants existentes** (ambiente real, com autorização e backup): retirar `users:read` dos papéis de fábrica que não são Admin:
+```sql
+DELETE FROM role_permissions rp
+USING roles r, permissions p
+WHERE rp.role_id = r.id AND rp.permission_id = p.id
+  AND p.key = 'users:read' AND r.is_system = true AND r.name IN ('diretor', 'gerente', 'supervisor', 'leitura');
+```
+
+**Critérios de aceite.** Diretor, Gerente, Supervisor, Vendedor e Leitura recebem 403 na lista e no detalhe de usuários; o diretório não traz e-mail nem papéis e só traz usuários do próprio tenant; o seed retira `users:read` de um papel não Admin que o tinha. Validação: `test/e2e/rbac-tenant-domains.e2e-spec.ts` (visibilidade de usuários).
 
 ## Regras de negócio validadas pelo responsável pelo produto (Fase 3)
 
@@ -1058,3 +1083,4 @@ Toda exclusão continua sendo **soft delete** (BR-22) e continua sendo auditada 
 | 2026-11-05 | **D-086 integrado ao `main`** (PRs: crm-backend #4 `6129c31`, crm-frontend #4 `5c7e6a9`, crm-spec #5 `5129bcd`). Só o estado do registro muda. |
 | 2026-11-05 | **D-087 — concessão de papéis privilegiados e proteção do último Admin** e **D-088 — identificação da empresa pelo endereço de acesso** (requisitos e decisão de produto do responsável, após a auditoria de cargos, perfis e permissões). D-088 substitui a resolução do tenant por e-mail no login. Novos [ADR-012](../adr/ADR-012.md), [runbook-tenant-domains.md](../08-devops/runbook-tenant-domains.md) e [user-reactivation.md](../01-product/user-reactivation.md); migration aditiva `20261106120000_tenant_domains`. Na branch `feat/rbac-hardening-tenant-domains`, sem commit nem push. |
 | 2026-11-05 | **D-087 e D-088 integrados ao `main`** (PRs: crm-backend #5 e #6, crm-frontend #5, crm-spec #6 e #7; `main` em crm-backend `5be7381`, crm-frontend `d980773`, crm-spec `e37701b`), com a verificação de serviços antes do `npm run dev` e o runbook de provisionamento do banco. Só o estado do registro muda. |
+| 2026-11-05 | **Revisões de D-086 e D-087 e nova D-089** (decisões do responsável após os testes locais): papel Admin só pela plataforma; Admin não desativa a si mesmo; Administração só para o Admin (Liberações seguem com o Gerente); solicitação de identidade visual com proposta estruturada; lista de usuários só para o Admin, com diretório de nomes para os demais. Na branch `feat/admin-scope-and-branding-proposal`, sem commit nem push. |

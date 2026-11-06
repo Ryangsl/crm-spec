@@ -105,7 +105,7 @@ Este documento define os perfis de acesso iniciais do sistema. O RBAC é **exten
 
 | Módulo | Super Admin | Admin Empresa | Diretor | Gerente | Supervisor | Vendedor | Operador | Backoffice | Leitura |
 |---|---|---|---|---|---|---|---|---|---|
-| Usuários/Papéis | - (só plataforma) | CRUD | R | R (equipe) | R (equipe) | - | - | - | R |
+| Usuários/Papéis | - (só plataforma) | CRUD (papel Admin: só a plataforma) | - | - | - | - | - | - | - |
 | Leads | - | CRUD | R | CRUD (equipe) | R | CRU (próprio) | C (de atendimento) | RU | R |
 | Clientes | - | CRUD | R | CRUD (equipe) | R | CRU (próprio) | R | RU | R |
 | Oportunidades/Pipeline | - | CRUD | R | CRUD (equipe) | R | CRU (próprio) | - | R | R |
@@ -140,4 +140,6 @@ Além do papel (o que a tela permite fazer), todo acesso a um registro passa por
 
 O modelo de dados (`roles` + `permissions`, ver [../04-database/entities.md](../04-database/entities.md)) suporta papéis customizados desde o início, mas a **UI de criação de papéis fica fora do MVP** ([D-050](../00-governance/decision-register.md#d-050--papéis-customizados-via-ui), `ADIADO` — pós-MVP, mediante demanda real): os papéis de fábrica atendem o MVP. Criar novas *permissões atômicas* nunca é feito via UI — isso é definido no backend a cada módulo novo.
 
-**Regras de concessão** ([D-087](../00-governance/decision-register.md#d-087--concessão-de-papéis-privilegiados-e-proteção-do-último-admin), no backend): ninguém concede papel com permissão que não tem nem define papel acima do próprio acesso; conceder ou retirar o papel de fábrica Admin exige ser Admin; alterar ou desativar um usuário exige cobrir as permissões dele; a empresa mantém sempre ao menos um Admin ativo. O Admin da empresa gerencia usuários na tela de Usuários (consulta, criação, edição de nome e papéis, desativação). Reativação ainda não existe ([user-reactivation.md](user-reactivation.md)).
+**Visibilidade de usuários** ([D-089](../00-governance/decision-register.md#d-089--visibilidade-de-usuários-lista-só-para-o-admin-nomes-por-diretório)): só o Admin vê a lista de usuários com e-mail e papéis; os demais veem só o nome de colegas onde o trabalho exige (responsável, atribuição, liberações).
+
+**Regras de concessão** ([D-087](../00-governance/decision-register.md#d-087--concessão-de-papéis-privilegiados-e-proteção-do-último-admin), no backend): ninguém concede papel com permissão que não tem nem define papel acima do próprio acesso; o papel de fábrica Admin é concedido e retirado só pela plataforma (revisão da D-087); um Admin só é desativado por outro Admin; alterar ou desativar um usuário exige cobrir as permissões dele; a empresa mantém sempre ao menos um Admin ativo. O Admin da empresa gerencia usuários na tela de Usuários (consulta, criação, edição de nome e papéis, desativação). Reativação ainda não existe ([user-reactivation.md](user-reactivation.md)).
