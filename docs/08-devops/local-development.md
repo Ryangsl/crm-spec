@@ -51,6 +51,11 @@ GRANT CONNECT, TEMPORARY ON DATABASE crm_test TO crm_dev;
 
 A criação é **manual**, por um superusuário, em qualquer ambiente; em produção o procedimento e os pontos pendentes estão em [runbook-database-provisioning.md](runbook-database-provisioning.md). Permissões: só `LOGIN` e a propriedade dos bancos (no PostgreSQL 15+ o dono do banco cria objetos no schema `public`). Sem superusuário, `CREATEDB`, `CREATEROLE` ou `REPLICATION`. A senha fica só no `.env` local.
 
+**Rede e autenticação do PostgreSQL local** (revisão de 06/11/2026):
+
+- `listen_addresses = 'localhost'` no `postgresql.conf`: o banco só aceita conexão da própria máquina. A instalação padrão do Windows vem com `'*'` (todas as interfaces); vale depois de reiniciar o serviço (PowerShell **como administrador**: `Restart-Service postgresql-x64-18`). Conferir: `Get-NetTCPConnection -LocalPort 5433 -State Listen` deve mostrar só `127.0.0.1` e `::1`.
+- O `pg_hba.conf` da instalação padrão usa `trust` para `127.0.0.1` e `::1`: qualquer programa da máquina entra como qualquer usuário, inclusive `postgres`, **sem senha**. Recomendado trocar `trust` por `scram-sha-256` nas linhas `host`, **depois** de confirmar que a senha do `postgres` é conhecida (`ALTER ROLE postgres PASSWORD '<senha>'` antes, se preciso), e recarregar (`SELECT pg_reload_conf();`). A senha do `crm_dev` já fica no `.env`.
+
 Os comandos `npm run db:setup`, `db:seed`, `db:migrate` e `db:reset` passam antes por `npm run db:check`, que mostra host, porta e banco e **recusa** banco fora da máquina, com nome de teste ou igual ao `TEST_DATABASE_URL`. Antes da primeira migration, confira também com `npx prisma migrate status`. `db:setup` usa `migrate deploy` e funciona sem CREATEDB; `db:migrate` (`migrate dev`) precisa de banco sombra (CREATEDB ou `shadowDatabaseUrl`), e as migrations do projeto são geradas por `migrate diff`.
 
 ### 3.2 Endereço da empresa ([D-088](../00-governance/decision-register.md#d-088--identificação-da-empresa-pelo-endereço-de-acesso))

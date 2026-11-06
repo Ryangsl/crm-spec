@@ -1,6 +1,13 @@
-# Reativação de usuário — análise (não implementada)
+# Reativação de usuário
 
-Pedido de 2026-11-05: investigar e documentar, sem implementar, o que falta para reativar um usuário desativado. Nada aqui é decisão: os pontos marcados **[Decisão]** dependem do responsável pelo produto.
+**Situação (06/11/2026):** decidida na [D-093](../00-governance/decision-register.md#d-093--reativação-de-usuário-e-troca-de-e-mail) e implementada na branch `feat/hardening-security-consistency` (sem commit). Resumo do que vale:
+
+- `POST /v1/users/{id}/reactivate`, com `users:delete` (quem desativa reativa; hoje só o Admin), sob as regras da D-087 e o limite de usuários do plano.
+- Os papéis anteriores voltam. A senha anterior deixa de valer; a resposta traz um link de redefinição de uso único (24 h, [D-064](../00-governance/decision-register.md#d-064--rf-03-redefinição-de-senha-fase-e-fluxo-indefinidos)) para o Admin entregar à pessoa. Sessões antigas continuam revogadas. Auditoria `user.reactivated`.
+- Tela de Usuários: ação "Reativar" nos inativos, com o link mostrado uma vez.
+- Continua aberta só a limitação da D-084 (access token anterior à desativação volta a valer se a reativação ocorrer em até 15 min).
+
+A análise original (05/11/2026) fica abaixo como registro; as escolhas marcadas **[Decisão]** foram resolvidas pela D-093.
 
 ## 1. Como é hoje
 
