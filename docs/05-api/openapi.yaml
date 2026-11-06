@@ -152,7 +152,7 @@ paths:
 
   /users:
     get:
-      summary: Lista usuários do tenant (paginação por offset)
+      summary: Lista usuários do tenant (paginação por offset) — só o Admin (users:read, D-089)
       parameters:
         - $ref: "#/components/parameters/Page"
         - $ref: "#/components/parameters/Limit"
@@ -167,8 +167,8 @@ paths:
       summary: Cria um usuário
       description: >
         D-087: todo papel em role_ids precisa ter permissões contidas nas de
-        quem cria; o papel de fábrica admin só é concedido por quem tem o papel
-        admin. Papel de outro tenant: 409.
+        quem cria; o papel de fábrica admin é concedido só pela plataforma
+        (403 ADMIN_ROLE_PLATFORM_MANAGED). Papel de outro tenant: 409.
       requestBody:
         required: true
         content:
@@ -189,6 +189,30 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+
+  /users/directory:
+    get:
+      summary: Diretório de colegas (D-089) — só id, nome e situação
+      description: >
+        Qualquer usuário autenticado do tenant. Serve para mostrar o responsável de registros e
+        para os seletores de atribuição e de liberação. Nunca traz e-mail nem papéis; a lista
+        completa (GET /users) é só do Admin (users:read).
+      responses:
+        "200":
+          description: Colegas do tenant (inclusive inativos, para nomes de registros antigos)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: string, format: uuid }
+                        name: { type: string }
+                        status: { type: string, enum: [active, inactive] }
 
   /users/me:
     get:
@@ -221,9 +245,9 @@ paths:
         os papéis atuais; role_ids presente SUBSTITUI o conjunto inteiro.
         D-087: quem altera precisa cobrir as permissões do usuário alvo (alvo
         Admin exige ser Admin); cada papel concedido ou retirado precisa estar
-        coberto pelas permissões de quem altera, e o papel admin só é concedido
-        ou retirado por Admin. Tirar o papel admin do último Admin ativo: 409
-        LAST_ADMIN. Tudo sob lock por tenant, na mesma transação.
+        coberto pelas permissões de quem altera; o papel admin é concedido e
+        retirado só pela plataforma (403 ADMIN_ROLE_PLATFORM_MANAGED). Tudo sob
+        lock por tenant, na mesma transação.
       parameters:
         - $ref: "#/components/parameters/Id"
       requestBody:
@@ -251,8 +275,9 @@ paths:
         distinta do soft delete via deletedAt usado em dados de negócio
         (Cliente/Lead/Oportunidade/Atendimento). Revoga as sessões (D-084).
         D-087: quem desativa precisa cobrir as permissões do alvo (alvo Admin
-        exige ser Admin); desativar o último Admin ativo: 409 LAST_ADMIN. Não
-        existe reativação na API.
+        exige ser Admin); um Admin não desativa a si mesmo (403
+        ADMIN_SELF_DEACTIVATION) e o último Admin ativo é protegido (409
+        LAST_ADMIN). Não existe reativação na API.
       parameters:
         - $ref: "#/components/parameters/Id"
       responses:
@@ -1842,18 +1867,21 @@ paths:
     post:
       summary: "[D-086] Solicita alteração da identidade (branding:request, só o papel Admin)"
       description: |
-        Uma pendente por empresa: nova solicitação substitui a anterior. Texto livre, exibido como
-        texto. Segue a política de escrita do Trial. Auditado (`branding.change_requested`).
+        Uma pendente por empresa: nova solicitação substitui a anterior. Mensagem (texto, exibido
+        como texto), proposta estruturada ou as duas; ao menos uma (D-086, revisão de 2026-11-05).
+        A proposta segue as regras de PUT /branding (422 BRANDING_INVALID com campo `proposal.*`)
+        e não muda a identidade em uso. Segue a política de escrita do Trial. Auditado
+        (`branding.change_requested`).
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [message]
               additionalProperties: false
               properties:
                 message: { type: string, minLength: 10, maxLength: 1000 }
+                proposal: { $ref: "#/components/schemas/BrandingInput" }
       responses:
         "201":
           description: Solicitação registrada
@@ -2600,9 +2628,9 @@ components:
     RoleAssignmentForbidden:
       description: >
         D-087: FORBIDDEN (sem a permissão da rota), ROLE_ASSIGNMENT_FORBIDDEN
-        (details[0].issue = ADMIN_ROLE_REQUIRES_ADMIN ou ROLE_EXCEEDS_ACTOR) ou
-        USER_MANAGEMENT_FORBIDDEN (ADMIN_ROLE_REQUIRES_ADMIN ou
-        TARGET_EXCEEDS_ACTOR).
+        (details[0].issue = ADMIN_ROLE_PLATFORM_MANAGED — o papel Admin é só da
+        plataforma — ou ROLE_EXCEEDS_ACTOR) ou USER_MANAGEMENT_FORBIDDEN
+        (ADMIN_ROLE_REQUIRES_ADMIN, ADMIN_SELF_DEACTIVATION ou TARGET_EXCEEDS_ACTOR).
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }
@@ -2650,7 +2678,14 @@ components:
           type: object
           nullable: true
           properties:
-            message: { type: string }
+            message: { type: string, description: "Vazio quando a solicitação só traz proposta" }
+            proposal:
+              type: object
+              nullable: true
+              properties:
+                display_name: { type: string, nullable: true }
+                theme: { type: string, enum: [light, dark] }
+                colors: { $ref: "#/components/schemas/BrandingColors" }
             requested_at: { type: string, format: date-time }
             requested_by:
               type: object
