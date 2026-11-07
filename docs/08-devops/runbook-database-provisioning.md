@@ -19,7 +19,7 @@ O CRM Universal **nunca** cria o próprio usuário nem o próprio banco, e **nun
 | Quem executa | O desenvolvedor, como `postgres` | DBA/superusuário, com autorização e registro da mudança |
 | Senha | Só no `.env` local | Gerada na hora, guardada só no gerenciador de segredos da plataforma de deploy ([D-025](../00-governance/decision-register.md#d-025--secrets-management-em-produção)); nunca em arquivo versionado, chat ou nota |
 
-O dono do banco cria tabelas, tipos e índices no schema `public` (PostgreSQL 15+), o que cobre `prisma migrate deploy`. As migrations do projeto não usam extensões, então não é preciso superusuário depois da criação.
+O dono do banco cria tabelas, tipos e índices no schema `public` (PostgreSQL 15+), o que cobre `prisma migrate deploy`. A única extensão usada é a **`citext`** (e-mail sem distinção de caixa, [D-092](../00-governance/decision-register.md#d-092--e-mail-de-usuário-sem-distinção-de-maiúsculas-e-minúsculas-por-empresa)), extensão confiável no PostgreSQL 13+: o **dono do banco** a cria sem ser superusuário, e a migration faz `CREATE EXTENSION IF NOT EXISTS citext`. Se o usuário que aplica as migrations não for o dono do banco, um superusuário roda antes, no banco da aplicação: `CREATE EXTENSION IF NOT EXISTS citext;`.
 
 ## 3. SQL (executar como superusuário, um comando por vez)
 
@@ -51,6 +51,12 @@ SELECT current_database(), current_user, inet_server_port(),
 ```
 
 Esperado: o banco e o usuário certos, `superusuario = false` e `createdb = false`. Depois, `npx prisma migrate status` contra o `DATABASE_URL` do ambiente confirma host, porta e banco antes de `npx prisma migrate deploy`.
+
+**Antes da migration `20261107120000_users_email_case_insensitive` (D-092)** num banco com usuários, confira se há contas com o mesmo e-mail (sem distinção de caixa) na mesma empresa. Com resultado vazio, a migration aplica; com linhas, ela para sem alterar nada e cada caso precisa ser resolvido com o responsável (nunca mesclar contas automaticamente):
+
+```sql
+SELECT tenant_id, lower(email) AS email, count(*) FROM users GROUP BY 1, 2 HAVING count(*) > 1;
+```
 
 ## 5. Produção: pontos ainda sem decisão
 

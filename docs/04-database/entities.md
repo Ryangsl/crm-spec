@@ -54,13 +54,13 @@ Só a plataforma cadastra domínios. Índice em `tenant_id`.
 | Campo | Tipo | Obrigatório | Notas |
 |---|---|---|---|
 | name | string | sim | |
-| email | string | sim | Único por tenant |
+| email | citext | sim | Único por tenant **sem distinção de maiúsculas** ([D-092](../00-governance/decision-register.md#d-092--e-mail-de-usuário-sem-distinção-de-maiúsculas-e-minúsculas-por-empresa)); a grafia gravada é preservada. E-mails novos chegam em minúsculas |
 | password_hash | string | sim | bcrypt/argon2 |
 | status | enum(active, inactive) | sim | |
 | team_id | UUID (FK teams) | não | |
 | branch_id | UUID (FK branches) | não | |
 
-Índices: `(tenant_id, email)` único. Regras: e-mail único por tenant, não globalmente (mesma pessoa pode existir em tenants diferentes com mesmo e-mail). Desde a [D-088](../00-governance/decision-register.md#d-088--identificação-da-empresa-pelo-endereço-de-acesso) o login procura o e-mail só na empresa do endereço de acesso, então o mesmo e-mail em duas empresas não bloqueia nenhuma delas.
+Índices: `(tenant_id, email)` único (sobre `citext`, então `Ana@x.com` e `ana@x.com` colidem). Regras: e-mail único por tenant, não globalmente (mesma pessoa pode existir em tenants diferentes com mesmo e-mail). Desde a [D-088](../00-governance/decision-register.md#d-088--identificação-da-empresa-pelo-endereço-de-acesso) o login procura o e-mail só na empresa do endereço de acesso, então o mesmo e-mail em duas empresas não bloqueia nenhuma delas.
 
 ### `roles`
 | Campo | Tipo | Obrigatório | Notas |
@@ -88,6 +88,22 @@ Só a plataforma cadastra domínios. Índice em `tenant_id`.
 | expires_at | timestamptz | sim | |
 | revoked_at | timestamptz | não | |
 | revoked_reason | enum(`rotated`, `logout`, `reuse_detected`) | não | Distingue *por que* foi revogado — só `rotated` conta como reuso comprovado para a política de revogação de família (D-056) |
+
+Rotação atômica ([D-091](../00-governance/decision-register.md#d-091--sessão-em-várias-abas-rotação-atômica-do-refresh-token-e-renovação-coordenada)): o token só é marcado `rotated` se ainda estiver ativo, e o sucessor é gravado na mesma transação; o logout também só revoga token ativo.
+
+### `password_reset_tokens` *(D-064, D-093)*
+| Campo | Tipo | Obrigatório | Notas |
+|---|---|---|---|
+| tenant_id | UUID (FK tenants) | sim | Link só vale no endereço desta empresa (D-088) |
+| user_id | UUID (FK users) | sim | |
+| token_hash | string | sim | SHA-256 do token `id.segredo`; nunca texto puro |
+| purpose | enum(`admin_reset`, `reactivation`) | sim | Gerado pelo Admin ou na reativação |
+| created_by_id | UUID | não | Quem gerou (sem FK; referência de auditoria) |
+| expires_at | timestamptz | sim | 24 h depois de gerado |
+| used_at | timestamptz | não | Uso único (atualização condicional) |
+| revoked_at | timestamptz | não | Gerar outro link, trocar a própria senha ou usar o link revoga os ativos |
+
+Índices: `tenant_id`, `user_id`. Um link ativo por usuário, garantido na transação (sob o lock de administração de acesso). Migration `20261107130000_password_reset_tokens` (aditiva).
 
 ## Grupo: CRM Core
 

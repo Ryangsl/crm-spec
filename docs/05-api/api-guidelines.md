@@ -68,6 +68,9 @@ O cursor é o UUID v7 do último item da página ([D-001](../00-governance/decis
 - `code`: string estável, machine-readable, usada pelo frontend para tratamento específico quando necessário.
 - `message`: mensagem amigável (pt-BR), não é a fonte de verdade para lógica do frontend.
 - `details`: opcional, lista de erros de campo em validações (`[{ "field": "email", "issue": "invalid_format" }]`).
+- **Erro inesperado** é sempre `500 INTERNAL_ERROR` com mensagem genérica: sem stack, sem SQL, sem nome de tabela ou de restrição.
+- **Conflito de unicidade** ([D-090](../00-governance/decision-register.md#d-090--proteção-da-api-dependências-rate-limiting-cabeçalhos-de-segurança-e-documentação), auditoria técnica de 2026-11-03): só as restrições únicas que um tenant alcança pela API viram `409`, com código próprio — `CUSTOMER_DOCUMENT_IN_USE` (documento de cliente), `LEAD_ALREADY_HAS_OPPORTUNITY`, `EMAIL_ALREADY_IN_USE` (sem distinção de caixa, D-092), `CONFLICT` (nome de papel) e `CONCURRENT_UPDATE` (duas gravações simultâneas da mesma configuração; repetir resolve). Qualquer outra violação de unicidade continua `500`: indica defeito, não conflito de uso. O mapeamento fica em `crm-backend/src/common/exceptions/unique-conflict.ts`.
+- **Limite de requisições** (D-090): `429 RATE_LIMITED` com cabeçalho `Retry-After` (segundos). Políticas em [security.md](../03-architecture/security.md) §4.1.
 
 ## 7. DTOs e schemas
 

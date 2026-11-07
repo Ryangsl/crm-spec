@@ -49,7 +49,8 @@ Telas puramente administrativas de configuração com baixo risco de regra de ne
 ## 5. CI
 
 - Testes unitários e de componente rodam em todo push.
-- Testes de integração/API rodam em todo PR contra `main`.
+- Testes de integração/API rodam em todo PR contra `main`. **Desde 2026-11-06** o CI do `crm-backend` roda integração e **e2e completos da API** em todo PR e push no `main`, com Postgres e Redis em containers de serviço do próprio job (descartados ao fim; nunca banco de desenvolvimento ou produção), depois de validar migrations e drift ([D-052](../00-governance/decision-register.md#d-052--ci-dentro-de-cada-repositório)). Os dois repositórios recusam vulnerabilidade alta ou crítica em dependência de produção ([D-090](../00-governance/decision-register.md#d-090--proteção-da-api-dependências-rate-limiting-cabeçalhos-de-segurança-e-documentação)).
+- **Concorrência:** regras que dependem de estado (rotação do refresh, conversão de Lead, transições, link de senha) têm e2e com pedidos simultâneos contra o Postgres real, e a proteção correspondente foi conferida por mutação (o teste falha sem ela).
 - E2E de frontend: subconjunto de fluxos críticos (login, criar lead, converter em oportunidade, registrar atendimento) roda em todo PR; suíte completa roda em pipeline agendado (nightly). Plataforma de CI: **GitHub Actions** ([D-021](../00-governance/decision-register.md#d-021--plataforma-de-ci), `PROPOSTO` — confirmar no início da Fase 1 conforme a hospedagem escolhida para os repositórios; trocar de plataforma altera o pipeline, não esta estratégia).
 - PR não é mesclado com suíte quebrada; falha de teste de tenant/permissão bloqueia merge sem exceção.
 

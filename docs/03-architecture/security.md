@@ -37,7 +37,7 @@ Decisão completa em [ADR-008](../adr/ADR-008.md) ([D-004](../00-governance/deci
 
 - **Access token**: JWT com TTL de **15 minutos**, mantido apenas em memória pelo frontend — nunca em `localStorage`/`sessionStorage`.
 - **Refresh token**: TTL de **7 dias**, opaco, entregue em **cookie httpOnly** (`Secure: true` em produção) e armazenado com hash no banco (nunca em texto puro).
-- **Rotação**: cada uso emite um novo refresh token e invalida o anterior; reuso de um token já rotacionado é tratado como indício de comprometimento e revoga a família de tokens daquele dispositivo.
+- **Rotação**: cada uso emite um novo refresh token e invalida o anterior; reuso de um token já rotacionado é tratado como indício de comprometimento e revoga a família de tokens do usuário (D-056). A rotação é **atômica** ([D-091](../00-governance/decision-register.md#d-091--sessão-em-várias-abas-rotação-atômica-do-refresh-token-e-renovação-coordenada)): uma única renovação vence por token e o sucessor é gravado na mesma transação; pedidos simultâneos com o mesmo token nunca produzem dois pares válidos (o perdedor é reuso). Várias abas são permitidas: o frontend serializa as renovações entre abas com um Web Lock do navegador, cada aba guarda o próprio access token em memória (nada em `localStorage`), e sair ou entrar numa aba é avisado às demais por BroadcastChannel, sem token na mensagem.
 - **Revogação**: individual (logout de um dispositivo) e global (logout de todos os dispositivos). **Desativar um usuário revoga todas as sessões dele na mesma transação** e a reativação não as restaura ([D-084](../00-governance/decision-register.md#d-084--ciclo-de-vida-da-sessão-usuário-e-tenant-ativos-a-cada-requisição-revogação-na-desativação-e-redação-de-cookies-nos-logs)).
 - **Usuário e tenant ativos a cada requisição** ([D-084](../00-governance/decision-register.md#d-084--ciclo-de-vida-da-sessão-usuário-e-tenant-ativos-a-cada-requisição-revogação-na-desativação-e-redação-de-cookies-nos-logs)): a assinatura válida do access token não basta; o `JwtAuthGuard` confirma que o usuário está ativo e que o tenant pode autenticar (`active` ou `trial`, inclusive trial expirado), e o refresh recusa os demais com o mesmo `401` de um token inválido (quais status autenticam: [D-085](../00-governance/decision-register.md#d-085--trial-comercial-modalidade-de-avaliação-por-empresa)). Desativação de usuário e suspensão de tenant bloqueiam o acesso na requisição seguinte, sem esperar os 15 minutos do access token.
 - **Suspensão de tenant — o que existe e o que não existe** ([D-084](../00-governance/decision-register.md#d-084--ciclo-de-vida-da-sessão-usuário-e-tenant-ativos-a-cada-requisição-revogação-na-desativação-e-redação-de-cookies-nos-logs), limitações aceitas):
@@ -50,8 +50,10 @@ Decisão completa em [ADR-008](../adr/ADR-008.md) ([D-004](../00-governance/deci
 - **Identidade visual por tenant** ([D-086](../00-governance/decision-register.md#d-086--identidade-visual-executive-e-personalização-visual-por-tenant), [ADR-011](../adr/ADR-011.md)): o backend valida formato (`#RRGGBB`, tema da lista, nome em texto puro) e contraste antes de gravar; nenhum campo aceita CSS, HTML, JavaScript ou URL, e campo não previsto devolve 400. A identidade é do tenant do token; o frontend limpa as variáveis ao fim de cada sessão. Aplicar é operação da plataforma (`branding:manage`, reservada, como `plan:convert`); o Admin do tenant só solicita (`branding:request`, exclusiva do papel Admin) e a API de papéis não concede nenhuma das duas. Logotipo e favicon dependem de upload seguro, que não existe.
 - **Trial comercial** ([D-085](../00-governance/decision-register.md#d-085--trial-comercial-modalidade-de-avaliação-por-empresa), [ADR-010](../adr/ADR-010.md)): trial expirado autentica e consulta, mas não escreve. O bloqueio é do backend (`403 TRIAL_EXPIRED`, `TRIAL_NOT_STARTED`, `PLAN_LIMIT_REACHED`, `FEATURE_NOT_AVAILABLE`), não encerra a sessão e é fechado por padrão: todo método que não é GET é escrita, salvo isenção explícita. Limites são validados sob lock na transação da criação. Situação e consumo são sempre do tenant do token; nenhuma rota aceita outro tenant. `plan:convert` é reservada: nenhum papel de fábrica a recebe e a API de papéis não a concede, para que o Admin do tenant não troque o próprio plano. Ocultar botões é só UX.
 - **Sessão presa ao endereço da empresa** ([D-088](../00-governance/decision-register.md#d-088--identificação-da-empresa-pelo-endereço-de-acesso)): o refresh só renova no endereço da própria empresa; um access token apresentado no endereço de outra empresa recebe `401`; o cookie do refresh é host-only. E-mail inexistente e senha errada têm a mesma resposta e o mesmo custo de verificação.
-- Senhas com hash **bcrypt** ou **argon2** (custo configurável), nunca reversível.
-- Rate limiting específico em endpoints de autenticação (login, reset de senha) para mitigar força bruta.
+- Senhas com hash **bcrypt** ou **argon2** (custo configurável), nunca reversível. Senha nova: 8 a 72 caracteres (o bcrypt só considera 72 bytes).
+- **E-mail da conta sem distinção de maiúsculas** dentro da empresa ([D-092](../00-governance/decision-register.md#d-092--e-mail-de-usuário-sem-distinção-de-maiúsculas-e-minúsculas-por-empresa)), na busca do login e na unicidade.
+- **Senha e recuperação** ([D-064](../00-governance/decision-register.md#d-064--rf-03-redefinição-de-senha-fase-e-fluxo-indefinidos), [D-093](../00-governance/decision-register.md#d-093--reativação-de-usuário-e-troca-de-e-mail)): o usuário troca a própria senha informando a atual (encerra todas as sessões e reemite o par da sessão atual). O Admin gera um **link de uso único** (24 h) para outra pessoa, entregue por fora do sistema; só o hash fica no banco, o token vai no fragmento da URL (não chega ao servidor nem a logs), o link só vale no endereço da própria empresa, a resposta para link inválido é sempre a mesma, e usar o link encerra todas as sessões. A reativação de usuário invalida a senha anterior e gera um link desses. Não há "esqueci minha senha" por e-mail nem troca de e-mail enquanto não houver provedor de e-mail (D-040).
+- Rate limiting específico em endpoints de autenticação (login, senha) para mitigar força bruta: ver §4.1 ([D-090](../00-governance/decision-register.md#d-090--proteção-da-api-dependências-rate-limiting-cabeçalhos-de-segurança-e-documentação)).
 
 ## 3. Autorização (RBAC)
 
@@ -65,10 +67,33 @@ Decisão completa em [ADR-008](../adr/ADR-008.md) ([D-004](../00-governance/deci
 ## 4. Transporte e API
 
 - HTTPS/WSS obrigatório em todos os ambientes exceto desenvolvimento local (RNF-07).
-- CORS restrito às origens conhecidas do `crm-frontend` (por ambiente).
+- CORS restrito às origens conhecidas do `crm-frontend` (por ambiente): origens exatas em `CORS_ORIGINS`, sem curinga nem `null`, validadas na inicialização. O frontend usa a mesma origem (D-088), então a lista só cobre origens extras ([D-090](../00-governance/decision-register.md#d-090--proteção-da-api-dependências-rate-limiting-cabeçalhos-de-segurança-e-documentação)).
+- Cabeçalhos de segurança (Helmet, D-090): CSP `default-src 'none'; frame-ancestors 'none'` nas respostas da API, `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`, `X-Frame-Options`, HSTS, sem `X-Powered-By`. A página `/api/docs` tem CSP própria.
+- Documentação da API (`/api/docs`): ligada em desenvolvimento e teste; **desligada em produção** salvo `SWAGGER_ENABLED=true`, que só deve ser usado atrás de rede privada (a página não tem autenticação).
+- Erros: toda resposta de erro segue o formato padrão; erro inesperado é `500 INTERNAL_ERROR` com mensagem genérica, sem stack nem detalhe de banco. Conflitos de unicidade conhecidos são `409` com código próprio (ver [api-guidelines.md](../05-api/api-guidelines.md) §6).
 - CSRF: as chamadas de API autenticadas usam Bearer token (não cookie), o que mantém o risco de CSRF baixo na maior parte da superfície. O refresh token vai em cookie httpOnly ([D-005](../00-governance/decision-register.md#d-005--armazenamento-do-refresh-token)), então `/auth/refresh` é a única rota exposta a CSRF — coberta com `SameSite=Lax` e sem token anti-CSRF adicional, justificado pela topologia same-site já definida em [deployment.md](../08-devops/deployment.md) ([D-006](../00-governance/decision-register.md#d-006--topologia-de-domínio-samesite-e-csrf), `DECIDIDO`). Se o deploy migrar para cross-site no futuro, essa decisão precisa ser reaberta e proteção CSRF explícita passa a ser **obrigatória**.
 - Validação de entrada em 100% dos endpoints (DTO + schema, ver [../05-api/api-guidelines.md](../05-api/api-guidelines.md)); sanitização de campos livres (notas, mensagens) antes de renderização no frontend (proteção XSS).
-- Rate limiting geral por tenant/usuário/IP para proteger contra abuso.
+- Rate limiting geral por usuário/IP para proteger contra abuso (§4.1).
+
+### 4.1 Rate limiting (D-090)
+
+Contadores em janela fixa no **Redis**, compartilhados por todas as instâncias do backend (script atômico: incrementa e define o prazo na mesma operação). Se o Redis não responder em 250 ms, a instância conta na própria memória até ele voltar: o limite fica por instância, mais permissivo, mas não desaparece. A identidade entra na chave só como hash (nem e-mail nem endereço ficam legíveis no Redis).
+
+| Política | Quem é contado | Padrão | Onde |
+|---|---|---|---|
+| `login` | endereço de origem | 20 / 60 s | `POST /v1/auth/login` (toda tentativa) |
+| `login-account` | empresa + e-mail informado (sem distinção de caixa), exista a conta ou não | 5 / 15 min | dentro do login, **antes** de conferir a senha; login bem-sucedido zera |
+| `auth` | endereço | 60 / 60 s | `refresh`, `logout`, `logout-all`, `GET /v1/auth/tenant` |
+| `password` | usuário autenticado | 10 / 15 min | troca da própria senha; geração de link de redefinição |
+| `password-reset` | endereço | 10 / 15 min | consulta e uso de link de redefinição (rotas públicas) |
+| `import` | usuário | 20 / 10 min | importação de Leads |
+| `api` | usuário autenticado (endereço em rota pública) | 600 / 60 s | toda rota sem política própria |
+
+- **Configuração:** `RATE_LIMIT_<POLÍTICA>_MAX` e `RATE_LIMIT_<POLÍTICA>_WINDOW_SECONDS` (ex.: `RATE_LIMIT_LOGIN_ACCOUNT_MAX`), inteiros positivos validados na inicialização.
+- **Bloqueio:** `429 RATE_LIMITED` no formato padrão, com `Retry-After` (segundos até o fim da janela). A mensagem é a mesma para qualquer política e não revela se a conta existe.
+- **Recuperação:** automática no fim da janela. Não há desbloqueio manual; durante o bloqueio da conta, nem a senha certa entra.
+- **Endereço de origem:** o do socket. Atrás de balanceador, declarar o proxy em `TRUST_PROXY` (número de saltos ou sub-redes; `loopback`, `linklocal`, `uniquelocal`). `true`, `*` e redes `/0` são recusados, porque deixariam qualquer cliente escolher o próprio IP por `X-Forwarded-For`. IPv4 mapeado em IPv6 conta como o IPv4; IPv6 conta pelo prefixo /64.
+- **Limitação aceita:** errar a senha de propósito bloqueia o login da conta por até a janela de `login-account`. Escritório atrás de um único IP divide o limite `login` (20 tentativas por minuto).
 
 ## 5. Dados sensíveis e criptografia
 
