@@ -63,6 +63,7 @@ SELECT tenant_id, lower(email) AS email, count(*) FROM users GROUP BY 1, 2 HAVIN
 - Nomes do usuário e do banco. **[Pendente]**
 - Separar o usuário que aplica migrations (dono dos objetos) do usuário que a aplicação usa em tempo de execução (só leitura e escrita de dados). Reduz o dano de uma invasão da aplicação, mas exige `GRANT`s e `ALTER DEFAULT PRIVILEGES` e uma `DATABASE_URL` só para o `migrate deploy`. **[Pendente: decisão de arquitetura]**
 - Conexão com TLS (`sslmode=require` ou mais estrito) quando o banco não estiver no mesmo host da aplicação. **[Pendente]**
+- **Tamanho do pool de conexões** (`connection_limit` na `DATABASE_URL`). Sem ele, o Prisma usa 2 × CPUs + 1; numa máquina de 2 CPUs são 5 conexões, e escritas simultâneas que esperam trava (limite do plano, round-robin) esgotam o pool e respondem 500 (`Unable to start a transaction in the given time`). Visto no CI em 07/11/2026 e corrigido lá com `connection_limit=20`. Em produção, definir explicitamente, dentro do `max_connections` do servidor dividido pelo número de instâncias. **[Pendente: valor por ambiente]**
 - Regras de acesso do `pg_hba.conf` (só o host da aplicação, com `scram-sha-256`) e `listen_addresses` restrito. **[Pendente]**
 - Versão do PostgreSQL de produção (desenvolvimento usa 18; o compose antigo usava 16). **[Pendente]**
 - Backup e restore antes da primeira carga real ([D-028](../00-governance/decision-register.md#d-028--retenção-de-backup), [D-029](../00-governance/decision-register.md#d-029--cadência-de-teste-de-restore)).
