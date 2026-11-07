@@ -44,6 +44,7 @@ Como as dependências do `crm-backend` e do `crm-frontend` são mantidas sem vul
 |---|---|---|---|
 | `@nestjs/platform-express` → `multer` 2.5.0 | O 11.2.8 fixa `multer` 2.4.0 (DoS) | Mesma major; é a versão que o próprio NestJS 12 adotou; importação de Leads coberta por e2e | Quando o `platform-express` da linha 11 subir o `multer` |
 | `exceljs` → `uuid` `$uuid` (11.1.1) | `exceljs` 4.4.0 pede `uuid` ^8 (verificação de limites em v3/v5/v6) | O `exceljs` só chama `v4()` por `require`, que a uuid 11 mantém em CommonJS; leitura de planilhas coberta por e2e | Nova versão do `exceljs` ou troca da biblioteca |
+| `@nestjs/cli` → `webpack` 5.112.2 (só desenvolvimento) | O CLI 11.0.24 fixa `webpack` 5.106.2, mas o `schema-utils` do próprio webpack exige ^5.112; o npm 11 tolera, o npm 10 (CI com Node 22 e imagem `node:20`) recusa o lockfile no `npm ci` | Mesma major; o build do backend usa `tsc` (o `nest-cli.json` não usa webpack); com o override, npm 10 e 11 geram o mesmo lockfile | Quando o `@nestjs/cli` atualizar o webpack |
 | `@prisma/config` → `deepmerge-ts` ^8.0.2 | Prisma 6.19.3 fixa 7.1.5 (estouro de pilha) | Só é chamado para carregar `prisma.config.ts`, que o projeto não tem; usa a função `deepmerge`, mantida na v8 | Migração para o Prisma 7 |
 
 ## 4. Como atualizar
@@ -53,3 +54,4 @@ Como as dependências do `crm-backend` e do `crm-frontend` são mantidas sem vul
 3. Atualizar `package.json` e o lockfile juntos; `npm audit fix` sem `--force` para o que está dentro da faixa.
 4. Override só pelo critério da seção 1, com linha na tabela da seção 3.
 5. Rodar typecheck, lint, unitários, integração, e2e completos e build (mesma sequência do CI) e repetir o `npm audit`.
+6. Conferir o lockfile com o npm do CI: `npx npm@10 ci --dry-run`. O npm local (11) aceita lockfiles que o npm 10 recusa.
