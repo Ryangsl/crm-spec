@@ -58,6 +58,8 @@ A criação é **manual**, por um superusuário, em qualquer ambiente; em produ�
 
 Os comandos `npm run db:setup`, `db:seed`, `db:migrate` e `db:reset` passam antes por `npm run db:check`, que mostra host, porta e banco e **recusa** banco fora da máquina, com nome de teste ou igual ao `TEST_DATABASE_URL`. Antes da primeira migration, confira também com `npx prisma migrate status`. `db:setup` usa `migrate deploy` e funciona sem CREATEDB; `db:migrate` (`migrate dev`) precisa de banco sombra (CREATEDB ou `shadowDatabaseUrl`), e as migrations do projeto são geradas por `migrate diff`.
 
+O seed cria também os cadastros iniciais ([D-094](../00-governance/decision-register.md#d-094--cadastro-manual-de-lead-e-cadastros-iniciais-da-empresa)) nas duas empresas de exemplo: seis origens de Lead e o Pipeline Padrão com cinco etapas. Rodar de novo não duplica nada.
+
 ### 3.2 Endereço da empresa ([D-088](../00-governance/decision-register.md#d-088--identificação-da-empresa-pelo-endereço-de-acesso))
 
 O login identifica a empresa pelo endereço. Em desenvolvimento, o seed cria `exemplo.localhost` (Empresa Exemplo) e `trial.localhost` (Empresa Trial); subdomínios de `localhost` resolvem para a própria máquina sem editar o arquivo hosts. Abra `http://exemplo.localhost:5173`. O frontend chama a API na mesma origem (`VITE_API_URL` vazio) e o proxy do Vite encaminha `/v1` ao backend preservando o `Host`. Não abra `http://localhost:5173` para entrar: `localhost` não é endereço de empresa. Outra empresa de teste precisa de uma linha em `tenant_domains` (ver [runbook-tenant-domains.md](runbook-tenant-domains.md)).
