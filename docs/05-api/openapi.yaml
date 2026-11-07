@@ -41,6 +41,8 @@ paths:
                   tenant_name: { type: string }
         "404":
           $ref: "#/components/responses/TenantDomainNotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
 
   /auth/login:
     post:
@@ -55,6 +57,11 @@ paths:
         e-mail pode existir em empresas diferentes. O corpo não aceita tenant
         (campo extra = 400). E-mail inexistente e senha errada têm a mesma
         resposta e o mesmo custo de verificação.
+        D-092: o e-mail não diferencia maiúsculas de minúsculas.
+        D-090: limite por endereço de origem e por conta (empresa + e-mail
+        informado, exista a conta ou não), contado antes da senha; estourado,
+        429 RATE_LIMITED com Retry-After, inclusive para a senha certa, até o
+        fim da janela. Login bem-sucedido zera o contador da conta.
       security: []
       requestBody:
         required: true
@@ -91,6 +98,8 @@ paths:
               schema: { $ref: "#/components/schemas/Error" }
         "404":
           $ref: "#/components/responses/TenantDomainNotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
 
   /auth/refresh:
     post:
@@ -104,6 +113,12 @@ paths:
         não distingue dispositivo ainda).
         D-088: só renova no endereço da própria empresa; em outro endereço (ou
         em um que não seleciona empresa) responde 401 sem revogar a sessão.
+        D-091: a rotação é atômica — uma única renovação vence por token, e o
+        sucessor é gravado na mesma transação do consumo. Pedidos simultâneos
+        com o mesmo token: um recebe o par novo, os demais 401, e por ser reuso
+        de token rotacionado a família inteira é revogada (D-056, sem
+        tolerância). Várias abas são coordenadas pelo frontend (uma renovação
+        por vez entre abas). Falha ao gravar o sucessor não consome o token.
       security: []
       responses:
         "200":
@@ -118,6 +133,8 @@ paths:
                 $ref: "#/components/schemas/AccessToken"
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/RateLimited"
 
   /auth/logout:
     post:
@@ -133,6 +150,8 @@ paths:
             Set-Cookie:
               description: refresh_token=; Path=/v1/auth; Expires=<epoch> (limpa o cookie)
               schema: { type: string }
+        "429":
+          $ref: "#/components/responses/RateLimited"
 
   /auth/logout-all:
     post:
@@ -149,6 +168,78 @@ paths:
             Set-Cookie:
               description: refresh_token=; Path=/v1/auth; Expires=<epoch> (limpa o cookie)
               schema: { type: string }
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /auth/password-reset/check:
+    post:
+      summary: Confere um link de redefinição de senha (D-064)
+      description: >
+        Público, no endereço da empresa (D-088). O token vai no corpo (a página
+        o lê do fragmento #token= da URL, que o navegador não envia ao
+        servidor). Link inexistente, de outra empresa, adulterado, já usado,
+        substituído, vencido ou de usuário inativo: a mesma resposta 400.
+        Limite D-090 `password-reset` por endereço.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token]
+              properties:
+                token: { type: string, minLength: 10, maxLength: 200 }
+      responses:
+        "200":
+          description: Link válido
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  expires_at: { type: string, format: date-time }
+        "400":
+          description: INVALID_PASSWORD_RESET_TOKEN (ou corpo inválido)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          $ref: "#/components/responses/TenantDomainNotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /auth/password-reset:
+    post:
+      summary: Define a senha nova pelo link de redefinição (D-064)
+      description: >
+        Público, no endereço da empresa. Na mesma transação: consome o link
+        (uso único, também sob concorrência), grava a senha nova e encerra
+        todas as sessões do usuário. Não autentica: a pessoa entra depois com a
+        senha nova. Auditoria user.password_reset.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, new_password]
+              properties:
+                token: { type: string, minLength: 10, maxLength: 200 }
+                new_password: { type: string, format: password, minLength: 8, maxLength: 72 }
+      responses:
+        "204":
+          description: Senha definida; sessões do usuário encerradas
+        "400":
+          description: INVALID_PASSWORD_RESET_TOKEN ou senha fora da regra
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          $ref: "#/components/responses/TenantDomainNotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
 
   /users:
     get:
@@ -224,6 +315,51 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/User" }
 
+  /users/me/password:
+    post:
+      summary: Troca a própria senha (D-064)
+      description: >
+        Qualquer usuário autenticado, informando a senha atual. Encerra todas
+        as sessões do usuário (outros dispositivos inclusive) e devolve um par
+        novo para a sessão atual continuar (access token no corpo, refresh no
+        cookie). Links de redefinição pendentes deixam de valer. Isenta da
+        política de trial (D-085). Limite D-090 `password` por usuário.
+        Auditoria user.password_changed.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [current_password, new_password]
+              properties:
+                current_password: { type: string, format: password }
+                new_password: { type: string, format: password, minLength: 8, maxLength: 72 }
+      responses:
+        "200":
+          description: Senha trocada; par novo emitido
+          headers:
+            Set-Cookie:
+              description: refresh_token=<novo opaco>; HttpOnly; Secure; Path=/v1/auth
+              schema: { type: string }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AccessToken" }
+        "400":
+          description: Senha nova fora da regra (8 a 72 caracteres)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          description: INVALID_CURRENT_PASSWORD ou PASSWORD_UNCHANGED
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
   /users/{id}:
     get:
       summary: Obtém um usuário do tenant
@@ -277,7 +413,7 @@ paths:
         D-087: quem desativa precisa cobrir as permissões do alvo (alvo Admin
         exige ser Admin); um Admin não desativa a si mesmo (403
         ADMIN_SELF_DEACTIVATION) e o último Admin ativo é protegido (409
-        LAST_ADMIN). Não existe reativação na API.
+        LAST_ADMIN). Para devolver o acesso: POST /users/{id}/reactivate (D-093).
       parameters:
         - $ref: "#/components/parameters/Id"
       responses:
@@ -289,6 +425,76 @@ paths:
           $ref: "#/components/responses/NotFound"
         "409":
           $ref: "#/components/responses/LastAdmin"
+
+  /users/{id}/password-reset:
+    post:
+      summary: Gera um link de redefinição de senha de uso único (D-064)
+      description: >
+        users:update e as regras de gestão da D-087 (cobrir as permissões do
+        alvo; alvo Admin exige ser Admin), sob o lock por tenant. Válido por 24
+        horas; gerar outro revoga o anterior. O token só aparece nesta
+        resposta (o banco guarda o hash) e é entregue por fora do sistema; o
+        frontend monta o link /redefinir-senha#token=<token> no endereço da
+        empresa. Não muda a senha atual nem encerra sessões. Usuário inativo:
+        409 USER_NOT_ACTIVE (usar a reativação). Limite D-090 `password`.
+        Auditoria user.password_reset_link_created (sem o token).
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "201":
+          description: Link gerado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PasswordResetLink" }
+        "403":
+          $ref: "#/components/responses/RoleAssignmentForbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: USER_NOT_ACTIVE
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /users/{id}/reactivate:
+    post:
+      summary: Reativa um usuário desativado (D-093)
+      description: >
+        users:delete e as regras da D-087, sob o lock por tenant. Os papéis
+        anteriores voltam; a senha anterior deixa de valer e a resposta traz
+        um link de redefinição de uso único (24 h) para a pessoa definir a
+        nova. Ocupa uma vaga do plano (403 PLAN_LIMIT_REACHED). Usuário já
+        ativo: 409 USER_ALREADY_ACTIVE. Auditoria user.reactivated.
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Usuário reativado
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/User"
+                  - type: object
+                    required: [password_reset]
+                    properties:
+                      password_reset: { $ref: "#/components/schemas/PasswordResetLink" }
+        "403":
+          description: >
+            FORBIDDEN, USER_MANAGEMENT_FORBIDDEN (D-087) ou PLAN_LIMIT_REACHED
+            (D-085)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: USER_ALREADY_ACTIVE
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
 
   /roles:
     get:
@@ -436,6 +642,13 @@ paths:
               schema: { $ref: "#/components/schemas/Customer" }
         "404":
           $ref: "#/components/responses/NotFound"
+        "409":
+          description: >
+            CUSTOMER_DOCUMENT_IN_USE — o documento já é de outro cliente da
+            empresa (details[0].field = document)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
     delete:
       summary: Exclui (soft delete) um cliente
       description: >
@@ -2639,8 +2852,29 @@ components:
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }
+    RateLimited:
+      description: >
+        D-090 — RATE_LIMITED; limite de requisições da janela excedido. O
+        bloqueio termina sozinho no fim da janela (Retry-After). Vale para
+        qualquer rota; as de autenticação e senha têm limites próprios.
+      headers:
+        Retry-After:
+          description: Segundos até o fim da janela
+          schema: { type: integer, minimum: 1 }
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
 
   schemas:
+    PasswordResetLink:
+      type: object
+      description: >
+        D-064 — link de redefinição de uso único. O token só aparece na resposta
+        que o gera.
+      required: [token, expires_at]
+      properties:
+        token: { type: string, description: "Montar /redefinir-senha#token=<token>" }
+        expires_at: { type: string, format: date-time }
     BrandingColors:
       type: object
       properties:

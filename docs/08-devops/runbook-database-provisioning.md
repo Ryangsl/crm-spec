@@ -19,7 +19,7 @@ O CRM Universal **nunca** cria o próprio usuário nem o próprio banco, e **nun
 | Quem executa | O desenvolvedor, como `postgres` | DBA/superusuário, com autorização e registro da mudança |
 | Senha | Só no `.env` local | Gerada na hora, guardada só no gerenciador de segredos da plataforma de deploy ([D-025](../00-governance/decision-register.md#d-025--secrets-management-em-produção)); nunca em arquivo versionado, chat ou nota |
 
-O dono do banco cria tabelas, tipos e índices no schema `public` (PostgreSQL 15+), o que cobre `prisma migrate deploy`. As migrations do projeto não usam extensões, então não é preciso superusuário depois da criação.
+O dono do banco cria tabelas, tipos e índices no schema `public` (PostgreSQL 15+), o que cobre `prisma migrate deploy`. A única extensão usada é a **`citext`** (e-mail sem distinção de caixa, [D-092](../00-governance/decision-register.md#d-092--e-mail-de-usuário-sem-distinção-de-maiúsculas-e-minúsculas-por-empresa)), extensão confiável no PostgreSQL 13+: o **dono do banco** a cria sem ser superusuário, e a migration faz `CREATE EXTENSION IF NOT EXISTS citext`. Se o usuário que aplica as migrations não for o dono do banco, um superusuário roda antes, no banco da aplicação: `CREATE EXTENSION IF NOT EXISTS citext;`.
 
 ## 3. SQL (executar como superusuário, um comando por vez)
 
@@ -52,11 +52,18 @@ SELECT current_database(), current_user, inet_server_port(),
 
 Esperado: o banco e o usuário certos, `superusuario = false` e `createdb = false`. Depois, `npx prisma migrate status` contra o `DATABASE_URL` do ambiente confirma host, porta e banco antes de `npx prisma migrate deploy`.
 
+**Antes da migration `20261107120000_users_email_case_insensitive` (D-092)** num banco com usuários, confira se há contas com o mesmo e-mail (sem distinção de caixa) na mesma empresa. Com resultado vazio, a migration aplica; com linhas, ela para sem alterar nada e cada caso precisa ser resolvido com o responsável (nunca mesclar contas automaticamente):
+
+```sql
+SELECT tenant_id, lower(email) AS email, count(*) FROM users GROUP BY 1, 2 HAVING count(*) > 1;
+```
+
 ## 5. Produção: pontos ainda sem decisão
 
 - Nomes do usuário e do banco. **[Pendente]**
 - Separar o usuário que aplica migrations (dono dos objetos) do usuário que a aplicação usa em tempo de execução (só leitura e escrita de dados). Reduz o dano de uma invasão da aplicação, mas exige `GRANT`s e `ALTER DEFAULT PRIVILEGES` e uma `DATABASE_URL` só para o `migrate deploy`. **[Pendente: decisão de arquitetura]**
 - Conexão com TLS (`sslmode=require` ou mais estrito) quando o banco não estiver no mesmo host da aplicação. **[Pendente]**
+- **Tamanho do pool de conexões** (`connection_limit` na `DATABASE_URL`). Sem ele, o Prisma usa 2 × CPUs + 1; numa máquina de 2 CPUs são 5 conexões, e escritas simultâneas que esperam trava (limite do plano, round-robin) esgotam o pool e respondem 500 (`Unable to start a transaction in the given time`). Visto no CI em 07/11/2026 e corrigido lá com `connection_limit=20`. Em produção, definir explicitamente, dentro do `max_connections` do servidor dividido pelo número de instâncias. **[Pendente: valor por ambiente]**
 - Regras de acesso do `pg_hba.conf` (só o host da aplicação, com `scram-sha-256`) e `listen_addresses` restrito. **[Pendente]**
 - Versão do PostgreSQL de produção (desenvolvimento usa 18; o compose antigo usava 16). **[Pendente]**
 - Backup e restore antes da primeira carga real ([D-028](../00-governance/decision-register.md#d-028--retenção-de-backup), [D-029](../00-governance/decision-register.md#d-029--cadência-de-teste-de-restore)).
