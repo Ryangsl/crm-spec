@@ -1,6 +1,6 @@
 # Reativação de usuário
 
-**Situação (06/11/2026):** decidida na [D-093](../00-governance/decision-register.md#d-093--reativação-de-usuário-e-troca-de-e-mail) e implementada na branch `feat/hardening-security-consistency` (sem commit). Resumo do que vale:
+**Situação (06/11/2026):** decidida na [D-093](../00-governance/decision-register.md#d-093--reativação-de-usuário-e-troca-de-e-mail) e implementada e integrado ao `main` (PRs: crm-backend #8, crm-frontend #7, crm-spec #11; `main` em crm-backend `bbecaa2`, crm-frontend `d174e77`, crm-spec `890d404`). Resumo do que vale:
 
 - `POST /v1/users/{id}/reactivate`, com `users:delete` (quem desativa reativa; hoje só o Admin), sob as regras da D-087 e o limite de usuários do plano.
 - Os papéis anteriores voltam. A senha anterior deixa de valer; a resposta traz um link de redefinição de uso único (24 h, [D-064](../00-governance/decision-register.md#d-064--rf-03-redefinição-de-senha-fase-e-fluxo-indefinidos)) para o Admin entregar à pessoa. Sessões antigas continuam revogadas. Auditoria `user.reactivated`.
