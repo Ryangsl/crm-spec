@@ -124,15 +124,15 @@
 
 | ID | Divergência | Onde | Decisão necessária |
 |---|---|---|---|
-| DV-01 | O critério de aceite da Fase 4 pede "linha do tempo única" do cliente com leads e oportunidades; a D-079 proíbe herança Lead × Cliente e não decide Oportunidade → Cliente | roadmap Fase 4 × D-079, VN-14 | O histórico do Cliente inclui as interações das suas Oportunidades? E do Lead de origem? |
+| DV-01 | O critério de aceite da Fase 4 pede "linha do tempo única" do cliente com leads e oportunidades; a D-079 proíbe herança Lead × Cliente e não decide Oportunidade → Cliente | roadmap Fase 4 × D-079, VN-14 | **Decidida: D-095** (Cliente + Oportunidades dele; Lead não) |
 | DV-02 | BR-05 ainda diz "dentro do horário de atendimento"; a D-078 diz que o horário não filtra a distribuição | business-rules × D-078 | Só ajuste de texto da BR-05 |
-| DV-03 | O MVP diz que a importação é a única fila justificada; ela é síncrona e não tem tela | mvp.md §2, RNF-03 × `leads.service.ts` | Fila (BullMQ) ou limite menor síncrono? |
-| DV-04 | BR-06 e BR-12 pedem motivos de lista configurável; o modelo usa texto livre | business-rules × entities.md | Lista por tenant ou manter texto livre |
+| DV-03 | O MVP diz que a importação é a única fila justificada; ela é síncrona e não tem tela | mvp.md §2, RNF-03 × `leads.service.ts` | **Decidida: D-096** (fila BullMQ, até 5.000 linhas em lotes) |
+| DV-04 | BR-06 e BR-12 pedem motivos de lista configurável; o modelo usa texto livre | business-rules × entities.md | **Decidida: D-099** (listas por tenant, "Outro" com justificativa) |
 | DV-05 | D-032 "Impacto em código" falava em `order` adjacente; o código comparava a diferença numérica, o que trata etapas vizinhas como salto quando há lacunas | D-032 × `opportunities.service.ts` | **Resolvida na E1** pela regra de negócio (salto = etapa ativa no meio), sem mudar a decisão |
 | DV-06 | UC-04 e RF-26 pedem aviso de tarefa vencendo; a D-080 limita a v1 a `lead.assigned` | use-cases × D-080 | Agendador e ator Sistema (P1) |
 | DV-07 | UC-10 pede consulta da auditoria; a D-060 deixou só gravação | use-cases × D-060 | Quando abrir a consulta e para quem |
-| DV-08 | Excluir um Cliente deixa Oportunidades abertas e Leads convertidos apontando para ele; a spec não define cascata | `customers.service.ts` | Bloquear (409), cascatear ou manter |
-| DV-09 | O módulo `communications` está "congelado" (D-073), mas registra varredura de hora em hora e expõe `/v1/automations` e `/v1/messages` a Admin e Gerente, com credencial global, sem timeout e sem opt-in | D-073 × `whatsapp-queue.service.ts`, `tenant-roles.ts` | Desligar por padrão (chave de ambiente) até a F5.0 |
+| DV-08 | Excluir um Cliente deixa Oportunidades abertas e Leads convertidos apontando para ele; a spec não define cascata | `customers.service.ts` | **Decidida: D-098** (409, sem cascata) |
+| DV-09 | O módulo `communications` está "congelado" (D-073), mas registra varredura de hora em hora e expõe `/v1/automations` e `/v1/messages` a Admin e Gerente, com credencial global, sem timeout e sem opt-in | D-073 × `whatsapp-queue.service.ts`, `tenant-roles.ts` | **Decidida: D-097** (desligado por padrão até a F5.0) |
 | DV-10 | O MVP prevê captura de erro (Sentry); não existe | mvp.md §2 | Ferramenta e orçamento |
 | DV-11 | `update/delete where { id }` em 22 repositórios dependem de o service buscar antes com `tenantId` | repositórios | Defesa em profundidade (`updateMany` com `tenantId`) — técnica, sem regra nova |
 | DV-12 | Documentos defasados: "Próximas ações" do `PROJECT-CONTEXT` tratava o D1 do F4.7 como não integrado; status do `crm-backend/CLAUDE.md` e do `crm-frontend/CLAUDE.md` são da Fase 1 | — | Só atualização |
@@ -144,9 +144,9 @@
 |---|---|---|---|---|---|
 | **E1** Configuração pela tela | P1 | Ligar/desligar disponibilidade; pipelines e etapas; correção do filtro `unassigned=false`; salto de etapa por contagem (DV-05) | — | Admin configura tudo pela tela; testes de API e UI; e2e de salto com lacuna e `order` espaçado; `unassigned=false` não filtra | **Concluída em 10/11/2026** (branches locais, sem push; seção 9) |
 | E2 Histórico de etapas visível | P1 | `GET /v1/opportunities/{id}/stage-history` (aditivo no OpenAPI) e seção no detalhe da Oportunidade | — | Mostra de/para, usuário, data e justificativa; isolamento e RBAC testados | **Concluída em 10/11/2026** (seção 9) |
-| E3 Importação de Leads pela tela | P1 | Tela de upload, resultado por linha, deduplicação já existente | DV-03 | Arquivo válido importa; erros por linha visíveis; limite respeitado | Aguarda decisão |
-| E4 Histórico único do cliente | P1 | Agregar timeline conforme a decisão | DV-01 | Critério de aceite da Fase 4 cumprido | Aguarda decisão |
-| E5 Contenção do legado | P0 de produção | Chave de ambiente desligando rotas e varredura do `communications` | DV-09 | Desligado: rotas 404 e nenhuma varredura | Aguarda decisão |
+| E3 Importação de Leads pela tela | P1 | Fila BullMQ, lotes, acompanhamento e erros por linha; tela de upload | D-096 | Arquivo válido importa sem bloquear a API; progresso e erros visíveis; tenant respeitado | Decidida; a implementar |
+| E4 Histórico único do cliente | P1 | Agregar timeline conforme a decisão | D-095 | Critério de aceite da Fase 4 cumprido | Decidida; a implementar |
+| E5 Contenção do legado | P0 de produção | Chave de ambiente desligando rotas, varredura e envio do `communications` | D-097 | Desligado: rotas recusadas, nenhuma varredura, nenhum envio | Decidida; a implementar |
 | E6 Integridade | P2 | Cascata de exclusão (DV-08); `updateMany` com `tenantId` (DV-11); mapeamento P2002 compatível com o adaptador do Prisma 7 | DV-08 | Testes de cascata e de repositório | Parte técnica pronta para iniciar |
 | E7 Preparação para produção | P3 | Playwright do fluxo do MVP (D-020), Sentry (DV-10), teste de carga (D-049), runbook de permissões F4.2/F4.4/F4.6 para empresas existentes, proteção de branch (D-021/D-052) | D-025, D-027 a D-029, D-036, D-047 | Fluxo do MVP automatizado no CI | Parcialmente bloqueada |
 | E8 Experiência visual | P4 | Textos sem acento na UI ("Historico", "Nao foi possivel"...), hierarquia e navegação | E1–E7 | — | Depois |

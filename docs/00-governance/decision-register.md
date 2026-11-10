@@ -1087,6 +1087,48 @@ WHERE rp.role_id = r.id AND rp.permission_id = p.id
 
 **Critérios de aceite.** Empresa nova cria Lead e tem pipeline sem passo manual; formulário recusa Lead sem nome, sem origem ou sem contato; edição pré-preenche e limpa campos; seed/script idempotentes. Validação: `crm-backend/test/e2e/tenant-catalogs.e2e-spec.ts`, `crm-frontend/src/features/leads/components/LeadForm.test.tsx`, `LeadSourcesPage.test.tsx`.
 
+### D-095 — Histórico consolidado do Cliente (inclui as Oportunidades, não o Lead)
+**Status**: `DECIDIDO` (decisão do responsável pelo produto, 2026-11-10) · fecha a parte de histórico de [VN-14](../10-roadmap/phase-4-plan.md) e a divergência DV-01 da [rastreabilidade](../09-testing/rastreabilidade-requisitos.md) · **Fase**: 4 (critério de aceite da Fase 4) · complementa [D-079](#d-079--interações-e-linha-do-tempo-f44), sem revogá-la.
+
+1. A linha do tempo do **Cliente** mostra as interações registradas no próprio Cliente **e** as interações registradas nas **Oportunidades pertencentes a ele**.
+2. As interações do **Lead de origem não entram** (D-079 item 2 continua valendo): nada é herdado, copiado ou transferido do Lead para o Cliente.
+3. Cada interação continua vinculada à entidade em que foi registrada. A timeline do Cliente é uma **visão consolidada por consulta**, sem duplicar registros; cada item informa de onde vem (Cliente ou qual Oportunidade).
+4. **Escolha de implementação, para validação**: as **notas** continuam como hoje (as do próprio Cliente entram; as das Oportunidades não), porque a decisão fala em interações. A timeline da Oportunidade e a do Lead não mudam.
+
+### D-096 — Importação de Leads assíncrona, em fila
+**Status**: `DECIDIDO` (2026-11-10) · fecha DV-03 e alinha o [RNF-03](../01-product/requirements.md) e o [MVP](../10-roadmap/mvp.md) §2 · **Fase**: transversal.
+
+1. A importação de Leads por planilha deixa de ser síncrona: roda em **fila BullMQ sobre o Redis** já existente ([ADR-006](../adr/ADR-006.md)).
+2. Limite inicial mantido: **até 5.000 linhas por arquivo**, processadas **em lotes**, sem bloquear a API.
+3. A operação permite **acompanhar o processamento**, **identificar os registros importados** e **consultar os erros** por linha.
+4. O **tenant de origem** é respeitado durante todo o processamento (o trabalho em segundo plano nunca usa outro tenant e passa por `plansService.allowsBackgroundWork`).
+5. Contrato, tabelas e nomes de rota são escolhas de implementação registradas no OpenAPI quando a entrega for feita.
+
+### D-097 — Módulo `communications` desligado por padrão até a F5.0
+**Status**: `DECIDIDO` (2026-11-10) · fecha DV-09 · complementa [D-073](#d-073--módulo-communications-implementado-fora-da-especificação-whatsapp-outbound-e-automações) (congelamento) · **Fase**: até a F5.0.
+
+1. O módulo fica **desligado por padrão**, de forma efetiva no backend (não só escondido na tela): **varreduras e agendamentos periódicos não executam**, o **envio de WhatsApp fica indisponível** e as **rotas não permitem execução acidental**.
+2. **Nenhuma credencial global** de WhatsApp é usada operacionalmente enquanto desligado.
+3. **Código e dados preservados**: nada é apagado (tabelas `automation_rules` e `whatsapp_messages` intactas).
+4. A **reativação** depende do Gate da Fase 5 e das decisões da F5.0 ([D-072](#d-072--whatsapp-é-uma-frente-própria-fase-5-núcleo-de-conversas-agnóstico-ao-canal-fase-4), D-073).
+
+### D-098 — Cliente com Oportunidades abertas não pode ser excluído
+**Status**: `DECIDIDO` (2026-11-10) · fecha DV-08 · **Fase**: transversal.
+
+1. Excluir um Cliente com **Oportunidade aberta** vinculada é recusado com **HTTP 409** e mensagem clara de que há Oportunidades em andamento.
+2. **Sem exclusão em cascata.**
+3. Oportunidades **encerradas** (ganhas ou perdidas) não impedem a exclusão e preservam o histórico e o vínculo com o Cliente.
+4. A exclusão continua lógica (soft delete, [BR-22](../02-business/business-rules.md)).
+
+### D-099 — Motivos de perda e de desqualificação em listas por empresa
+**Status**: `DECIDIDO` (2026-11-10) · fecha DV-04 · prevalecem [BR-06 e BR-12](../02-business/business-rules.md) · **Fase**: transversal.
+
+1. Listas **configuráveis por tenant** e **separadas**: motivos de **perda** de Oportunidade e motivos de **desqualificação** de Lead.
+2. Perder e desqualificar exigem **selecionar um motivo cadastrado**; texto livre não substitui a seleção.
+3. Há uma **observação complementar** opcional e uma opção **"Outro"**, com **justificativa obrigatória**.
+4. Os motivos já gravados (texto livre) são **preservados** na migração do modelo: nenhuma informação existente se perde.
+5. **Pendente de confirmação**: quais motivos padrão (além de "Outro") toda empresa nova recebe, como as origens de Lead da D-094.
+
 ## Regras de negócio validadas pelo responsável pelo produto (Fase 3)
 
 Estas decisões **não devem ser inventadas por nenhum agente** — foram validadas diretamente com o responsável pelo produto em 2026-09-16, no fechamento do Decision Gate da Fase 3. Os documentos correspondentes deixam de carregar `[VALIDAÇÃO DE NEGÓCIO NECESSÁRIA]` e passam a refletir a regra decidida abaixo.
@@ -1166,3 +1208,4 @@ Toda exclusão continua sendo **soft delete** (BR-22) e continua sendo auditada 
 | 2026-11-05 | **Revisões de D-086 e D-087 e nova D-089** (decisões do responsável após os testes locais): papel Admin só pela plataforma; Admin não desativa a si mesmo; Administração só para o Admin (Liberações seguem com o Gerente); solicitação de identidade visual com proposta estruturada; lista de usuários só para o Admin, com diretório de nomes para os demais. Integrado ao `main` (PRs: crm-backend #7, crm-frontend #6, crm-spec #9; `main` em crm-backend `ac45986`, crm-frontend `a6f5c92`, crm-spec `27cc06c`). |
 | 2026-11-06 | **Hardening de segurança, consistência e contas** (integrado ao `main` (PRs: crm-backend #8, crm-frontend #7, crm-spec #11; `main` em crm-backend `bbecaa2`, crm-frontend `d174e77`, crm-spec `890d404`)): novas **D-090** (dependências, rate limiting, Helmet, Swagger, CORS), **D-091** (rotação atômica do refresh e renovação coordenada entre abas), **D-092** (e-mail sem distinção de caixa por tenant), **D-093** (reativação; troca de e-mail adiada); **D-064** passa a `DECIDIDO` (troca da própria senha e link do Admin); **D-052** registra o CI com e2e. Correções sem decisão nova: conversão de Lead atômica e transições de Lead sob trava; conflitos de unicidade conhecidos como 409. Migrations aditivas `20261107120000_users_email_case_insensitive` e `20261107130000_password_reset_tokens`, aplicadas só em banco descartável. |
 | 2026-11-06 | **D-094 — cadastro manual de Lead e cadastros iniciais da empresa** (achados do teste local do responsável: Trial sem origem nem pipeline; formulário de Lead só com a origem). Formulário completo de Lead, origens e pipeline padrão em toda empresa nova, script para as existentes, tela de Origens de Lead. Integrado ao `main` (PRs: crm-backend #9, crm-frontend #8, crm-spec #12; `main` em crm-backend `ccfee7a`, crm-frontend `3d40079`, crm-spec `9101771`). Sem migration. |
+| 2026-11-10 | **D-095 a D-099** (decisões do responsável sobre as divergências da auditoria de requisitos): histórico consolidado do Cliente com as Oportunidades e sem o Lead (D-095); importação de Leads em fila (D-096); `communications` desligado por padrão até a F5.0 (D-097); Cliente com Oportunidade aberta não é excluído, 409 (D-098); motivos de perda e de desqualificação em listas por empresa, com "Outro" justificado (D-099). Implementação em andamento. |
