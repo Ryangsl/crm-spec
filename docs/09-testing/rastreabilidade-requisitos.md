@@ -48,7 +48,7 @@
 | RF-15 Disponibilidade do consultor | **Validado** (E1, escopo F4) | `availability.e2e`, `tenant-settings.e2e`; seletor, `/team/availability` e `/settings/availability` | Antes da E1 o Admin não tinha como ligar o mecanismo pela tela. Filas: Fase 5 |
 | RF-16 Distribuir só a ativos e disponíveis | Parcial | Leads: `distribution-availability.e2e` (D-078) | Conversas e atendimentos: Fase 5 |
 | RF-17 Disposição do atendimento | Bloqueado | — | BR-15 depende de decisão de negócio (D-070, VN-12) |
-| RF-18 Histórico completo por cliente | Parcial | Timeline Interações + Notas por entidade (`interactions-timeline.e2e`) | Sem agregação Lead → Cliente → Oportunidade; conflito roadmap × D-079 (DV-01, VN-14) |
+| RF-18 Histórico completo por cliente | Parcial | Timeline do Cliente consolida as interações das Oportunidades dele (D-095, `interactions-timeline.e2e`) | Conversas e mensagens ainda fora da timeline; Lead de origem fora por decisão (D-079) |
 | RF-19 Supervisão em tempo real | Parcial | `/team/availability` com polling de 30 s | Sem tempo real (D-013) e sem filas: Fase 5 |
 | RF-21 WhatsApp | Bloqueado | — | Gate da Fase 5 (D-072) |
 | RF-22 Abstração de canais | Parcial | Núcleo de conversas agnóstico (`channel_type`, D-081) | `ChannelAdapter`: Fase 5 |
@@ -68,7 +68,7 @@
 | RNF-02 Backend sem estado, escala horizontal | Implementado | Sessão no banco, rate limit no Redis | Rate limit cai para memória sem Redis (contagem por instância) |
 | RNF-03 Processos pesados assíncronos | Parcial | — | Importação de Leads síncrona (até 5.000 linhas), contra o RNF e o MVP (DV-03) |
 | RNF-04 Fallback de WebSocket | Bloqueado | Sem WebSocket (D-013); polling | Fase 5 |
-| RNF-05 Falha de provedor externo não derruba o sistema | Parcial | — | Módulo legado `communications` chama o WhatsApp sem timeout (DV-09) |
+| RNF-05 Falha de provedor externo não derruba o sistema | Parcial | Módulo legado desligado por padrão (D-097): nenhuma chamada externa sem a chave | Quando religado, ainda sem timeout; tratar na F5.0 |
 | RNF-06 Filas com retry, backoff e dead-letter | Parcial | Retry e backoff no legado e na fila de exemplo | Sem dead-letter explícita |
 | RNF-07 HTTPS/WSS | Bloqueado | HSTS do Helmet | Sem ambiente de deploy (D-027) |
 | RNF-08 Hash forte de senha | Validado | bcrypt 6; testes de auth | — |
@@ -124,15 +124,15 @@
 
 | ID | Divergência | Onde | Decisão necessária |
 |---|---|---|---|
-| DV-01 | O critério de aceite da Fase 4 pede "linha do tempo única" do cliente com leads e oportunidades; a D-079 proíbe herança Lead × Cliente e não decide Oportunidade → Cliente | roadmap Fase 4 × D-079, VN-14 | O histórico do Cliente inclui as interações das suas Oportunidades? E do Lead de origem? |
+| DV-01 | O critério de aceite da Fase 4 pede "linha do tempo única" do cliente com leads e oportunidades; a D-079 proíbe herança Lead × Cliente e não decide Oportunidade → Cliente | roadmap Fase 4 × D-079, VN-14 | **Decidida: D-095** (Cliente + Oportunidades dele; Lead não) |
 | DV-02 | BR-05 ainda diz "dentro do horário de atendimento"; a D-078 diz que o horário não filtra a distribuição | business-rules × D-078 | Só ajuste de texto da BR-05 |
-| DV-03 | O MVP diz que a importação é a única fila justificada; ela é síncrona e não tem tela | mvp.md §2, RNF-03 × `leads.service.ts` | Fila (BullMQ) ou limite menor síncrono? |
-| DV-04 | BR-06 e BR-12 pedem motivos de lista configurável; o modelo usa texto livre | business-rules × entities.md | Lista por tenant ou manter texto livre |
+| DV-03 | O MVP diz que a importação é a única fila justificada; ela é síncrona e não tem tela | mvp.md §2, RNF-03 × `leads.service.ts` | **Decidida: D-096** (fila BullMQ, até 5.000 linhas em lotes) |
+| DV-04 | BR-06 e BR-12 pedem motivos de lista configurável; o modelo usa texto livre | business-rules × entities.md | **Decidida: D-099** (listas por tenant, "Outro" com justificativa) |
 | DV-05 | D-032 "Impacto em código" falava em `order` adjacente; o código comparava a diferença numérica, o que trata etapas vizinhas como salto quando há lacunas | D-032 × `opportunities.service.ts` | **Resolvida na E1** pela regra de negócio (salto = etapa ativa no meio), sem mudar a decisão |
 | DV-06 | UC-04 e RF-26 pedem aviso de tarefa vencendo; a D-080 limita a v1 a `lead.assigned` | use-cases × D-080 | Agendador e ator Sistema (P1) |
 | DV-07 | UC-10 pede consulta da auditoria; a D-060 deixou só gravação | use-cases × D-060 | Quando abrir a consulta e para quem |
-| DV-08 | Excluir um Cliente deixa Oportunidades abertas e Leads convertidos apontando para ele; a spec não define cascata | `customers.service.ts` | Bloquear (409), cascatear ou manter |
-| DV-09 | O módulo `communications` está "congelado" (D-073), mas registra varredura de hora em hora e expõe `/v1/automations` e `/v1/messages` a Admin e Gerente, com credencial global, sem timeout e sem opt-in | D-073 × `whatsapp-queue.service.ts`, `tenant-roles.ts` | Desligar por padrão (chave de ambiente) até a F5.0 |
+| DV-08 | Excluir um Cliente deixa Oportunidades abertas e Leads convertidos apontando para ele; a spec não define cascata | `customers.service.ts` | **Decidida: D-098** (409, sem cascata) |
+| DV-09 | O módulo `communications` está "congelado" (D-073), mas registra varredura de hora em hora e expõe `/v1/automations` e `/v1/messages` a Admin e Gerente, com credencial global, sem timeout e sem opt-in | D-073 × `whatsapp-queue.service.ts`, `tenant-roles.ts` | **Decidida: D-097** (desligado por padrão até a F5.0) |
 | DV-10 | O MVP prevê captura de erro (Sentry); não existe | mvp.md §2 | Ferramenta e orçamento |
 | DV-11 | `update/delete where { id }` em 22 repositórios dependem de o service buscar antes com `tenantId` | repositórios | Defesa em profundidade (`updateMany` com `tenantId`) — técnica, sem regra nova |
 | DV-12 | Documentos defasados: "Próximas ações" do `PROJECT-CONTEXT` tratava o D1 do F4.7 como não integrado; status do `crm-backend/CLAUDE.md` e do `crm-frontend/CLAUDE.md` são da Fase 1 | — | Só atualização |
@@ -144,9 +144,9 @@
 |---|---|---|---|---|---|
 | **E1** Configuração pela tela | P1 | Ligar/desligar disponibilidade; pipelines e etapas; correção do filtro `unassigned=false`; salto de etapa por contagem (DV-05) | — | Admin configura tudo pela tela; testes de API e UI; e2e de salto com lacuna e `order` espaçado; `unassigned=false` não filtra | **Concluída em 10/11/2026** (branches locais, sem push; seção 9) |
 | E2 Histórico de etapas visível | P1 | `GET /v1/opportunities/{id}/stage-history` (aditivo no OpenAPI) e seção no detalhe da Oportunidade | — | Mostra de/para, usuário, data e justificativa; isolamento e RBAC testados | **Concluída em 10/11/2026** (seção 9) |
-| E3 Importação de Leads pela tela | P1 | Tela de upload, resultado por linha, deduplicação já existente | DV-03 | Arquivo válido importa; erros por linha visíveis; limite respeitado | Aguarda decisão |
-| E4 Histórico único do cliente | P1 | Agregar timeline conforme a decisão | DV-01 | Critério de aceite da Fase 4 cumprido | Aguarda decisão |
-| E5 Contenção do legado | P0 de produção | Chave de ambiente desligando rotas e varredura do `communications` | DV-09 | Desligado: rotas 404 e nenhuma varredura | Aguarda decisão |
+| E3 Importação de Leads pela tela | P1 | Fila BullMQ, lotes, acompanhamento e erros por linha; tela de upload | D-096 | Arquivo válido importa sem bloquear a API; progresso e erros visíveis; tenant respeitado | Decidida; a implementar |
+| E4 Histórico único do cliente | P1 | Agregar timeline conforme a decisão | D-095 | Critério de aceite da Fase 4 cumprido | **Concluída em 10/11/2026** (E5, seção 9) |
+| E5 Contenção do legado | P0 de produção | Chave de ambiente desligando rotas, varredura e envio do `communications` | D-097 | Desligado: rotas recusadas, nenhuma varredura, nenhum envio | **Concluída em 10/11/2026** (E3, seção 9) |
 | E6 Integridade | P2 | Cascata de exclusão (DV-08); `updateMany` com `tenantId` (DV-11); mapeamento P2002 compatível com o adaptador do Prisma 7 | DV-08 | Testes de cascata e de repositório | Parte técnica pronta para iniciar |
 | E7 Preparação para produção | P3 | Playwright do fluxo do MVP (D-020), Sentry (DV-10), teste de carga (D-049), runbook de permissões F4.2/F4.4/F4.6 para empresas existentes, proteção de branch (D-021/D-052) | D-025, D-027 a D-029, D-036, D-047 | Fluxo do MVP automatizado no CI | Parcialmente bloqueada |
 | E8 Experiência visual | P4 | Textos sem acento na UI ("Historico", "Nao foi possivel"...), hierarquia e navegação | E1–E7 | — | Depois |
@@ -167,3 +167,18 @@
 - **Integração:** verificada no navegador contra o backend real (mover pulando etapa com justificativa e ver o histórico atualizar).
 - **Testes:** backend unitários 433/433, integração 2/2, e2e 507/508 (mesma falha de ambiente da §1); frontend 443/443; lint, `tsc` e build OK.
 - **Requisitos:** RF-10 passou a Validado.
+
+### E3 — `communications` desligado por padrão (D-097) — 10/11/2026
+- **Backend** (`feat/e3-communications-off`, empilhada sobre a E2): chave `COMMUNICATIONS_LEGACY_ENABLED` (padrão desligado); sem varredura agendada (e a antiga removida do Redis), worker fechado, rotas `403 COMMUNICATIONS_DISABLED`, provider sem ler credencial global; dados preservados. Testes: `legacy-switch.spec.ts`, spec do service ajustado ao modo ligado, e2e `communications-off` e `communications-legacy-on`; o e2e do MVP passou a esperar o 403.
+
+### E4 — exclusão de Cliente com Oportunidade aberta (D-098) — 10/11/2026
+- **Backend** (`feat/e4-customer-delete-guard`, empilhada sobre a E3): `409 CUSTOMER_HAS_OPEN_OPPORTUNITIES`, sem cascata; encerradas preservadas; trava compartilhada na criação de Oportunidade contra a corrida. 4 e2e novos (aberta bloqueia, encerradas não, aberta excluída não, corrida sem órfão).
+- **Frontend** (`feat/e4-customer-delete-guard`): teste que fixa a exibição da mensagem do 409 no detalhe do Cliente (a tela já mostrava a mensagem da API).
+- **Contrato:** 409 documentado em `DELETE /customers/{id}`.
+- **DV-08** resolvida.
+
+### E5 — timeline consolidada do Cliente (D-095) — 10/11/2026
+- **Backend** (`feat/e5-customer-consolidated-timeline`, empilhada sobre a E4): a timeline do Cliente soma as interações das Oportunidades não excluídas dele, por consulta, para quem tem `opportunities:read`; itens com `entity_type`/`entity_id`. 2 unitários e 1 e2e (Lead, Oportunidade excluída, outro Cliente e notas de Oportunidade fora; cursor de 1 em 1; nada copiado; leitor sem a permissão).
+- **Frontend** (`feat/e5-customer-consolidated-timeline`): item de Oportunidade marcado com link; criar/excluir interação recarrega todas as timelines. 1 teste novo (445/445).
+- **Contrato:** `TimelineItem` ganhou `entity_type`/`entity_id` (aditivo) e a descrição de `/customers/{id}/interactions`.
+- **DV-01** resolvida pela D-095.
