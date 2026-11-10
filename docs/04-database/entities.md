@@ -147,6 +147,33 @@ Implementado como **sub-recurso de `customers`** (`GET/POST /v1/customers/{id}/c
 
 Índices: `(tenant_id, status)`, `(tenant_id, owner_id)`.
 
+### `lead_imports` *([D-096](../00-governance/decision-register.md#d-096--importação-de-leads-assíncrona-em-fila); migration `20261110120000_lead_imports`)*
+| Campo | Tipo | Obrigatório | Notas |
+|---|---|---|---|
+| created_by | UUID (FK users) | sim | Quem enviou; o worker age em nome dessa pessoa |
+| source_id | UUID (FK lead_sources) | sim | Origem de todas as linhas |
+| owner_id | UUID (FK users) | não | Responsável fixo; nulo = distribuição de cada Lead |
+| file_name | string | sim | Nome do arquivo enviado (o arquivo não é guardado) |
+| status | enum(queued, processing, completed, failed) | sim | |
+| total_rows / processed_rows / created_count / skipped_count / error_count | integer | sim | Recalculados a partir das linhas |
+| failure_code | string | não | Motivo de interrupção (`importer_inactive`, `permission_revoked`, `plan_blocked`, `source_unavailable`, `owner_unavailable`, `queue_unavailable`, `processing_error`) |
+| started_at / finished_at | timestamptz | não | |
+
+Índices: `(tenant_id, created_at)`, `status` (retomada na subida).
+
+### `lead_import_rows`
+| Campo | Tipo | Obrigatório | Notas |
+|---|---|---|---|
+| import_id | UUID (FK lead_imports) | sim | |
+| row_number | integer | sim | Linha no arquivo (cabeçalho = 1); única por importação |
+| data | jsonb | sim | Nome, documento, telefone e e-mail como vieram |
+| status | enum(pending, created, skipped, failed) | sim | Resolvida uma única vez (atualização condicional) |
+| lead_id | UUID (FK leads) | não | `created`: o Lead criado; `skipped`: o Lead já existente |
+| reason | string | não | `invalid_document`, `invalid_phone`, `invalid_email`, `missing_identification`, `duplicate`, `plan_limit_reached` |
+| processed_at | timestamptz | não | |
+
+Índices: `(import_id, row_number)` único, `(import_id, status, row_number)`, `tenant_id`. Sem prazo de guarda por enquanto (retenção junto com a D-047).
+
 ### `pipelines`
 | Campo | Tipo | Obrigatório |
 |---|---|---|

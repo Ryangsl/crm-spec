@@ -1066,6 +1066,123 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
 
+  /leads/import:
+    post:
+      summary: Envia uma planilha de Leads para importação em segundo plano (D-096)
+      description: >
+        Lê o arquivo (CSV ou XLSX, até 10 MB e 5.000 linhas preenchidas; cabeçalho com nome,
+        documento, telefone e/ou email), registra a importação com uma linha pendente por linha do
+        arquivo e responde **202** sem esperar o processamento, que roda em lotes na fila (BullMQ).
+        O andamento, os Leads criados e os erros por linha são consultados em `/lead-imports/{id}`.
+        O worker processa no tenant da importação e em nome de quem a enviou: limite do plano,
+        distribuição (round-robin sem `owner_id`), notificações e auditoria valem como num cadastro
+        manual. Antes de cada lote confere se quem importou continua ativo e com `leads:create` e
+        `leads:read`, se a empresa ainda permite trabalho em segundo plano e se origem e responsável
+        existem; se não, a importação para (`failure_code`) com o que já foi processado. Fora da
+        restrição por horário (D-082, PN-2). Exige `leads:create`.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file, source_id]
+              properties:
+                file: { type: string, format: binary }
+                source_id:
+                  type: string
+                  format: uuid
+                  description: Origem aplicada a todas as linhas.
+                owner_id:
+                  type: string
+                  format: uuid
+                  description: Responsável fixo; omitido, cada Lead segue a distribuição.
+      responses:
+        "202":
+          description: Importação registrada e na fila (`status = queued`)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LeadImport" }
+        "400":
+          description: >
+            Arquivo ausente, formato inválido, cabeçalho sem colunas reconhecidas, nenhuma linha
+            preenchida, mais de 5.000 linhas ou campo não reconhecido (inclusive `tenant_id`).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: source_id (ou owner_id, quando informado) não encontrado no tenant
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "503":
+          description: >
+            LEAD_IMPORT_QUEUE_UNAVAILABLE — a fila não aceitou o trabalho. A importação fica
+            encerrada com `failure_code = queue_unavailable`; enviar de novo cria outra.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /lead-imports:
+    get:
+      summary: Lista as importações de Leads da empresa, da mais recente para a mais antiga (D-096)
+      description: Exige `leads:create` e `leads:read`. Paginação por offset.
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Lista paginada de importações
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LeadImportList" }
+
+  /lead-imports/{id}:
+    get:
+      summary: Andamento de uma importação de Leads (D-096)
+      description: >
+        Situação, contadores e motivo de interrupção. Contadores recalculados a partir das linhas
+        depois de cada lote. Exige `leads:create` e `leads:read`.
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Importação encontrada
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LeadImport" }
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /lead-imports/{id}/rows:
+    get:
+      summary: Resultado de cada linha de uma importação (D-096)
+      description: >
+        Linhas na ordem do arquivo, com os valores lidos, o Lead criado (`created`) ou já existente
+        (`skipped`) e o motivo de quem não virou Lead. Exige `leads:create` e `leads:read`.
+        Paginação por offset (limite padrão 50).
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/Page"
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, default: 50, maximum: 100 }
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [pending, created, skipped, failed]
+      responses:
+        "200":
+          description: Lista paginada das linhas
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LeadImportRowList" }
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /lead-sources:
     get:
       summary: Lista origens de lead do tenant (paginação por offset)
@@ -3360,6 +3477,106 @@ components:
         customer:
           $ref: "#/components/schemas/CustomerCreate"
           description: Cria um novo cliente (mesma validacao/dedup de POST /v1/customers).
+
+    LeadImport:
+      type: object
+      description: >
+        D-096 — importação de Leads em segundo plano. `queued` → `processing` → `completed` ou
+        `failed`. Em `failed`, as linhas já processadas continuam valendo e as demais ficam
+        `pending`.
+      required:
+        [id, status, file_name, source_id, owner_id, created_by, total_rows, processed_rows,
+         created_count, skipped_count, error_count, failure_code, created_at, started_at,
+         finished_at]
+      properties:
+        id: { type: string, format: uuid }
+        status:
+          type: string
+          enum: [queued, processing, completed, failed]
+        file_name: { type: string }
+        source_id: { type: string, format: uuid }
+        owner_id: { type: string, format: uuid, nullable: true }
+        created_by:
+          type: object
+          required: [id, name]
+          properties:
+            id: { type: string, format: uuid }
+            name: { type: string }
+        total_rows: { type: integer }
+        processed_rows: { type: integer }
+        created_count: { type: integer }
+        skipped_count:
+          type: integer
+          description: Linhas que repetem um Lead já existente (documento, telefone ou e-mail).
+        error_count: { type: integer }
+        failure_code:
+          type: string
+          nullable: true
+          enum:
+            [importer_inactive, permission_revoked, plan_blocked, source_unavailable,
+             owner_unavailable, queue_unavailable, processing_error, null]
+          description: >
+            Motivo de a importação parar antes do fim: quem importou foi desativado ou a empresa
+            não autentica mais; perdeu `leads:create`/`leads:read`; plano ou situação comercial não
+            permitem mais (D-085); origem excluída; responsável fixo inexistente; fila indisponível
+            no envio; erro inesperado em todas as tentativas de um lote.
+        created_at: { type: string, format: date-time }
+        started_at: { type: string, format: date-time, nullable: true }
+        finished_at: { type: string, format: date-time, nullable: true }
+
+    LeadImportList:
+      type: object
+      properties:
+        data:
+          type: array
+          items: { $ref: "#/components/schemas/LeadImport" }
+        page: { type: integer }
+        limit: { type: integer }
+        total: { type: integer }
+
+    LeadImportRow:
+      type: object
+      required: [row, status, data, lead_id, reason, processed_at]
+      properties:
+        row:
+          type: integer
+          description: Linha no arquivo (o cabeçalho é a linha 1).
+        status:
+          type: string
+          enum: [pending, created, skipped, failed]
+        data:
+          type: object
+          description: Valores como vieram do arquivo.
+          properties:
+            name: { type: string, nullable: true }
+            document: { type: string, nullable: true }
+            phone: { type: string, nullable: true }
+            email: { type: string, nullable: true }
+        lead_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: "`created`: o Lead criado; `skipped`: o Lead já existente que a linha repete."
+        reason:
+          type: string
+          nullable: true
+          enum:
+            [invalid_document, invalid_phone, invalid_email, missing_identification, duplicate,
+             plan_limit_reached, null]
+          description: >
+            Documento sem 11 ou 14 dígitos; telefone que não vira E.164; e-mail inválido; linha
+            sem nome, documento, telefone nem e-mail; Lead já existente; limite de Leads do plano.
+        processed_at: { type: string, format: date-time, nullable: true }
+
+    LeadImportRowList:
+      type: object
+      properties:
+        data:
+          type: array
+          items: { $ref: "#/components/schemas/LeadImportRow" }
+        page: { type: integer }
+        limit: { type: integer }
+        total: { type: integer }
 
     LeadSourceCreate:
       type: object
