@@ -68,7 +68,7 @@
 | RNF-02 Backend sem estado, escala horizontal | Implementado | Sessão no banco, rate limit no Redis | Rate limit cai para memória sem Redis (contagem por instância) |
 | RNF-03 Processos pesados assíncronos | Parcial | — | Importação de Leads síncrona (até 5.000 linhas), contra o RNF e o MVP (DV-03) |
 | RNF-04 Fallback de WebSocket | Bloqueado | Sem WebSocket (D-013); polling | Fase 5 |
-| RNF-05 Falha de provedor externo não derruba o sistema | Parcial | — | Módulo legado `communications` chama o WhatsApp sem timeout (DV-09) |
+| RNF-05 Falha de provedor externo não derruba o sistema | Parcial | Módulo legado desligado por padrão (D-097): nenhuma chamada externa sem a chave | Quando religado, ainda sem timeout; tratar na F5.0 |
 | RNF-06 Filas com retry, backoff e dead-letter | Parcial | Retry e backoff no legado e na fila de exemplo | Sem dead-letter explícita |
 | RNF-07 HTTPS/WSS | Bloqueado | HSTS do Helmet | Sem ambiente de deploy (D-027) |
 | RNF-08 Hash forte de senha | Validado | bcrypt 6; testes de auth | — |
@@ -146,7 +146,7 @@
 | E2 Histórico de etapas visível | P1 | `GET /v1/opportunities/{id}/stage-history` (aditivo no OpenAPI) e seção no detalhe da Oportunidade | — | Mostra de/para, usuário, data e justificativa; isolamento e RBAC testados | **Concluída em 10/11/2026** (seção 9) |
 | E3 Importação de Leads pela tela | P1 | Fila BullMQ, lotes, acompanhamento e erros por linha; tela de upload | D-096 | Arquivo válido importa sem bloquear a API; progresso e erros visíveis; tenant respeitado | Decidida; a implementar |
 | E4 Histórico único do cliente | P1 | Agregar timeline conforme a decisão | D-095 | Critério de aceite da Fase 4 cumprido | Decidida; a implementar |
-| E5 Contenção do legado | P0 de produção | Chave de ambiente desligando rotas, varredura e envio do `communications` | D-097 | Desligado: rotas recusadas, nenhuma varredura, nenhum envio | Decidida; a implementar |
+| E5 Contenção do legado | P0 de produção | Chave de ambiente desligando rotas, varredura e envio do `communications` | D-097 | Desligado: rotas recusadas, nenhuma varredura, nenhum envio | **Concluída em 10/11/2026** (E3, seção 9) |
 | E6 Integridade | P2 | Cascata de exclusão (DV-08); `updateMany` com `tenantId` (DV-11); mapeamento P2002 compatível com o adaptador do Prisma 7 | DV-08 | Testes de cascata e de repositório | Parte técnica pronta para iniciar |
 | E7 Preparação para produção | P3 | Playwright do fluxo do MVP (D-020), Sentry (DV-10), teste de carga (D-049), runbook de permissões F4.2/F4.4/F4.6 para empresas existentes, proteção de branch (D-021/D-052) | D-025, D-027 a D-029, D-036, D-047 | Fluxo do MVP automatizado no CI | Parcialmente bloqueada |
 | E8 Experiência visual | P4 | Textos sem acento na UI ("Historico", "Nao foi possivel"...), hierarquia e navegação | E1–E7 | — | Depois |
@@ -167,3 +167,12 @@
 - **Integração:** verificada no navegador contra o backend real (mover pulando etapa com justificativa e ver o histórico atualizar).
 - **Testes:** backend unitários 433/433, integração 2/2, e2e 507/508 (mesma falha de ambiente da §1); frontend 443/443; lint, `tsc` e build OK.
 - **Requisitos:** RF-10 passou a Validado.
+
+### E3 — `communications` desligado por padrão (D-097) — 10/11/2026
+- **Backend** (`feat/e3-communications-off`, empilhada sobre a E2): chave `COMMUNICATIONS_LEGACY_ENABLED` (padrão desligado); sem varredura agendada (e a antiga removida do Redis), worker fechado, rotas `403 COMMUNICATIONS_DISABLED`, provider sem ler credencial global; dados preservados. Testes: `legacy-switch.spec.ts`, spec do service ajustado ao modo ligado, e2e `communications-off` e `communications-legacy-on`; o e2e do MVP passou a esperar o 403.
+
+### E4 — exclusão de Cliente com Oportunidade aberta (D-098) — 10/11/2026
+- **Backend** (`feat/e4-customer-delete-guard`, empilhada sobre a E3): `409 CUSTOMER_HAS_OPEN_OPPORTUNITIES`, sem cascata; encerradas preservadas; trava compartilhada na criação de Oportunidade contra a corrida. 4 e2e novos (aberta bloqueia, encerradas não, aberta excluída não, corrida sem órfão).
+- **Frontend** (`feat/e4-customer-delete-guard`): teste que fixa a exibição da mensagem do 409 no detalhe do Cliente (a tela já mostrava a mensagem da API).
+- **Contrato:** 409 documentado em `DELETE /customers/{id}`.
+- **DV-08** resolvida.

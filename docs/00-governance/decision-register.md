@@ -1112,6 +1112,8 @@ WHERE rp.role_id = r.id AND rp.permission_id = p.id
 3. **Código e dados preservados**: nada é apagado (tabelas `automation_rules` e `whatsapp_messages` intactas).
 4. A **reativação** depende do Gate da Fase 5 e das decisões da F5.0 ([D-072](#d-072--whatsapp-é-uma-frente-própria-fase-5-núcleo-de-conversas-agnóstico-ao-canal-fase-4), D-073).
 
+**Implementação (10/11/2026, crm-backend `feat/e3-communications-off`)**: chave `COMMUNICATIONS_LEGACY_ENABLED` (só `true` liga; padrão desligado). Desligado: o agendamento da varredura não é criado e o que existir no Redis é removido; o worker da fila `whatsapp` é fechado na subida; `/v1/automations` e `/v1/whatsapp/messages` respondem `403 COMMUNICATIONS_DISABLED` mesmo com as permissões; service, processor e provider checam a chave e o provider não lê as credenciais globais. As rotas do legado continuam fora do OpenAPI (D-073). E2E: `communications-off` e `communications-legacy-on`.
+
 ### D-098 — Cliente com Oportunidades abertas não pode ser excluído
 **Status**: `DECIDIDO` (2026-11-10) · fecha DV-08 · **Fase**: transversal.
 
@@ -1119,6 +1121,8 @@ WHERE rp.role_id = r.id AND rp.permission_id = p.id
 2. **Sem exclusão em cascata.**
 3. Oportunidades **encerradas** (ganhas ou perdidas) não impedem a exclusão e preservam o histórico e o vínculo com o Cliente.
 4. A exclusão continua lógica (soft delete, [BR-22](../02-business/business-rules.md)).
+
+**Implementação (10/11/2026, crm-backend `feat/e4-customer-delete-guard`)**: `409 CUSTOMER_HAS_OPEN_OPPORTUNITIES` com `open_opportunities` no corpo; contagem e exclusão sob trava do Cliente; a criação de Oportunidade trava o Cliente em modo compartilhado, para a corrida criar × excluir nunca deixar Oportunidade aberta de Cliente excluído.
 
 ### D-099 — Motivos de perda e de desqualificação em listas por empresa
 **Status**: `DECIDIDO` (2026-11-10) · fecha DV-04 · prevalecem [BR-06 e BR-12](../02-business/business-rules.md) · **Fase**: transversal.

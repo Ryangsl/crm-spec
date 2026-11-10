@@ -654,7 +654,9 @@ paths:
       description: >
         D-035/BR-22 — preenche deleted_at, nunca remove fisicamente.
         Requer customers:delete (vendedor/consultora nunca tem essa
-        permissão).
+        permissão). D-098 — recusado com 409 enquanto houver Oportunidade
+        aberta (não excluída) do cliente; sem cascata. Oportunidades ganhas
+        ou perdidas não impedem e mantêm o vínculo.
       parameters:
         - $ref: "#/components/parameters/Id"
       responses:
@@ -662,6 +664,16 @@ paths:
           description: Cliente excluído (soft delete)
         "404":
           $ref: "#/components/responses/NotFound"
+        "409":
+          description: Cliente tem Oportunidade em andamento (CUSTOMER_HAS_OPEN_OPPORTUNITIES)
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Error"
+                  - type: object
+                    properties:
+                      open_opportunities: { type: integer, minimum: 1 }
 
   /customers/{id}/contacts:
     get:
