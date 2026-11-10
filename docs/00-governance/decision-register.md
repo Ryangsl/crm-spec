@@ -1102,6 +1102,8 @@ A oportunidade pode ser movimentada **livremente** entre as etapas do pipeline, 
 
 **Impacto em código**: DTO de `POST /opportunities/{id}/move` ganha campo opcional `justification`/`justificativa`; regra de obrigatoriedade condicional (exigir quando `to_stage.order` não é imediatamente adjacente a `from_stage.order`) é validada no Service, não no banco.
 
+**Nota de implementação (10/11/2026, sem mudança da decisão)**: "adjacente" é lido como **nenhuma etapa ativa do pipeline entre origem e destino**. A primeira implementação comparava a diferença numérica de `order` (> 1), o que tratava etapas vizinhas como salto quando uma etapa intermediária é excluída ou quando o `order` tem intervalos (a API aceita qualquer valor). Corrigido no backend (`PipelinesService.countStagesBetween`, na transação do move) e no painel de movimentação do frontend; e2e em `opportunities.e2e-spec.ts` (lacuna de etapa excluída e `order` 10/20/30). Ver DV-05 em [rastreabilidade-requisitos.md](../09-testing/rastreabilidade-requisitos.md).
+
 ### D-033 — Reabertura de lead desqualificado (BR-06)
 **Status**: `DECIDIDO` · **Fase**: 3 (fechado em 2026-09-16)
 
