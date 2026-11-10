@@ -40,7 +40,7 @@
 | RF-07 Super Admin provisiona e suspende | Parcial | Suspensão (MAT-008, `session-lifecycle.e2e`); provisionamento por script (`tenant:provision-trial`, D-059) | Não existe Platform Owner nem Central Administrativa |
 | RF-08 CRUD com soft delete de Clientes, Leads, Contatos, Oportunidades | Validado | `customers`, `leads`, `opportunities.e2e`; telas de lista, detalhe, edição e exclusão | Exclusão em cascata indefinida (DV-08) |
 | RF-09 Pipelines e etapas configuráveis | **Validado** (E1) | API: `opportunities.e2e` › Pipelines + Stages; tela: `PipelinesSettingsPage.test.tsx` | Antes da E1 só pela API |
-| RF-10 Histórico de mudança de etapa | Parcial | `OpportunityStageHistory` gravado e testado (`opportunities.e2e` › Move) | Sem endpoint de leitura nem tela: justificativas de salto ficam invisíveis (E2) |
+| RF-10 Histórico de mudança de etapa | **Validado** (E2) | Gravação (`opportunities.e2e` › Move) e leitura `GET /v1/opportunities/{id}/stage-history` (`opportunities.e2e` › stage-history); `StageHistorySection` no detalhe | Antes da E2, gravado e invisível |
 | RF-11 Ganha/Perdida com motivo de perda | Validado | `opportunities.e2e` › Win/Lose; `OpportunityActionPanel` | Motivo é texto livre; a BR-12 pede lista configurável (DV-04) |
 | RF-12 Distribuição round-robin; Lead sem dono é válido | Validado | `leads.e2e`, `distribution-availability.e2e` (concorrência) | Política posterior de Leads sem dono (VN-16) |
 | RF-13 Tarefas, notas e compromissos vinculados | Validado | `follow-up.e2e`; seções no detalhe de Cliente, Lead e Oportunidade; `/follow-ups` | — |
@@ -58,7 +58,7 @@
 | RF-26 Notificações | Parcial | Só `lead.assigned` (`notifications.e2e`, D-080) | Tarefa vencendo e oportunidade parada exigem agendador (DV-06) |
 | RF-27 Log de auditoria | Validado | `audit_log` gravado na transação da mutação em todos os módulos de negócio | Consulta (UC-10) não existe por decisão (D-060, DV-07) |
 
-**Distribuição (depois da E1):** Validado 12 · Implementado 0 · Parcial 10 · Não iniciado 1 · Bloqueado 3. Antes da E1: Validado 10 · Parcial 12.
+**Distribuição (depois da E2):** Validado 13 · Implementado 0 · Parcial 9 · Não iniciado 1 · Bloqueado 3. Na auditoria (antes da E1): Validado 10 · Parcial 12.
 
 ## 4. Requisitos não funcionais (17)
 
@@ -90,14 +90,14 @@
 |---|---|---|
 | UC-01 Captação e distribuição | Parcial | Cadastro manual e distribuição funcionam; **importação só pela API** (sem tela) |
 | UC-02 Qualificação e conversão | Validado | Qualificar → converter (Cliente novo ou existente, deduplicação) → "Criar oportunidade" em dois passos |
-| UC-03 Pipeline | Validado | Kanban, salto com justificativa (corrigido na E1 para contar etapas), ganho e perda; histórico invisível (RF-10) |
+| UC-03 Pipeline | Validado | Kanban, salto com justificativa (corrigido na E1 para contar etapas), ganho e perda; histórico de etapas visível desde a E2 |
 | UC-04 Follow-up e agenda | Parcial | Tarefas e compromissos com conclusão; "notifica antes do vencimento" não existe (DV-06) |
 | UC-09 Configuração inicial do tenant | Parcial | Usuários, papéis (leitura), origens, horário, disponibilidade e pipelines pela tela (E1); filiais e equipes sem CRUD (D-058) |
 | UC-10 Auditoria | Não iniciado | D-060: só gravação |
 | UC-11 a UC-15 (Fase 4) | Validado | Disponibilidade (ligável pela tela desde a E1), interações, notificações, conversas e liberações; MATs com aceite humano pendente |
 | UC-05 a UC-08 | Fora do MVP | Telefonia fora de escopo (D-070); WhatsApp na Fase 5 |
 
-**Critério de saída do MVP** ([mvp.md](../10-roadmap/mvp.md) §5): o fluxo Lead → distribuição → contato → qualificação → oportunidade → negociação → venda/perda roda ponta a ponta, multi-tenant e com RBAC. Faltam: importação pela tela, histórico de etapas visível, histórico único do cliente (decisão), Sentry (previsto no MVP) e o E2E de navegador (D-020).
+**Critério de saída do MVP** ([mvp.md](../10-roadmap/mvp.md) §5): o fluxo Lead → distribuição → contato → qualificação → oportunidade → negociação → venda/perda roda ponta a ponta, multi-tenant e com RBAC. Faltam: importação pela tela, histórico único do cliente (decisão), Sentry (previsto no MVP) e o E2E de navegador (D-020).
 
 ## 6. Maturidade por módulo
 
@@ -108,7 +108,7 @@
 | Tenants, planos e trial | Sim, provisionamento por script | Platform Owner, checkout, consumo de armazenamento | e2e trial | Decisões comerciais |
 | Clientes e contatos | Sim | Tags na tela; cascata na exclusão | e2e, UI | DV-08 |
 | Leads e origens | Sim (manual) | Importação pela tela; deduplicação no cadastro manual | e2e, UI | E3 |
-| Pipelines e oportunidades | Sim (E1) | Histórico de etapas visível; motivo de perda em lista | e2e, UI | E2, DV-04 |
+| Pipelines e oportunidades | Sim (E1, E2) | Motivo de perda em lista | e2e, UI | DV-04 |
 | Follow-up | Sim | Aviso de vencimento | e2e, UI | DV-06 |
 | Interações e timeline | Por entidade | Histórico único | e2e, UI | DV-01 |
 | Notificações | `lead.assigned` | Demais gatilhos; retenção | e2e, UI | DV-06, D-047 |
@@ -143,7 +143,7 @@
 | Entrega | Prioridade | Conteúdo | Depende de | Critério de aceite | Situação |
 |---|---|---|---|---|---|
 | **E1** Configuração pela tela | P1 | Ligar/desligar disponibilidade; pipelines e etapas; correção do filtro `unassigned=false`; salto de etapa por contagem (DV-05) | — | Admin configura tudo pela tela; testes de API e UI; e2e de salto com lacuna e `order` espaçado; `unassigned=false` não filtra | **Concluída em 10/11/2026** (branches locais, sem push; seção 9) |
-| E2 Histórico de etapas visível | P1 | `GET /v1/opportunities/{id}/stage-history` (aditivo no OpenAPI) e seção no detalhe da Oportunidade | — | Mostra de/para, usuário, data e justificativa; isolamento e RBAC testados | Pronta para iniciar |
+| E2 Histórico de etapas visível | P1 | `GET /v1/opportunities/{id}/stage-history` (aditivo no OpenAPI) e seção no detalhe da Oportunidade | — | Mostra de/para, usuário, data e justificativa; isolamento e RBAC testados | **Concluída em 10/11/2026** (seção 9) |
 | E3 Importação de Leads pela tela | P1 | Tela de upload, resultado por linha, deduplicação já existente | DV-03 | Arquivo válido importa; erros por linha visíveis; limite respeitado | Aguarda decisão |
 | E4 Histórico único do cliente | P1 | Agregar timeline conforme a decisão | DV-01 | Critério de aceite da Fase 4 cumprido | Aguarda decisão |
 | E5 Contenção do legado | P0 de produção | Chave de ambiente desligando rotas e varredura do `communications` | DV-09 | Desligado: rotas 404 e nenhuma varredura | Aguarda decisão |
@@ -159,3 +159,11 @@
 - **Sem migration, sem regra de negócio nova, sem alteração do OpenAPI** (os contratos usados já existiam).
 - **Requisitos:** RF-09 e RF-15 passaram a Validado; DV-05 resolvida.
 - **Pendente:** push e PRs (aguardam autorização), CI no GitHub, aceite humano.
+
+### E2 — 10/11/2026
+- **Backend** (branch `feat/e2-opportunity-stage-history`, empilhada sobre a E1): `GET /v1/opportunities/:id/stage-history` (`opportunities:read`), mais recente primeiro, cursor opaco `(changed_at, id)`, `limit` 1..100 (padrão 50); etapas excluídas aparecem pelo nome; mesma visibilidade da oportunidade (404 para inexistente, excluída ou de outro tenant). 4 e2e novos (jornada completa com salto e ganho, cursor sem repetir nem pular, etapa excluída, isolamento e RBAC).
+- **Frontend** (branch `feat/e2-opportunity-stage-history`, empilhada sobre a E1): `StageHistorySection` no detalhe da Oportunidade, com "Carregar mais"; atualiza após mover, ganhar ou perder. 3 testes novos.
+- **Contrato:** path e schemas `OpportunityStageHistoryItem`/`OpportunityStageHistoryList` adicionados ao `openapi.yaml` (aditivo; 80 paths, nenhuma referência quebrada).
+- **Integração:** verificada no navegador contra o backend real (mover pulando etapa com justificativa e ver o histórico atualizar).
+- **Testes:** backend unitários 433/433, integração 2/2, e2e 507/508 (mesma falha de ambiente da §1); frontend 443/443; lint, `tsc` e build OK.
+- **Requisitos:** RF-10 passou a Validado.
