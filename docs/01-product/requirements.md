@@ -16,7 +16,7 @@
 ### CRM
 - RF-08: O sistema deve permitir cadastro, edição, visualização e (soft) exclusão de Clientes, Leads, Contatos e Oportunidades.
 - RF-09: O sistema deve permitir configurar um ou mais Pipelines com etapas customizáveis por tenant. **Tela em 10/11/2026** (Configurações > Pipelines e etapas, entrega E1 da [rastreabilidade](../09-testing/rastreabilidade-requisitos.md)): criar, renomear, tornar padrão e excluir pipelines; criar, editar, reordenar e excluir etapas, usando a API que já existia.
-- RF-10: O sistema deve registrar histórico de mudança de etapa de uma oportunidade.
+- RF-10: O sistema deve registrar histórico de mudança de etapa de uma oportunidade. Leitura pela API (`GET /v1/opportunities/{id}/stage-history`) e no detalhe da Oportunidade desde 10/11/2026 (entrega E2).
 - RF-11: O sistema deve permitir marcar oportunidade como Ganha ou Perdida, exigindo motivo no caso de perda.
 - RF-12: O sistema deve permitir distribuição automática de leads (round-robin no MVP). A distribuição não é obrigatória para criar um lead: **Lead sem proprietário é um estado válido** (BR-29, [D-075](../00-governance/decision-register.md#d-075--lead-sem-proprietário-é-um-estado-legítimo-do-negócio)).
 - RF-13: O sistema deve permitir registrar tarefas, notas e agendamentos vinculados a lead/oportunidade/cliente.

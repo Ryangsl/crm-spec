@@ -1459,6 +1459,46 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
 
+  /opportunities/{id}/stage-history:
+    get:
+      summary: Histórico de etapas da oportunidade (opportunities:read) — RF-10, BR-10
+      description: |
+        **Implementado em 10/11/2026 (entrega E2).** Uma linha por mudança de etapa: criação
+        (`from_stage` nulo), movimentações (com a justificativa exigida ao pular etapa, D-032),
+        ganho e perda. Mais recente primeiro, paginação por cursor `(changed_at, id)`. As etapas
+        aparecem pelo nome mesmo se excluídas depois (histórico imutável). Mesma visibilidade da
+        oportunidade: inexistente, excluída ou de outro tenant = 404.
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - name: cursor
+          in: query
+          required: false
+          description: Cursor opaco devolvido em `next_cursor` (não montar no cliente)
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 50 }
+      responses:
+        "200":
+          description: Histórico paginado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OpportunityStageHistoryList" }
+        "400":
+          description: Cursor inválido ou `limit` fora de 1..100
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Sem a permissão `opportunities:read`
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /opportunities/{id}/lose:
     post:
       summary: Marca a oportunidade como perdida (exige motivo — BR-12; estado terminal — BR-11)
@@ -3524,6 +3564,38 @@ components:
         source: { type: string, enum: [user, manager] }
         changed_by_user_id: { type: string, format: uuid }
         reason: { type: string, nullable: true }
+
+    OpportunityStageHistoryItem:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        from_stage:
+          type: object
+          nullable: true
+          description: Nulo na criação da oportunidade.
+          properties:
+            id: { type: string, format: uuid }
+            name: { type: string }
+        to_stage:
+          type: object
+          properties:
+            id: { type: string, format: uuid }
+            name: { type: string }
+        changed_by:
+          type: object
+          properties:
+            id: { type: string, format: uuid }
+            name: { type: string }
+        changed_at: { type: string, format: date-time }
+        justification: { type: string, nullable: true }
+
+    OpportunityStageHistoryList:
+      type: object
+      properties:
+        data:
+          type: array
+          items: { $ref: "#/components/schemas/OpportunityStageHistoryItem" }
+        next_cursor: { type: string, nullable: true }
 
     AvailabilityLogList:
       type: object
