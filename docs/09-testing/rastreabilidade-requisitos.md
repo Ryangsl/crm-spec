@@ -48,7 +48,7 @@
 | RF-15 Disponibilidade do consultor | **Validado** (E1, escopo F4) | `availability.e2e`, `tenant-settings.e2e`; seletor, `/team/availability` e `/settings/availability` | Antes da E1 o Admin não tinha como ligar o mecanismo pela tela. Filas: Fase 5 |
 | RF-16 Distribuir só a ativos e disponíveis | Parcial | Leads: `distribution-availability.e2e` (D-078) | Conversas e atendimentos: Fase 5 |
 | RF-17 Disposição do atendimento | Bloqueado | — | BR-15 depende de decisão de negócio (D-070, VN-12) |
-| RF-18 Histórico completo por cliente | Parcial | Timeline Interações + Notas por entidade (`interactions-timeline.e2e`) | Sem agregação Lead → Cliente → Oportunidade; conflito roadmap × D-079 (DV-01, VN-14) |
+| RF-18 Histórico completo por cliente | Parcial | Timeline do Cliente consolida as interações das Oportunidades dele (D-095, `interactions-timeline.e2e`) | Conversas e mensagens ainda fora da timeline; Lead de origem fora por decisão (D-079) |
 | RF-19 Supervisão em tempo real | Parcial | `/team/availability` com polling de 30 s | Sem tempo real (D-013) e sem filas: Fase 5 |
 | RF-21 WhatsApp | Bloqueado | — | Gate da Fase 5 (D-072) |
 | RF-22 Abstração de canais | Parcial | Núcleo de conversas agnóstico (`channel_type`, D-081) | `ChannelAdapter`: Fase 5 |
@@ -145,7 +145,7 @@
 | **E1** Configuração pela tela | P1 | Ligar/desligar disponibilidade; pipelines e etapas; correção do filtro `unassigned=false`; salto de etapa por contagem (DV-05) | — | Admin configura tudo pela tela; testes de API e UI; e2e de salto com lacuna e `order` espaçado; `unassigned=false` não filtra | **Concluída em 10/11/2026** (branches locais, sem push; seção 9) |
 | E2 Histórico de etapas visível | P1 | `GET /v1/opportunities/{id}/stage-history` (aditivo no OpenAPI) e seção no detalhe da Oportunidade | — | Mostra de/para, usuário, data e justificativa; isolamento e RBAC testados | **Concluída em 10/11/2026** (seção 9) |
 | E3 Importação de Leads pela tela | P1 | Fila BullMQ, lotes, acompanhamento e erros por linha; tela de upload | D-096 | Arquivo válido importa sem bloquear a API; progresso e erros visíveis; tenant respeitado | Decidida; a implementar |
-| E4 Histórico único do cliente | P1 | Agregar timeline conforme a decisão | D-095 | Critério de aceite da Fase 4 cumprido | Decidida; a implementar |
+| E4 Histórico único do cliente | P1 | Agregar timeline conforme a decisão | D-095 | Critério de aceite da Fase 4 cumprido | **Concluída em 10/11/2026** (E5, seção 9) |
 | E5 Contenção do legado | P0 de produção | Chave de ambiente desligando rotas, varredura e envio do `communications` | D-097 | Desligado: rotas recusadas, nenhuma varredura, nenhum envio | **Concluída em 10/11/2026** (E3, seção 9) |
 | E6 Integridade | P2 | Cascata de exclusão (DV-08); `updateMany` com `tenantId` (DV-11); mapeamento P2002 compatível com o adaptador do Prisma 7 | DV-08 | Testes de cascata e de repositório | Parte técnica pronta para iniciar |
 | E7 Preparação para produção | P3 | Playwright do fluxo do MVP (D-020), Sentry (DV-10), teste de carga (D-049), runbook de permissões F4.2/F4.4/F4.6 para empresas existentes, proteção de branch (D-021/D-052) | D-025, D-027 a D-029, D-036, D-047 | Fluxo do MVP automatizado no CI | Parcialmente bloqueada |
@@ -176,3 +176,9 @@
 - **Frontend** (`feat/e4-customer-delete-guard`): teste que fixa a exibição da mensagem do 409 no detalhe do Cliente (a tela já mostrava a mensagem da API).
 - **Contrato:** 409 documentado em `DELETE /customers/{id}`.
 - **DV-08** resolvida.
+
+### E5 — timeline consolidada do Cliente (D-095) — 10/11/2026
+- **Backend** (`feat/e5-customer-consolidated-timeline`, empilhada sobre a E4): a timeline do Cliente soma as interações das Oportunidades não excluídas dele, por consulta, para quem tem `opportunities:read`; itens com `entity_type`/`entity_id`. 2 unitários e 1 e2e (Lead, Oportunidade excluída, outro Cliente e notas de Oportunidade fora; cursor de 1 em 1; nada copiado; leitor sem a permissão).
+- **Frontend** (`feat/e5-customer-consolidated-timeline`): item de Oportunidade marcado com link; criar/excluir interação recarrega todas as timelines. 1 teste novo (445/445).
+- **Contrato:** `TimelineItem` ganhou `entity_type`/`entity_id` (aditivo) e a descrição de `/customers/{id}/interactions`.
+- **DV-01** resolvida pela D-095.

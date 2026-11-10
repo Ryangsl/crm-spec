@@ -773,7 +773,10 @@ paths:
         Read model (F4.4, D-079): une as **interações** e as **notas** registradas NESTA entidade
         (D-031), da mais recente para a mais antiga. **Não** inclui tarefas, compromissos,
         histórico de etapas nem `audit_log`; o histórico de Leads relacionados/convertidos **não** é incluído. Sem `notes:read` o chamador recebe
-        só as interações.
+        só as interações. **D-095 (10/11/2026):** inclui também as **interações** registradas nas
+        Oportunidades não excluídas do cliente (por consulta, sem cópia; `entity_type`/`entity_id`
+        indicam a origem), só para quem tem `opportunities:read`. As notas das Oportunidades não
+        entram.
 
         **Cursor específico da timeline** (não segue o cursor UUID v7 dos demais recursos): opaco,
         codifica `(timestamp, source, id)` do último item da página — `timestamp` é
@@ -3814,6 +3817,11 @@ components:
       properties:
         type: { type: string, enum: [interaction, note] }
         id: { type: string, format: uuid, description: "Id do registro na fonte (interação ou nota)." }
+        entity_type:
+          type: string
+          enum: [lead, customer, opportunity]
+          description: Entidade em que o registro foi feito. Na timeline do Cliente pode ser `opportunity` (D-095).
+        entity_id: { type: string, format: uuid }
         occurred_at: { type: string, format: date-time }
         author_id: { type: string, format: uuid }
         summary: { type: string }

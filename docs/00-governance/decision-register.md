@@ -1093,7 +1093,9 @@ WHERE rp.role_id = r.id AND rp.permission_id = p.id
 1. A linha do tempo do **Cliente** mostra as interações registradas no próprio Cliente **e** as interações registradas nas **Oportunidades pertencentes a ele**.
 2. As interações do **Lead de origem não entram** (D-079 item 2 continua valendo): nada é herdado, copiado ou transferido do Lead para o Cliente.
 3. Cada interação continua vinculada à entidade em que foi registrada. A timeline do Cliente é uma **visão consolidada por consulta**, sem duplicar registros; cada item informa de onde vem (Cliente ou qual Oportunidade).
-4. **Escolha de implementação, para validação**: as **notas** continuam como hoje (as do próprio Cliente entram; as das Oportunidades não), porque a decisão fala em interações. A timeline da Oportunidade e a do Lead não mudam.
+4. **Escolha de implementação, para validação**: as **notas** continuam como hoje (as do próprio Cliente entram; as das Oportunidades não), porque a decisão fala em interações. A timeline da Oportunidade e a do Lead não mudam. As interações das Oportunidades só entram para quem tem `opportunities:read` (mesmo critério do contexto da conversa, BR-32) e Oportunidades excluídas ficam de fora.
+
+**Implementação (10/11/2026, crm-backend e crm-frontend `feat/e5-customer-consolidated-timeline`)**: consulta única com `OR` (Cliente + Oportunidades dele), mesmo cursor `(timestamp, source, id)`; cada item ganhou `entity_type`/`entity_id`; na tela, os itens de Oportunidade aparecem marcados com link.
 
 ### D-096 — Importação de Leads assíncrona, em fila
 **Status**: `DECIDIDO` (2026-11-10) · fecha DV-03 e alinha o [RNF-03](../01-product/requirements.md) e o [MVP](../10-roadmap/mvp.md) §2 · **Fase**: transversal.
