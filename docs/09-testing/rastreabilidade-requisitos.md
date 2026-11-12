@@ -36,7 +36,7 @@
 | RF-03 Redefinição de senha | Parcial | `account-recovery.e2e` (troca própria e link do Admin, D-064) | "Esqueci minha senha" por e-mail espera a D-040 |
 | RF-04 Vários usuários e papéis por tenant | Validado | `users`, `rbac-tenant-domains.e2e`; `UsersPage` | Papéis customizados pela UI adiados (D-050) |
 | RF-05 Dado de negócio pertence a um tenant | Validado | `tenant-isolation.e2e` e testes de isolamento por módulo | — |
-| RF-06 Usuário só lê o próprio tenant | Validado | idem; guards globais | Padrão frágil: `update/delete where { id }` dependem da busca prévia no service (ver DV-11) |
+| RF-06 Usuário só lê o próprio tenant | Validado | idem; guards globais | Escritas dos repositórios também filtram por `tenantId` desde 12/11/2026 (DV-11 resolvida) |
 | RF-07 Super Admin provisiona e suspende | Parcial | Suspensão (MAT-008, `session-lifecycle.e2e`); provisionamento por script (`tenant:provision-trial`, D-059) | Não existe Platform Owner nem Central Administrativa |
 | RF-08 CRUD com soft delete de Clientes, Leads, Contatos, Oportunidades | Validado | `customers`, `leads`, `opportunities.e2e`; telas de lista, detalhe, edição e exclusão | Exclusão em cascata indefinida (DV-08) |
 | RF-09 Pipelines e etapas configuráveis | **Validado** (E1) | API: `opportunities.e2e` › Pipelines + Stages; tela: `PipelinesSettingsPage.test.tsx` | Antes da E1 só pela API |
@@ -134,7 +134,7 @@
 | DV-08 | Excluir um Cliente deixa Oportunidades abertas e Leads convertidos apontando para ele; a spec não define cascata | `customers.service.ts` | **Decidida: D-098** (409, sem cascata) |
 | DV-09 | O módulo `communications` está "congelado" (D-073), mas registra varredura de hora em hora e expõe `/v1/automations` e `/v1/messages` a Admin e Gerente, com credencial global, sem timeout e sem opt-in | D-073 × `whatsapp-queue.service.ts`, `tenant-roles.ts` | **Decidida: D-097** (desligado por padrão até a F5.0) |
 | DV-10 | O MVP prevê captura de erro (Sentry); não existe | mvp.md §2 | Ferramenta e orçamento |
-| DV-11 | `update/delete where { id }` em 22 repositórios dependem de o service buscar antes com `tenantId` | repositórios | Defesa em profundidade (`updateMany` com `tenantId`) — técnica, sem regra nova |
+| DV-11 | `update/delete where { id }` em 22 repositórios dependem de o service buscar antes com `tenantId` | repositórios | **Resolvida em 12/11/2026**: escritas com `{ id, tenantId }` e teste que impede a volta do padrão |
 | DV-12 | Documentos defasados: "Próximas ações" do `PROJECT-CONTEXT` tratava o D1 do F4.7 como não integrado; status do `crm-backend/CLAUDE.md` e do `crm-frontend/CLAUDE.md` são da Fase 1 | — | Só atualização |
 | DV-13 | `crm-spec` e `crm-frontend` são públicos no GitHub (registrado no `CLAUDE.md` deste repositório desde a Fase 1) | GitHub | Reavaliar antes de produção: a spec descreve a arquitetura de segurança, os runbooks e as lacunas conhecidas |
 
@@ -147,7 +147,7 @@
 | E3 Importação de Leads pela tela | P1 | Fila BullMQ, lotes, acompanhamento e erros por linha; tela de upload | D-096 | Arquivo válido importa sem bloquear a API; progresso e erros visíveis; tenant respeitado | **Concluída em 10/11/2026** (seção 9) |
 | E4 Histórico único do cliente | P1 | Agregar timeline conforme a decisão | D-095 | Critério de aceite da Fase 4 cumprido | **Concluída em 10/11/2026** (E5, seção 9) |
 | E5 Contenção do legado | P0 de produção | Chave de ambiente desligando rotas, varredura e envio do `communications` | D-097 | Desligado: rotas recusadas, nenhuma varredura, nenhum envio | **Concluída em 10/11/2026** (E3, seção 9) |
-| E6 Integridade | P2 | Cascata de exclusão (DV-08); `updateMany` com `tenantId` (DV-11); mapeamento P2002 compatível com o adaptador do Prisma 7 | DV-08 | Testes de cascata e de repositório | Parte técnica pronta para iniciar |
+| E6 Integridade | P2 | Cascata de exclusão (DV-08); `updateMany` com `tenantId` (DV-11); mapeamento P2002 compatível com o adaptador do Prisma 7 | DV-08 | Testes de cascata e de repositório | **Concluída** (DV-08 pela D-098 em 10/11; DV-11 e P2002 em 12/11/2026, seção 9) |
 | E7 Preparação para produção | P3 | Playwright do fluxo do MVP (D-020), Sentry (DV-10), teste de carga (D-049), runbook de permissões F4.2/F4.4/F4.6 para empresas existentes, proteção de branch (D-021/D-052) | D-025, D-027 a D-029, D-036, D-047 | Fluxo do MVP automatizado no CI | Parcialmente bloqueada |
 | E8 Experiência visual | P4 | Textos sem acento na UI ("Historico", "Nao foi possivel"...), hierarquia e navegação | E1–E7 | — | Depois |
 
@@ -191,3 +191,9 @@
 - **Integração:** no navegador contra o backend real com o seed: arquivo de 343 linhas (340 novas, 1 repetida, 2 inválidas) respondido em 219 ms, concluído em 6,8 s, `/health` respondendo em 6–25 ms durante o processamento; lista e detalhe em 1280 e 390 px sem rolagem horizontal.
 - **Requisitos:** RNF-03 e RNF-10 passaram a Validado; UC-01 a Implementado; DV-03 resolvida.
 - **Limites registrados:** a leitura do arquivo continua na requisição (até 10 MB); as linhas importadas ficam guardadas sem prazo (retenção junto com a D-047); duas importações simultâneas da mesma empresa podem criar o mesmo Lead se as duas tiverem a mesma pessoa (a deduplicação não trava, como no cadastro manual); a consulta das importações fica fora da restrição por horário, como o envio (PN-2).
+
+### Integridade: escritas com tenant e P2002 pelo adaptador (plano E6) — 12/11/2026
+- **Backend** (`fix/tenant-scoped-writes`, sobre a D-096; **local, sem commit**): os `update`/`delete` de 12 repositórios (appointments, contacts, customers, interactions, lead-sources, leads, notes, opportunities, pipelines, roles, tasks, users) passaram a filtrar por `{ id, tenantId }`. `tenant-scoped-writes.spec.ts` lê os repositórios e falha se uma escrita só por `id` voltar (exceções: legado `communications`, congelado, e o cursor do round-robin, travado por tenant na transação). `unique-conflict.ts` passou a ler o P2002 também no formato do adaptador de driver (capturado de verdade com `@prisma/adapter-pg`), o que prepara o Prisma 7.
+- **Sem migration, sem mudança de contrato nem de regra de negócio.**
+- **Testes:** unitários 460/460, e2e **533/533** (a falha de ambiente da §1 deixou de existir: era o P2002 pelo adaptador), lint, `tsc` e build OK. CI do GitHub ainda não executado para esta entrega.
+- **DV-11 resolvida.**
