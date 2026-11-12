@@ -149,7 +149,7 @@
 | E5 Contenção do legado | P0 de produção | Chave de ambiente desligando rotas, varredura e envio do `communications` | D-097 | Desligado: rotas recusadas, nenhuma varredura, nenhum envio | **Concluída em 10/11/2026** (E3, seção 9) |
 | E6 Integridade | P2 | Cascata de exclusão (DV-08); `updateMany` com `tenantId` (DV-11); mapeamento P2002 compatível com o adaptador do Prisma 7 | DV-08 | Testes de cascata e de repositório | **Concluída** (DV-08 pela D-098 em 10/11; DV-11 e P2002 em 12/11/2026, seção 9) |
 | E7 Preparação para produção | P3 | Playwright do fluxo do MVP (D-020), Sentry (DV-10), teste de carga (D-049), runbook de permissões F4.2/F4.4/F4.6 para empresas existentes, proteção de branch (D-021/D-052) | D-025, D-027 a D-029, D-036, D-047 | Fluxo do MVP automatizado no CI | Parcialmente bloqueada |
-| E8 Experiência visual | P4 | Textos sem acento na UI ("Historico", "Nao foi possivel"...), hierarquia e navegação | E1–E7 | — | Depois |
+| E8 Experiência visual | P4 | Textos sem acento na UI ("Historico", "Nao foi possivel"...), hierarquia e navegação | E1–E7 | — | **Em andamento**: textos e ficha de registro em 12/11/2026 (seção 9) |
 
 ## 9. Registro de entregas
 
@@ -206,3 +206,8 @@
 - **Requisitos:** BR-06 e BR-12 atendidas; DV-04 resolvida.
 - **Pendente:** confirmação dos motivos padrão (D-099, item 5); rodar `tenant:seed-catalogs` nas empresas existentes (não executado em ambiente real).
 
+### Experiência visual, primeira parte (plano E8) — 12/11/2026
+- **Frontend** (`feat/ui-text-and-consistency`): ficha de registro única para Lead, Cliente e Oportunidade (`components/record`: cabeçalho com as ações principais, barra do funil, coluna de trabalho e resumo ao lado, primeiro no celular); cerca de 200 textos de tela passaram a português com acentos e "tenant" saiu do texto visível; `ui-text.test.ts` impede a volta; tabela de últimos leads do painel sem cortar o status.
+- **Backend** (`feat/api-messages-accents`): mensagens de exceção e descrições do Swagger com acentos (a tela mostra a `message` quando não traduz o `code`). Códigos, status e comportamento inalterados.
+- **Testes:** frontend 463/463, lint, tipos e build; backend 460 unitários e 546/546 e2e. Telas conferidas no navegador em 1280 e 390 px.
+- **Falta na E8:** Follow-ups sem criação direta, filtros de lista (responsável, sem responsável), estados vazios com ação, revisão de acessibilidade.
