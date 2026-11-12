@@ -13,6 +13,7 @@ Decisão: [D-094](../00-governance/decision-register.md#d-094--cadastro-manual-d
 - Só cria o que falta. Nunca altera, apaga nem reativa nada.
 - Origem com o mesmo nome (sem distinção de maiúsculas), ativa ou desativada, não é criada de novo: uma origem que a empresa desativou não volta.
 - O pipeline só é criado se a empresa **não tiver nenhum** pipeline ativo.
+- Motivos de perda e de desqualificação ([D-099](../00-governance/decision-register.md#d-099--motivos-de-perda-e-de-desqualificação-em-listas-por-empresa)): "Outro" é garantido nas duas listas (a migration já o cria); os demais motivos padrão só entram numa lista em que a empresa **nunca cadastrou** motivo próprio, mesmo que depois o tenha excluído. Os motivos padrão ainda aguardam confirmação do responsável: rode com `--dry-run` e confira antes.
 - Uma empresa por execução, em transação única.
 
 ## 3. Execução
