@@ -149,7 +149,7 @@
 | E5 Contenção do legado | P0 de produção | Chave de ambiente desligando rotas, varredura e envio do `communications` | D-097 | Desligado: rotas recusadas, nenhuma varredura, nenhum envio | **Concluída em 10/11/2026** (E3, seção 9) |
 | E6 Integridade | P2 | Cascata de exclusão (DV-08); `updateMany` com `tenantId` (DV-11); mapeamento P2002 compatível com o adaptador do Prisma 7 | DV-08 | Testes de cascata e de repositório | **Concluída** (DV-08 pela D-098 em 10/11; DV-11 e P2002 em 12/11/2026, seção 9) |
 | E7 Preparação para produção | P3 | Playwright do fluxo do MVP (D-020), Sentry (DV-10), teste de carga (D-049), runbook de permissões F4.2/F4.4/F4.6 para empresas existentes, proteção de branch (D-021/D-052) | D-025, D-027 a D-029, D-036, D-047 | Fluxo do MVP automatizado no CI | Parcialmente bloqueada |
-| E8 Experiência visual | P4 | Textos sem acento na UI ("Historico", "Nao foi possivel"...), hierarquia e navegação | E1–E7 | — | **Em andamento**: textos e ficha de registro em 12/11/2026 (seção 9) |
+| E8 Experiência visual | P4 | Textos sem acento na UI ("Historico", "Nao foi possivel"...), hierarquia e navegação | E1–E7 | — | **Em andamento**: textos, ficha de registro, Follow-ups, filtros e acessibilidade em 12/11/2026 (seção 9) |
 
 ## 9. Registro de entregas
 
@@ -211,3 +211,11 @@
 - **Backend** (`feat/api-messages-accents`): mensagens de exceção e descrições do Swagger com acentos (a tela mostra a `message` quando não traduz o `code`). Códigos, status e comportamento inalterados.
 - **Testes:** frontend 463/463, lint, tipos e build; backend 460 unitários e 546/546 e2e. Telas conferidas no navegador em 1280 e 390 px.
 - **Falta na E8:** Follow-ups sem criação direta, filtros de lista (responsável, sem responsável), estados vazios com ação, revisão de acessibilidade.
+
+### Experiência visual, segunda parte (plano E8) — 12/11/2026
+- **Frontend** (`feat/ui-followups-and-filters`): Follow-ups abre nas tarefas de quem está logado e alterna para a equipe; cria tarefa avulsa e conclui na própria lista; o formulário de tarefa sugere 9h do dia seguinte e permite escolher o responsável. Listas de Leads e Oportunidades com filtro de responsável (meus, colega e, em Leads, sem responsável); lista vazia sob filtro oferece limpar os filtros.
+- **Backend** (`feat/leads-unassigned-filter`): `GET /v1/leads?unassigned=true` (prevalece sobre `owner_id`; mesmo padrão de Conversas). Contrato atualizado no `openapi.yaml`.
+- **Acessibilidade:** telas principais verificadas com axe (WCAG 2 A/AA). Corrigidos o contraste do selo de erro (4,41:1 para acima de 4,5:1), a estrutura da lista de definição do resumo e o texto auxiliar do pipeline. Resultado final: nenhuma violação nas 20 telas verificadas (largura de 1280 px, tema padrão). Não cobre tema escuro nem identidade personalizada por empresa.
+- **Testes:** frontend 469/469, lint, tipos e build; backend: suíte e2e de Leads 37/37 local (suíte completa no CI do PR).
+- **Fora desta entrega (precisa de decisão):** criar compromisso direto em Follow-ups. O compromisso não tem título nem descrição no modelo; solto, seria só um horário. Proposta: acrescentar `title` opcional a `appointments` (migration aditiva).
+- **Falta na E8:** verificação de acessibilidade no tema escuro e com teclado ponta a ponta; E2E de navegador do fluxo principal no CI.
