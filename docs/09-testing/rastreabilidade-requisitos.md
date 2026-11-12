@@ -66,14 +66,14 @@
 |---|---|---|---|
 | RNF-01 Listagens ≤ 300 ms (p95), paginação obrigatória | Implementado | Paginação offset/cursor em todas as listagens | Latência nunca medida (D-049) |
 | RNF-02 Backend sem estado, escala horizontal | Implementado | Sessão no banco, rate limit no Redis | Rate limit cai para memória sem Redis (contagem por instância) |
-| RNF-03 Processos pesados assíncronos | Parcial | — | Importação de Leads síncrona (até 5.000 linhas), contra o RNF e o MVP (DV-03) |
+| RNF-03 Processos pesados assíncronos | Validado | Importação de Leads em fila BullMQ, em lotes (D-096): `lead-imports.e2e` (202 imediato, lotes, retomada), medição no navegador (API respondendo em 6–25 ms durante uma importação de 343 linhas) | Relatórios e envio em massa ainda não existem |
 | RNF-04 Fallback de WebSocket | Bloqueado | Sem WebSocket (D-013); polling | Fase 5 |
 | RNF-05 Falha de provedor externo não derruba o sistema | Parcial | Módulo legado desligado por padrão (D-097): nenhuma chamada externa sem a chave | Quando religado, ainda sem timeout; tratar na F5.0 |
 | RNF-06 Filas com retry, backoff e dead-letter | Parcial | Retry e backoff no legado e na fila de exemplo | Sem dead-letter explícita |
 | RNF-07 HTTPS/WSS | Bloqueado | HSTS do Helmet | Sem ambiente de deploy (D-027) |
 | RNF-08 Hash forte de senha | Validado | bcrypt 6; testes de auth | — |
 | RNF-09 Tenant e permissão em todo endpoint | Validado | Guards globais; e2e de RBAC e isolamento | — |
-| RNF-10 Upload validado | Implementado | Importação: limite de 10 MB, só `.csv`/`.xlsx`, processada em memória | Não há armazenamento de arquivos ainda |
+| RNF-10 Upload validado | Validado | Importação: limite de 10 MB, só `.csv`/`.xlsx`, até 5.000 linhas, lida na requisição; só as linhas (texto) ficam no banco, o arquivo não é guardado; `lead-imports.e2e` e testes da tela | Não há armazenamento de arquivos ainda |
 | RNF-11 LGPD (acesso, correção, exclusão) | Bloqueado | — | D-047 |
 | RNF-12 Utilizável em 360 px | Implementado | Mobile First; evidências do MAT-014 e da E1 em 390 px | Sem verificação sistemática por tela |
 | RNF-13 Primeiro atendimento em 15 min de treino | Bloqueado | — | Depende de teste com usuário |
@@ -88,7 +88,7 @@
 
 | UC | Situação | Observação |
 |---|---|---|
-| UC-01 Captação e distribuição | Parcial | Cadastro manual e distribuição funcionam; **importação só pela API** (sem tela) |
+| UC-01 Captação e distribuição | Implementado | Cadastro manual, distribuição e **importação pela tela** (D-096: envio, andamento, erros por linha, link para os Leads); falta aceite humano |
 | UC-02 Qualificação e conversão | Validado | Qualificar → converter (Cliente novo ou existente, deduplicação) → "Criar oportunidade" em dois passos |
 | UC-03 Pipeline | Validado | Kanban, salto com justificativa (corrigido na E1 para contar etapas), ganho e perda; histórico de etapas visível desde a E2 |
 | UC-04 Follow-up e agenda | Parcial | Tarefas e compromissos com conclusão; "notifica antes do vencimento" não existe (DV-06) |
@@ -97,7 +97,7 @@
 | UC-11 a UC-15 (Fase 4) | Validado | Disponibilidade (ligável pela tela desde a E1), interações, notificações, conversas e liberações; MATs com aceite humano pendente |
 | UC-05 a UC-08 | Fora do MVP | Telefonia fora de escopo (D-070); WhatsApp na Fase 5 |
 
-**Critério de saída do MVP** ([mvp.md](../10-roadmap/mvp.md) §5): o fluxo Lead → distribuição → contato → qualificação → oportunidade → negociação → venda/perda roda ponta a ponta, multi-tenant e com RBAC. Faltam: importação pela tela, histórico único do cliente (decisão), Sentry (previsto no MVP) e o E2E de navegador (D-020).
+**Critério de saída do MVP** ([mvp.md](../10-roadmap/mvp.md) §5): o fluxo Lead → distribuição → contato → qualificação → oportunidade → negociação → venda/perda roda ponta a ponta, multi-tenant e com RBAC. Faltam: Sentry (previsto no MVP) e o E2E de navegador (D-020). Importação pela tela (D-096) e histórico único do cliente (D-095) foram entregues em 10/11/2026.
 
 ## 6. Maturidade por módulo
 
@@ -107,7 +107,7 @@
 | Usuários e papéis | Sim | Papéis customizados pela UI (D-050) | e2e RBAC, UI `UsersPage` | Aceite humano D-087, D-093 |
 | Tenants, planos e trial | Sim, provisionamento por script | Platform Owner, checkout, consumo de armazenamento | e2e trial | Decisões comerciais |
 | Clientes e contatos | Sim | Tags na tela; cascata na exclusão | e2e, UI | DV-08 |
-| Leads e origens | Sim (manual) | Importação pela tela; deduplicação no cadastro manual | e2e, UI | E3 |
+| Leads e origens | Sim (manual e importação, D-096) | Deduplicação no cadastro manual; motivo de desqualificação em lista (D-099) | e2e, UI | D-099; aceite humano |
 | Pipelines e oportunidades | Sim (E1, E2) | Motivo de perda em lista | e2e, UI | DV-04 |
 | Follow-up | Sim | Aviso de vencimento | e2e, UI | DV-06 |
 | Interações e timeline | Por entidade | Histórico único | e2e, UI | DV-01 |
@@ -126,7 +126,7 @@
 |---|---|---|---|
 | DV-01 | O critério de aceite da Fase 4 pede "linha do tempo única" do cliente com leads e oportunidades; a D-079 proíbe herança Lead × Cliente e não decide Oportunidade → Cliente | roadmap Fase 4 × D-079, VN-14 | **Decidida: D-095** (Cliente + Oportunidades dele; Lead não) |
 | DV-02 | BR-05 ainda diz "dentro do horário de atendimento"; a D-078 diz que o horário não filtra a distribuição | business-rules × D-078 | Só ajuste de texto da BR-05 |
-| DV-03 | O MVP diz que a importação é a única fila justificada; ela é síncrona e não tem tela | mvp.md §2, RNF-03 × `leads.service.ts` | **Decidida: D-096** (fila BullMQ, até 5.000 linhas em lotes) |
+| DV-03 | O MVP diz que a importação é a única fila justificada; ela é síncrona e não tem tela | mvp.md §2, RNF-03 × `leads.service.ts` | **Resolvida: D-096** (fila BullMQ em lotes e tela de importação, 10/11/2026) |
 | DV-04 | BR-06 e BR-12 pedem motivos de lista configurável; o modelo usa texto livre | business-rules × entities.md | **Decidida: D-099** (listas por tenant, "Outro" com justificativa) |
 | DV-05 | D-032 "Impacto em código" falava em `order` adjacente; o código comparava a diferença numérica, o que trata etapas vizinhas como salto quando há lacunas | D-032 × `opportunities.service.ts` | **Resolvida na E1** pela regra de negócio (salto = etapa ativa no meio), sem mudar a decisão |
 | DV-06 | UC-04 e RF-26 pedem aviso de tarefa vencendo; a D-080 limita a v1 a `lead.assigned` | use-cases × D-080 | Agendador e ator Sistema (P1) |
@@ -144,7 +144,7 @@
 |---|---|---|---|---|---|
 | **E1** Configuração pela tela | P1 | Ligar/desligar disponibilidade; pipelines e etapas; correção do filtro `unassigned=false`; salto de etapa por contagem (DV-05) | — | Admin configura tudo pela tela; testes de API e UI; e2e de salto com lacuna e `order` espaçado; `unassigned=false` não filtra | **Concluída em 10/11/2026** (branches locais, sem push; seção 9) |
 | E2 Histórico de etapas visível | P1 | `GET /v1/opportunities/{id}/stage-history` (aditivo no OpenAPI) e seção no detalhe da Oportunidade | — | Mostra de/para, usuário, data e justificativa; isolamento e RBAC testados | **Concluída em 10/11/2026** (seção 9) |
-| E3 Importação de Leads pela tela | P1 | Fila BullMQ, lotes, acompanhamento e erros por linha; tela de upload | D-096 | Arquivo válido importa sem bloquear a API; progresso e erros visíveis; tenant respeitado | Decidida; a implementar |
+| E3 Importação de Leads pela tela | P1 | Fila BullMQ, lotes, acompanhamento e erros por linha; tela de upload | D-096 | Arquivo válido importa sem bloquear a API; progresso e erros visíveis; tenant respeitado | **Concluída em 10/11/2026** (seção 9) |
 | E4 Histórico único do cliente | P1 | Agregar timeline conforme a decisão | D-095 | Critério de aceite da Fase 4 cumprido | **Concluída em 10/11/2026** (E5, seção 9) |
 | E5 Contenção do legado | P0 de produção | Chave de ambiente desligando rotas, varredura e envio do `communications` | D-097 | Desligado: rotas recusadas, nenhuma varredura, nenhum envio | **Concluída em 10/11/2026** (E3, seção 9) |
 | E6 Integridade | P2 | Cascata de exclusão (DV-08); `updateMany` com `tenantId` (DV-11); mapeamento P2002 compatível com o adaptador do Prisma 7 | DV-08 | Testes de cascata e de repositório | Parte técnica pronta para iniciar |
@@ -182,3 +182,12 @@
 - **Frontend** (`feat/e5-customer-consolidated-timeline`): item de Oportunidade marcado com link; criar/excluir interação recarrega todas as timelines. 1 teste novo (445/445).
 - **Contrato:** `TimelineItem` ganhou `entity_type`/`entity_id` (aditivo) e a descrição de `/customers/{id}/interactions`.
 - **DV-01** resolvida pela D-095.
+
+### Importação de Leads em fila (D-096; plano E3) — 10/11/2026
+- **Backend** (`feat/d096-async-lead-import`): `POST /v1/leads/import` lê o arquivo, grava a importação e uma linha pendente por linha do arquivo (mesma transação, auditada) e responde **202**; o worker da fila `lead-imports` processa lotes de 100 linhas, cada lote um job, com o seguinte no fim da fila (empresas diferentes se intercalam). Cada Lead e o resultado da sua linha na mesma transação, com teste-e-set da linha (dois processamentos do mesmo lote não duplicam). Antes de cada lote: quem importou ativo e com `leads:create`/`leads:read`, `allowsBackgroundWork`, origem e responsável existentes; senão a importação para com `failure_code`. Job leva só tenant e id; toda consulta filtra pelos dois. Retomada na subida para importação sem job. Consulta: `GET /v1/lead-imports`, `/{id}` e `/{id}/rows` (`leads:create` + `leads:read`, offset). Migration aditiva `lead_imports`/`lead_import_rows`. `QUEUE_PREFIX` separa as filas dos e2e das de um `npm run dev` no mesmo Redis.
+- **Frontend** (`feat/d096-lead-import-page`): `/leads/imports` (envio com origem e responsável opcional, lista das importações) e `/leads/imports/:id` (andamento a cada 2 s enquanto roda, contadores, motivo de interrupção, linhas filtráveis com link para o Lead criado ou já existente); botão "Importar" na lista de Leads.
+- **Contrato:** `/leads/import` (202), `/lead-imports`, `/lead-imports/{id}`, `/lead-imports/{id}/rows` e os schemas `LeadImport*` no `openapi.yaml`.
+- **Testes:** backend unitários 451/451 (12 novos em `lead-import-row.rules` e `lead-import.processor`), integração 2/2, e2e 532/533 (17 novos em `lead-imports.e2e`; os 6 e2e que importavam passaram a esperar a fila; a falha é a de ambiente da §1); frontend 454/454 (9 novos); lint, `tsc` e build OK.
+- **Integração:** no navegador contra o backend real com o seed: arquivo de 343 linhas (340 novas, 1 repetida, 2 inválidas) respondido em 219 ms, concluído em 6,8 s, `/health` respondendo em 6–25 ms durante o processamento; lista e detalhe em 1280 e 390 px sem rolagem horizontal.
+- **Requisitos:** RNF-03 e RNF-10 passaram a Validado; UC-01 a Implementado; DV-03 resolvida.
+- **Limites registrados:** a leitura do arquivo continua na requisição (até 10 MB); as linhas importadas ficam guardadas sem prazo (retenção junto com a D-047); duas importações simultâneas da mesma empresa podem criar o mesmo Lead se as duas tiverem a mesma pessoa (a deduplicação não trava, como no cadastro manual); a consulta das importações fica fora da restrição por horário, como o envio (PN-2).

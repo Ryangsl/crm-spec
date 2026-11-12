@@ -60,7 +60,7 @@
 ### Desempenho e Escalabilidade
 - RNF-01: Endpoints de leitura de listagens devem responder em até 300ms sob carga nominal (p95), com paginação obrigatória.
 - RNF-02: O sistema deve suportar crescimento horizontal do backend (stateless, sessão fora do processo) — ver [../03-architecture/scalability.md](../03-architecture/scalability.md).
-- RNF-03: Processos pesados (importação, relatórios, envio em massa) devem ser assíncronos, nunca bloquear a requisição HTTP.
+- RNF-03: Processos pesados (importação, relatórios, envio em massa) devem ser assíncronos, nunca bloquear a requisição HTTP. *Importação de Leads: em fila desde 10/11/2026 ([D-096](../00-governance/decision-register.md#d-096--importação-de-leads-assíncrona-em-fila)).*
 
 ### Disponibilidade e Confiabilidade
 - RNF-04: Falha de WebSocket não deve impedir o uso do sistema — deve haver fallback (polling) para dados críticos.

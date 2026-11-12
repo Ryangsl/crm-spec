@@ -24,7 +24,7 @@ Um produto pequeno o suficiente para ser desenvolvido, testado e colocado em pro
 - Mobile First/PWA, com os fluxos acima cobertos em `xs` a `xl` (ver [../06-frontend/responsive.md](../06-frontend/responsive.md)).
 
 **Plataforma técnica**
-- Redis + BullMQ disponíveis como infraestrutura, mas **sem criar filas desnecessárias** ([D-012](../00-governance/decision-register.md#d-012--redis--bullmq)): no MVP, a única fila justificada é a importação de leads em lote (CSV). O restante permanece síncrono até haver necessidade real.
+- Redis + BullMQ disponíveis como infraestrutura, mas **sem criar filas desnecessárias** ([D-012](../00-governance/decision-register.md#d-012--redis--bullmq)): no MVP, a única fila justificada é a importação de leads em lote (CSV ou XLSX), implementada em 10/11/2026 ([D-096](../00-governance/decision-register.md#d-096--importação-de-leads-assíncrona-em-fila)). O restante permanece síncrono até haver necessidade real.
 - Observabilidade mínima: logs estruturados (Pino) + captura de erro (Sentry).
 - **Sem WebSocket** ([D-013](../00-governance/decision-register.md#d-013--websocket)) — nenhuma funcionalidade do MVP depende de tempo real.
 
