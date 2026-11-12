@@ -980,7 +980,11 @@ paths:
 
   /leads/{id}/disqualify:
     post:
-      summary: Desqualifica um lead (exige motivo — BR-06)
+      summary: Desqualifica um lead (exige motivo da lista da empresa — BR-06, D-099)
+      description: >
+        O motivo vem da lista de desqualificação da empresa (`/closing-reasons?kind=lead_disqualified`);
+        texto livre não substitui a seleção. Grava `disqualify_reason` (nome do motivo),
+        `disqualify_reason_id` e `disqualify_note`.
       parameters:
         - $ref: "#/components/parameters/Id"
       requestBody:
@@ -988,10 +992,7 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              required: [reason]
-              properties:
-                reason: { type: string }
+              $ref: "#/components/schemas/ClosingReasonChoice"
       responses:
         "201":
           description: Lead desqualificado
@@ -999,6 +1000,14 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Lead"
+        "422":
+          description: >
+            D-099 — CLOSING_REASON_INVALID (motivo fora da lista certa da empresa, excluído ou
+            inexistente) ou CLOSING_REASON_NOTE_REQUIRED ("Outro" sem justificativa de ao menos 3
+            caracteres).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
         "409":
           description: Status atual não permite desqualificação (LEAD_INVALID_STATUS_TRANSITION)
           content:
@@ -1182,6 +1191,111 @@ paths:
               schema: { $ref: "#/components/schemas/LeadImportRowList" }
         "404":
           $ref: "#/components/responses/NotFound"
+
+  /closing-reasons:
+    get:
+      summary: Lista os motivos de perda ou de desqualificação da empresa (D-099)
+      description: >
+        Duas listas separadas por empresa. Todo usuário autenticado lê (precisa da lista para perder
+        uma Oportunidade ou desqualificar um Lead). Ordem alfabética, com "Outro" por último. Até
+        200 motivos por lista, sem paginação.
+      parameters:
+        - name: kind
+          in: query
+          required: true
+          schema: { $ref: "#/components/schemas/ClosingReasonKind" }
+      responses:
+        "200":
+          description: Motivos ativos da lista
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/ClosingReason" }
+    post:
+      summary: Cria um motivo numa das listas (D-099)
+      description: Exige `tenant_settings:update` (Admin).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [kind, name]
+              properties:
+                kind: { $ref: "#/components/schemas/ClosingReasonKind" }
+                name: { type: string, minLength: 2, maxLength: 80 }
+      responses:
+        "201":
+          description: Motivo criado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ClosingReason" }
+        "409":
+          description: CLOSING_REASON_NAME_IN_USE — nome já usado na mesma lista (sem distinguir maiúsculas)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "422":
+          description: CLOSING_REASON_LIMIT — a lista já tem 200 motivos
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /closing-reasons/{id}:
+    patch:
+      summary: Renomeia um motivo (D-099)
+      description: >
+        Exige `tenant_settings:update`. Registros que já usaram o motivo mantêm o nome gravado.
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string, minLength: 2, maxLength: 80 }
+      responses:
+        "200":
+          description: Motivo renomeado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ClosingReason" }
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: CLOSING_REASON_NAME_IN_USE
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "422":
+          description: CLOSING_REASON_PROTECTED — "Outro" não pode ser alterado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+    delete:
+      summary: Exclui (soft delete) um motivo (D-099)
+      description: >
+        Exige `tenant_settings:update`. O motivo deixa de aparecer para novas escolhas; registros
+        que já o usaram continuam com o nome gravado.
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "204":
+          description: Motivo excluído
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          description: CLOSING_REASON_PROTECTED — "Outro" não pode ser excluído
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
 
   /lead-sources:
     get:
@@ -1636,7 +1750,9 @@ paths:
       summary: Marca a oportunidade como perdida (exige motivo — BR-12; estado terminal — BR-11)
       description: >
         Move para a etapa `is_lost` do pipeline (nunca por nome), define `status = lost` e
-        `lost_reason`, registra histórico e auditoria. Pipeline sem etapa is_lost: 422
+        `lost_reason` (nome do motivo), `lost_reason_id` e `lost_note`, registra histórico e
+        auditoria. O motivo vem da lista de perda da empresa
+        (`/closing-reasons?kind=opportunity_lost`, D-099). Pipeline sem etapa is_lost: 422
         `PIPELINE_WITHOUT_LOST_STAGE`. Já encerrada: 409 `OPPORTUNITY_TERMINAL`.
       parameters:
         - $ref: "#/components/parameters/Id"
@@ -1645,16 +1761,21 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              required: [reason]
-              properties:
-                reason: { type: string, minLength: 3 }
+              $ref: "#/components/schemas/ClosingReasonChoice"
       responses:
         "201":
           description: Oportunidade perdida
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Opportunity" }
+        "422":
+          description: >
+            D-099 — CLOSING_REASON_INVALID (motivo fora da lista certa da empresa, excluído ou
+            inexistente) ou CLOSING_REASON_NOTE_REQUIRED ("Outro" sem justificativa de ao menos 3
+            caracteres).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
         "409":
           description: Oportunidade já encerrada (OPPORTUNITY_TERMINAL)
           content:
@@ -3449,7 +3570,12 @@ components:
         source_id: { type: string, format: uuid }
         customer_id: { type: string, format: uuid, nullable: true }
         owner_id: { type: string, format: uuid, nullable: true }
-        disqualify_reason: { type: string, nullable: true }
+        disqualify_reason:
+          type: string
+          nullable: true
+          description: Nome do motivo escolhido (ou o texto livre de registros anteriores à D-099).
+        disqualify_reason_id: { type: string, format: uuid, nullable: true }
+        disqualify_note: { type: string, nullable: true }
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
 
@@ -3577,6 +3703,37 @@ components:
         page: { type: integer }
         limit: { type: integer }
         total: { type: integer }
+
+    ClosingReasonKind:
+      type: string
+      enum: [opportunity_lost, lead_disqualified]
+
+    ClosingReason:
+      type: object
+      required: [id, kind, name, is_other, created_at, updated_at]
+      properties:
+        id: { type: string, format: uuid }
+        kind: { $ref: "#/components/schemas/ClosingReasonKind" }
+        name: { type: string }
+        is_other:
+          type: boolean
+          description: true no motivo "Outro" (um por lista; exige justificativa; não é alterado nem excluído).
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    ClosingReasonChoice:
+      type: object
+      description: D-099 — corpo de "perder Oportunidade" e de "desqualificar Lead".
+      required: [reason_id]
+      properties:
+        reason_id:
+          type: string
+          format: uuid
+          description: Motivo ativo da lista correspondente da empresa.
+        note:
+          type: string
+          maxLength: 1000
+          description: Observação complementar; obrigatória (mínimo de 3 caracteres) com o motivo "Outro".
 
     LeadSourceCreate:
       type: object
@@ -3721,7 +3878,12 @@ components:
           example: "1500.00"
           description: Decimal exato como string — nunca number (sem ponto flutuante para dinheiro).
         status: { type: string, enum: [open, won, lost] }
-        lost_reason: { type: string, nullable: true }
+        lost_reason:
+          type: string
+          nullable: true
+          description: Nome do motivo escolhido (ou o texto livre de registros anteriores à D-099).
+        lost_reason_id: { type: string, format: uuid, nullable: true }
+        lost_note: { type: string, nullable: true }
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
 

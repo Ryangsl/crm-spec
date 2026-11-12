@@ -107,8 +107,8 @@
 | Usuários e papéis | Sim | Papéis customizados pela UI (D-050) | e2e RBAC, UI `UsersPage` | Aceite humano D-087, D-093 |
 | Tenants, planos e trial | Sim, provisionamento por script | Platform Owner, checkout, consumo de armazenamento | e2e trial | Decisões comerciais |
 | Clientes e contatos | Sim | Tags na tela; cascata na exclusão | e2e, UI | DV-08 |
-| Leads e origens | Sim (manual e importação, D-096) | Deduplicação no cadastro manual; motivo de desqualificação em lista (D-099) | e2e, UI | D-099; aceite humano |
-| Pipelines e oportunidades | Sim (E1, E2) | Motivo de perda em lista | e2e, UI | DV-04 |
+| Leads e origens | Sim (manual e importação, D-096) | Deduplicação no cadastro manual | e2e, UI | Aceite humano |
+| Pipelines e oportunidades | Sim (E1, E2, D-099) | — | e2e, UI | Aceite humano |
 | Follow-up | Sim | Aviso de vencimento | e2e, UI | DV-06 |
 | Interações e timeline | Por entidade | Histórico único | e2e, UI | DV-01 |
 | Notificações | `lead.assigned` | Demais gatilhos; retenção | e2e, UI | DV-06, D-047 |
@@ -127,7 +127,7 @@
 | DV-01 | O critério de aceite da Fase 4 pede "linha do tempo única" do cliente com leads e oportunidades; a D-079 proíbe herança Lead × Cliente e não decide Oportunidade → Cliente | roadmap Fase 4 × D-079, VN-14 | **Decidida: D-095** (Cliente + Oportunidades dele; Lead não) |
 | DV-02 | BR-05 ainda diz "dentro do horário de atendimento"; a D-078 diz que o horário não filtra a distribuição | business-rules × D-078 | Só ajuste de texto da BR-05 |
 | DV-03 | O MVP diz que a importação é a única fila justificada; ela é síncrona e não tem tela | mvp.md §2, RNF-03 × `leads.service.ts` | **Resolvida: D-096** (fila BullMQ em lotes e tela de importação, 10/11/2026) |
-| DV-04 | BR-06 e BR-12 pedem motivos de lista configurável; o modelo usa texto livre | business-rules × entities.md | **Decidida: D-099** (listas por tenant, "Outro" com justificativa) |
+| DV-04 | BR-06 e BR-12 pedem motivos de lista configurável; o modelo usa texto livre | business-rules × entities.md | **Resolvida: D-099** implementada em 12/11/2026 (motivos padrão das empresas novas aguardam confirmação) |
 | DV-05 | D-032 "Impacto em código" falava em `order` adjacente; o código comparava a diferença numérica, o que trata etapas vizinhas como salto quando há lacunas | D-032 × `opportunities.service.ts` | **Resolvida na E1** pela regra de negócio (salto = etapa ativa no meio), sem mudar a decisão |
 | DV-06 | UC-04 e RF-26 pedem aviso de tarefa vencendo; a D-080 limita a v1 a `lead.assigned` | use-cases × D-080 | Agendador e ator Sistema (P1) |
 | DV-07 | UC-10 pede consulta da auditoria; a D-060 deixou só gravação | use-cases × D-060 | Quando abrir a consulta e para quem |
@@ -197,3 +197,12 @@
 - **Sem migration, sem mudança de contrato nem de regra de negócio.**
 - **Testes:** unitários 460/460, e2e **533/533** (a falha de ambiente da §1 deixou de existir: era o P2002 pelo adaptador), lint, `tsc` e build OK. CI do GitHub ainda não executado para esta entrega.
 - **DV-11 resolvida.**
+
+### Motivos de perda e de desqualificação em listas (D-099) — 12/11/2026
+- **Backend** (`feat/d099-reason-catalogs`, sobre `fix/tenant-scoped-writes`): módulo `closing-reasons` (lista por tipo, criar, renomear, excluir; "Outro" protegido; nome único por lista sob trava), `resolveForUse` na transação de perder e de desqualificar, colunas `*_reason_id` e `*_note`, migration aditiva `20261112120000_closing_reasons` (cria "Outro" para as empresas existentes com UUID v7 montado em SQL), `seedTenantCatalogs` com os motivos iniciais.
+- **Frontend** (`feat/d099-reason-catalogs`, sobre a D-096): Configurações > Motivos (duas listas), seletor de motivo + observação/justificativa ao perder e ao desqualificar, exibição da observação no detalhe.
+- **Contrato:** `/closing-reasons`, `/closing-reasons/{id}`, `ClosingReasonChoice` em `/lose` e `/disqualify` (incompatível com o texto livre anterior, por decisão), campos novos em `Lead` e `Opportunity`.
+- **Testes:** backend unitários 460/460, e2e **546/546** (13 novos em `closing-reasons.e2e`: listas, CRUD, corrida de nomes, "Outro", RBAC, isolamento entre empresas, histórico preservado, legado em texto livre, semeadura idempotente; 14 chamadas antigas adaptadas); frontend 462/462 (8 novos); lint, `tsc` e build OK. Navegador contra o backend real: criar motivo, desqualificar com "Outro" + justificativa, perder com o motivo novo; 1280 e 390 px sem rolagem horizontal. CI do GitHub: ver o PR.
+- **Requisitos:** BR-06 e BR-12 atendidas; DV-04 resolvida.
+- **Pendente:** confirmação dos motivos padrão (D-099, item 5); rodar `tenant:seed-catalogs` nas empresas existentes (não executado em ambiente real).
+

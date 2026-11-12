@@ -143,9 +143,20 @@ Implementado como **sub-recurso de `customers`** (`GET/POST /v1/customers/{id}/c
 | source_id | UUID (FK lead_sources) | sim | BR-03 |
 | owner_id | UUID (FK users) | não | Nulo = **Lead sem proprietário**, estado válido (BR-29, [D-075](../00-governance/decision-register.md#d-075--lead-sem-proprietário-é-um-estado-legítimo-do-negócio)) |
 | status | enum(new, in_progress, qualified, disqualified, converted) | sim | |
-| disqualify_reason | string | não | Obrigatório se status=disqualified (BR-06) |
+| disqualify_reason | string | não | Nome do motivo escolhido; nos registros anteriores à D-099, o texto livre original (preservado) |
+| disqualify_reason_id | UUID (FK closing_reasons) | não | Motivo da lista (D-099); nulo nos registros antigos |
+| disqualify_note | string | não | Observação; obrigatória com "Outro" |
 
 Índices: `(tenant_id, status)`, `(tenant_id, owner_id)`.
+
+### `closing_reasons` *([D-099](../00-governance/decision-register.md#d-099--motivos-de-perda-e-de-desqualificação-em-listas-por-empresa); migration `20261112120000_closing_reasons`)*
+| Campo | Tipo | Obrigatório | Notas |
+|---|---|---|---|
+| kind | enum(opportunity_lost, lead_disqualified) | sim | Duas listas separadas por empresa |
+| name | string | sim | Único por lista entre os ativos, sem distinguir maiúsculas (conferido na transação) |
+| system_key | string | não | `other` no motivo "Outro"; nulo nos motivos da empresa |
+
+Índices: `(tenant_id, kind)`; único `(tenant_id, kind, system_key)` (um "Outro" por lista). Soft delete. A migration cria "Outro" nas duas listas de toda empresa existente.
 
 ### `lead_imports` *([D-096](../00-governance/decision-register.md#d-096--importação-de-leads-assíncrona-em-fila); migration `20261110120000_lead_imports`)*
 | Campo | Tipo | Obrigatório | Notas |
@@ -200,7 +211,9 @@ Implementado como **sub-recurso de `customers`** (`GET/POST /v1/customers/{id}/c
 | owner_id | UUID (FK users) | sim | |
 | value | numeric | não | Opcional na criação; obrigatório quando a oportunidade estiver numa etapa com `stages.requires_value = true` — regra avaliada por etapa individual, sem propagação por ordem (BR-13, [D-034](../00-governance/decision-register.md#d-034--obrigatoriedade-de-valor-em-oportunidade-br-13) `DECIDIDO`) |
 | status | enum(open, won, lost) | sim | Estado terminal won/lost (BR-11) |
-| lost_reason | string | não | Obrigatório se status=lost (BR-12) |
+| lost_reason | string | não | Nome do motivo escolhido; nos registros anteriores à D-099, o texto livre original (preservado) |
+| lost_reason_id | UUID (FK closing_reasons) | não | Motivo da lista (D-099); nulo nos registros antigos |
+| lost_note | string | não | Observação; obrigatória com "Outro" |
 
 Índices: `(tenant_id, owner_id, status)`, `(tenant_id, stage_id)`.
 
