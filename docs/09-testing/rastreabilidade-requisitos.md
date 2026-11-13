@@ -79,10 +79,10 @@
 | RNF-13 Primeiro atendimento em 15 min de treino | Bloqueado | — | Depende de teste com usuário |
 | RNF-14 Log estruturado com request id e tenant | Implementado | `http-logger.config.ts` (tenant, usuário, redação de segredos) | Correlação além do id incremental do pino não verificada |
 | RNF-15 Health checks | Validado | `health.e2e` (`/health`, `/health/ready`) | — |
-| RNF-16 Contrato versionado | Implementado | `/v1`, `openapi.yaml` | Sem teste de contrato automático |
+| RNF-16 Contrato versionado | Validado | `/v1`, `openapi.yaml`; teste de contrato no CI (`api-contract-routes.e2e` e `api-contract-responses.e2e`, 13/11/2026): paridade de rotas e de status de sucesso em todas as rotas, schema das respostas numa amostra | Formato conferido só na amostra; corpo de requisição e mudança incompatível entre versões do contrato não automatizados; login e refresh respondem 201 contra 200 do contrato (DV-14, exceção no teste) |
 | RNF-17 ADR para decisão arquitetural | Implementado | ADR-001 a 012 | — |
 
-**Distribuição:** Validado 3 · Implementado 7 · Parcial 3 · Bloqueado 4.
+**Distribuição:** Validado 6 · Implementado 5 · Parcial 2 · Bloqueado 4 (recontada em 13/11/2026).
 
 ## 5. Casos de uso do MVP
 
@@ -136,6 +136,7 @@
 | DV-10 | O MVP prevê captura de erro (Sentry); não existe | mvp.md §2 | Ferramenta e orçamento |
 | DV-11 | `update/delete where { id }` em 22 repositórios dependem de o service buscar antes com `tenantId` | repositórios | **Resolvida em 12/11/2026**: escritas com `{ id, tenantId }` e teste que impede a volta do padrão |
 | DV-12 | Documentos defasados: "Próximas ações" do `PROJECT-CONTEXT` tratava o D1 do F4.7 como não integrado; status do `crm-backend/CLAUDE.md` e do `crm-frontend/CLAUDE.md` são da Fase 1 | — | Só atualização |
+| DV-14 | `POST /v1/auth/login` e `POST /v1/auth/refresh` respondem **201**; o contrato e o exemplo de `api-guidelines.md` §9 dizem **200** (as ações de senha usam `@HttpCode(200)`; outras ações POST respondem 201). Achado pelo teste de contrato | `auth.controller.ts` × `openapi.yaml` | Alinhar um dos lados: `@HttpCode(200)` nas duas rotas (ajustar `loginAs` e e2e que esperam 201) ou documentar 201. Até lá, exceção no teste |
 | DV-13 | `crm-spec` e `crm-frontend` são públicos no GitHub (registrado no `CLAUDE.md` deste repositório desde a Fase 1) | GitHub | Reavaliar antes de produção: a spec descreve a arquitetura de segurança, os runbooks e as lacunas conhecidas |
 
 ## 8. Plano de entregas
@@ -238,3 +239,10 @@
 - **Spec**: [runbook-tenant-access-regularization.md](../08-devops/runbook-tenant-access-regularization.md); [D-100](../00-governance/decision-register.md#d-100--regularização-de-acesso-das-empresas-existentes-regras-do-passo) (`PROPOSTO`).
 - **Testes (local, banco descartável):** `tenant-access-regularization.e2e-spec.ts` **33/33**; com `rbac-tenant-domains` e `tenant-catalogs`, 63/63 (antes do teste de reversão); unitários 460/460; lint e `tsc` OK. Suíte e2e completa: só no CI.
 - **Não cobre:** execução em ambiente real, volume grande de empresas, MATs; `access_exceptions:manage` e marcadores do F4.7 (runbook próprio); demais divergências dos papéis de fábrica fora do escopo (só relatadas).
+
+### Teste de contrato da API (RNF-16) — 13/11/2026
+- **Backend** (`test/api-contract`): `test/e2e/utils/api-contract.ts` lê o `openapi.yaml` (`OPENAPI_SPEC_PATH`, padrão `../crm-spec/...`; sem o arquivo, falha com a causa). `api-contract-routes.e2e`: rotas do Express × operações do contrato nos dois sentidos, status de sucesso pelos metadados do Nest (com autoverificação do caminho remontado) e exceções que deixaram de valer. `api-contract-responses.e2e`: `expectMatchesContract(res, 'GET /v1/leads/{id}', 200)` valida o corpo com Ajv (OpenAPI 3.0 convertido: `nullable`, `$ref`, formatos) e acusa campo não declarado; casos de violação do próprio verificador. CI: o job `backend` baixa o crm-spec sem token. Dependências de desenvolvimento: `ajv`, `ajv-formats`, `js-yaml` (já presentes como transitivas).
+- **Contrato corrigido** (`docs/api-contract`): chave `"422"` duplicada em `POST /opportunities/{id}/lose` (o YAML perdia a primeira; unificadas); `GET /roles/{id}` (existia sem contrato); campos do Lead da D-094 (`name`, `document`, `phone`, `email`, `custom_fields`) na resposta, na criação e na edição; `birth_date` e `last_interaction_at` do Cliente; 401 em `GET /users/me` e 400 em `POST /leads`.
+- **Exceções registradas no teste:** `/health` e `/health/ready` (fora de `/v1`); rotas do legado `communications` (D-073/D-097); `/calls/*` do contrato (D-070, mantidas por rastreabilidade); status 201 de login e refresh (DV-14).
+- **Testes (local, banco descartável):** contrato **14/14** (4 de rotas e status, 10 de respostas: 34 conferências em 31 operações); com `health` e `auth`, 28/28; as 354 respostas documentadas compilam no Ajv; unitários 460/460; lint, `tsc` e build OK; `npm audit --omit=dev`: 0 vulnerabilidades. Falhas conferidas: rota apagada ou renomeada no contrato e arquivo ausente geram a mensagem esperada. Suíte e2e completa: só no CI.
+- **Não cobre:** corpo de requisição; formato das respostas fora da amostra (as demais rotas só por paridade e status); mudança incompatível entre versões do `openapi.yaml`.
