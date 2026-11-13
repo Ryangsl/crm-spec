@@ -127,7 +127,7 @@
 | DV-01 | O critério de aceite da Fase 4 pede "linha do tempo única" do cliente com leads e oportunidades; a D-079 proíbe herança Lead × Cliente e não decide Oportunidade → Cliente | roadmap Fase 4 × D-079, VN-14 | **Decidida: D-095** (Cliente + Oportunidades dele; Lead não) |
 | DV-02 | BR-05 ainda diz "dentro do horário de atendimento"; a D-078 diz que o horário não filtra a distribuição | business-rules × D-078 | Só ajuste de texto da BR-05 |
 | DV-03 | O MVP diz que a importação é a única fila justificada; ela é síncrona e não tem tela | mvp.md §2, RNF-03 × `leads.service.ts` | **Resolvida: D-096** (fila BullMQ em lotes e tela de importação, 10/11/2026) |
-| DV-04 | BR-06 e BR-12 pedem motivos de lista configurável; o modelo usa texto livre | business-rules × entities.md | **Resolvida: D-099** implementada em 12/11/2026 (motivos padrão das empresas novas aguardam confirmação) |
+| DV-04 | BR-06 e BR-12 pedem motivos de lista configurável; o modelo usa texto livre | business-rules × entities.md | **Resolvida: D-099** implementada em 12/11/2026 (motivos padrão das empresas novas confirmados pelo responsável em 12/11/2026) |
 | DV-05 | D-032 "Impacto em código" falava em `order` adjacente; o código comparava a diferença numérica, o que trata etapas vizinhas como salto quando há lacunas | D-032 × `opportunities.service.ts` | **Resolvida na E1** pela regra de negócio (salto = etapa ativa no meio), sem mudar a decisão |
 | DV-06 | UC-04 e RF-26 pedem aviso de tarefa vencendo; a D-080 limita a v1 a `lead.assigned` | use-cases × D-080 | Agendador e ator Sistema (P1) |
 | DV-07 | UC-10 pede consulta da auditoria; a D-060 deixou só gravação | use-cases × D-060 | Quando abrir a consulta e para quem |
@@ -204,7 +204,8 @@
 - **Contrato:** `/closing-reasons`, `/closing-reasons/{id}`, `ClosingReasonChoice` em `/lose` e `/disqualify` (incompatível com o texto livre anterior, por decisão), campos novos em `Lead` e `Opportunity`.
 - **Testes:** backend unitários 460/460, e2e **546/546** (13 novos em `closing-reasons.e2e`: listas, CRUD, corrida de nomes, "Outro", RBAC, isolamento entre empresas, histórico preservado, legado em texto livre, semeadura idempotente; 14 chamadas antigas adaptadas); frontend 462/462 (8 novos); lint, `tsc` e build OK. Navegador contra o backend real: criar motivo, desqualificar com "Outro" + justificativa, perder com o motivo novo; 1280 e 390 px sem rolagem horizontal. CI do GitHub: ver o PR.
 - **Requisitos:** BR-06 e BR-12 atendidas; DV-04 resolvida.
-- **Pendente:** confirmação dos motivos padrão (D-099, item 5); rodar `tenant:seed-catalogs` nas empresas existentes (não executado em ambiente real).
+- **Motivos padrão:** confirmados pelo responsável em 12/11/2026 (D-099, item 5), iguais aos implementados.
+- **Pendente:** rodar `tenant:seed-catalogs` nas empresas existentes (não executado em ambiente real).
 
 ### Experiência visual, primeira parte (plano E8) — 12/11/2026
 - **Frontend** (`feat/ui-text-and-consistency`): ficha de registro única para Lead, Cliente e Oportunidade (`components/record`: cabeçalho com as ações principais, barra do funil, coluna de trabalho e resumo ao lado, primeiro no celular); cerca de 200 textos de tela passaram a português com acentos e "tenant" saiu do texto visível; `ui-text.test.ts` impede a volta; tabela de últimos leads do painel sem cortar o status.
