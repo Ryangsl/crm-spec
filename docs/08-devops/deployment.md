@@ -36,7 +36,7 @@ O sistema deve funcionar em: desenvolvimento local (Windows/Linux), ambiente Lin
 | Ferramenta | Papel | Quando adotar |
 |---|---|---|
 | Pino | Log estruturado da aplicação | Desde o MVP |
-| Sentry (ou equivalente) | Captura de erros/exceções não tratadas | Desde o MVP — essencial para operação de call center em produção |
+| Sentry (ou equivalente) | Captura de erros/exceções não tratadas | Desde o MVP — essencial para operação de call center em produção. Implementado e desligado por padrão ([D-101](../00-governance/decision-register.md#d-101--captura-de-erros-sentry-desligada-por-padrão-e-regras-de-privacidade), [runbook](runbook-error-monitoring.md)) |
 | Prometheus | Métricas (latência, taxa de erro, tamanho de fila) | A partir do momento em que houver mais de uma instância/necessidade real de dashboard operacional |
 | Grafana | Visualização das métricas do Prometheus | Junto com Prometheus |
 

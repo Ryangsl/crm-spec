@@ -29,7 +29,7 @@ Cada decisão tem um **status**:
 | Fase 5 — WhatsApp/Conversas | D-011, D-013, D-024, D-025, D-039 (D-010 e D-045 — telefonia/discador — estão **fora de escopo**, ver D-070) e o **Gate de entrada** de [D-072](#d-072--whatsapp-é-uma-frente-própria-fase-5-núcleo-de-conversas-agnóstico-ao-canal-fase-4) — integração por tenant/conta ([D-074](#d-074--integração-de-whatsapp-configurada-por-tenant-por-conta-de-canal-wa-02)), módulo legado congelado e reconciliado na F5.0 ([D-073](#d-073--módulo-communications-implementado-fora-da-especificação-whatsapp-outbound-e-automações)) e as pendências restantes `WA-01`–`WA-30` de [whatsapp-architecture.md](../03-architecture/whatsapp-architecture.md). **Implementação bloqueada.** |
 | Fase 6 — Omnichannel | Nenhuma definida hoje; provedores de canais futuros (ex.: D-040) são decididos quando entrarem no roadmap |
 | Fase 7+ | D-038, D-040, D-046, D-049 |
-| Antes do primeiro cliente em produção | D-027, D-028, D-029, D-043, D-047 (D-064 decidida em 2026-11-06) |
+| Antes do primeiro cliente em produção | D-027, D-028, D-029, D-043, D-047, D-101 (conta e região para ligar a captura de erros; D-064 decidida em 2026-11-06) |
 
 ---
 
@@ -1151,6 +1151,20 @@ Regras adotadas pelo comando `tenant:regularize-access` (crm-backend), que conce
 
 **Por que não bloqueia**: o comando simula por padrão e nada foi executado em ambiente real. **Quando decidir**: antes da primeira aplicação em empresa real.
 
+### D-101 — Captura de erros (Sentry): desligada por padrão e regras de privacidade
+**Status**: `PROPOSTO` (2026-11-13; ligar em qualquer ambiente depende do responsável) · **Fase**: transversal (operação; plano E7, DV-10) · concretiza a captura de erros prevista em [mvp.md](../10-roadmap/mvp.md) §2 e [deployment.md](../08-devops/deployment.md) §6.
+
+Ferramenta: **Sentry**, com `@sentry/node` no crm-backend e `@sentry/react` no crm-frontend, linha 10.x (a 11 exige Node ≥ 20.19, acima do mínimo declarado pelo backend). Operação: [runbook](../08-devops/runbook-error-monitoring.md).
+
+1. **Desligada por padrão.** Sem DSN (`SENTRY_DSN`; no frontend `VITE_SENTRY_DSN`, lida no build) nenhum SDK é carregado, nenhum ouvinte é registrado e nada sai do servidor nem do navegador. No backend, `NODE_ENV=test` nunca liga.
+2. **Só o inesperado.** Backend: 5xx que não é exceção de domínio (503 fica fora: é indisponibilidade declarada, como a readiness), falha definitiva de job e erro fatal do processo (o processo continua encerrando com código 1). Frontend: erro de renderização (tela de erro com "Recarregar") e erro não tratado da janela. Nunca 4xx, validação ou exceção de domínio; no frontend, nenhuma resposta 4xx da API, inclusive o 401 de sessão expirada.
+3. **Privacidade (LGPD).** `sendDefaultPii: false`, toda coleta automática do SDK desligada e nenhuma integração padrão (breadcrumbs, dados da requisição, variáveis locais, replay, desempenho). O evento sai por lista de permissão: ids opacos (`tenant_id` e `user_id` no backend; no frontend só o do usuário, porque a sessão não expõe o da empresa sem ler o token), padrão da rota ou da tela, método, status, `request_id`, fila e job. Corpo, cookies, cabeçalhos, query string, fragmento da URL (`#token=` da redefinição de senha), e-mail, nome, telefone, documento e IP são removidos; e-mails, números longos e tokens em mensagens de erro são mascarados; a mensagem do Prisma vira só o código. Nome de pessoa em texto livre não tem forma reconhecível: o código não o coloca em mensagem de erro.
+4. **No código.** Um único arquivo por repositório importa o SDK; o resto usa a interface de monitoramento. Dado sensível novo entra no `beforeSend`, com teste (no backend, a lista de redação dos logs é reaproveitada, não duplicada).
+
+**Depende do responsável:** conta e organização; plano e orçamento (cota de eventos); **região de dados** (o Sentry passa a ser operador de dados pessoais mínimos: ids pseudônimos e, na web, o IP de origem da conexão, que o SDK pede para não guardar; a transferência internacional entra na política de privacidade e no fluxo de [D-047](#d-047--fluxo-operacional-de-lgpd-titular-de-dados)); retenção dos eventos; um DSN por ambiente (desenvolvimento, staging [D-027](#d-027--ambiente-de-staging), produção) e quem acessa os eventos. **Recomendação:** dois projetos (API e web), ligar primeiro em staging, região UE se a política jurídica não preferir outra, *Prevent Storing of IP Addresses* ligado e a menor retenção do plano.
+
+**Por que não bloqueia**: desligada, a aplicação se comporta como antes. **Quando decidir**: antes de ligar em ambiente com dados reais, no mais tardar antes do primeiro cliente em produção.
+
 ## Regras de negócio validadas pelo responsável pelo produto (Fase 3)
 
 Estas decisões **não devem ser inventadas por nenhum agente** — foram validadas diretamente com o responsável pelo produto em 2026-09-16, no fechamento do Decision Gate da Fase 3. Os documentos correspondentes deixam de carregar `[VALIDAÇÃO DE NEGÓCIO NECESSÁRIA]` e passam a refletir a regra decidida abaixo.
@@ -1235,3 +1249,4 @@ Toda exclusão continua sendo **soft delete** (BR-22) e continua sendo auditada 
 | 2026-11-12 | **D-099, item 5**: motivos padrão das empresas novas **confirmados pelo responsável em 12/11/2026**, iguais aos já implementados (sem mudança de código além de comentário). |
 | 2026-11-10 | **D-096 implementada**: importação de Leads em fila BullMQ, em lotes, com acompanhamento, Leads criados e erros por linha; consulta em `/lead-imports` fora da restrição por horário, como o envio (PN-3 atualizada). |
 | 2026-11-13 | **D-100 (`PROPOSTO`)**: regras do passo de regularização de acesso das empresas existentes (suspensa só com opção explícita; catálogo global só com opção explícita; inconsistência estrutural não é corrigida; plano e `crm.availability.enabled` intocados). Comando `tenant:regularize-access` e runbook escritos; nada executado em ambiente real. |
+| 2026-11-13 | **D-101 (`PROPOSTO`)**: captura de erros com Sentry no backend e no frontend, desligada sem DSN; só o inesperado; lista de permissão do que sai (ids opacos, padrão da rota/tela). Conta, plano, região, retenção e DSNs ficam com o responsável. DV-10 implementada, não ligada em nenhum ambiente. |
