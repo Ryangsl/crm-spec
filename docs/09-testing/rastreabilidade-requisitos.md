@@ -97,7 +97,7 @@
 | UC-11 a UC-15 (Fase 4) | Validado | Disponibilidade (ligável pela tela desde a E1), interações, notificações, conversas e liberações; MATs com aceite humano pendente |
 | UC-05 a UC-08 | Fora do MVP | Telefonia fora de escopo (D-070); WhatsApp na Fase 5 |
 
-**Critério de saída do MVP** ([mvp.md](../10-roadmap/mvp.md) §5): o fluxo Lead → distribuição → contato → qualificação → oportunidade → negociação → venda/perda roda ponta a ponta, multi-tenant e com RBAC. Faltam: Sentry (previsto no MVP) e o E2E de navegador (D-020). Importação pela tela (D-096) e histórico único do cliente (D-095) foram entregues em 10/11/2026.
+**Critério de saída do MVP** ([mvp.md](../10-roadmap/mvp.md) §5): o fluxo Lead → distribuição → contato → qualificação → oportunidade → negociação → venda/perda roda ponta a ponta, multi-tenant e com RBAC. A captura de erros prevista no MVP está implementada e desligada por padrão (D-101, 13/11/2026): falta ligá-la, o que depende do responsável; o E2E de navegador do fluxo principal (D-020) foi entregue em 12/11/2026 (§9). Importação pela tela (D-096) e histórico único do cliente (D-095) foram entregues em 10/11/2026.
 
 ## 6. Maturidade por módulo
 
@@ -133,7 +133,7 @@
 | DV-07 | UC-10 pede consulta da auditoria; a D-060 deixou só gravação | use-cases × D-060 | Quando abrir a consulta e para quem |
 | DV-08 | Excluir um Cliente deixa Oportunidades abertas e Leads convertidos apontando para ele; a spec não define cascata | `customers.service.ts` | **Decidida: D-098** (409, sem cascata) |
 | DV-09 | O módulo `communications` está "congelado" (D-073), mas registra varredura de hora em hora e expõe `/v1/automations` e `/v1/messages` a Admin e Gerente, com credencial global, sem timeout e sem opt-in | D-073 × `whatsapp-queue.service.ts`, `tenant-roles.ts` | **Decidida: D-097** (desligado por padrão até a F5.0) |
-| DV-10 | O MVP prevê captura de erro (Sentry); não existe | mvp.md §2 | Ferramenta e orçamento |
+| DV-10 | O MVP prevê captura de erro (Sentry); não existe | mvp.md §2 | **Implementada em 13/11/2026, desligada por padrão: [D-101](../00-governance/decision-register.md#d-101--captura-de-erros-sentry-desligada-por-padrão-e-regras-de-privacidade)** (`PROPOSTO`); ligar depende de conta, plano, região, retenção e DSN do responsável |
 | DV-11 | `update/delete where { id }` em 22 repositórios dependem de o service buscar antes com `tenantId` | repositórios | **Resolvida em 12/11/2026**: escritas com `{ id, tenantId }` e teste que impede a volta do padrão |
 | DV-12 | Documentos defasados: "Próximas ações" do `PROJECT-CONTEXT` tratava o D1 do F4.7 como não integrado; status do `crm-backend/CLAUDE.md` e do `crm-frontend/CLAUDE.md` são da Fase 1 | — | Só atualização |
 | DV-13 | `crm-spec` e `crm-frontend` são públicos no GitHub (registrado no `CLAUDE.md` deste repositório desde a Fase 1) | GitHub | Reavaliar antes de produção: a spec descreve a arquitetura de segurança, os runbooks e as lacunas conhecidas |
@@ -148,7 +148,7 @@
 | E4 Histórico único do cliente | P1 | Agregar timeline conforme a decisão | D-095 | Critério de aceite da Fase 4 cumprido | **Concluída em 10/11/2026** (E5, seção 9) |
 | E5 Contenção do legado | P0 de produção | Chave de ambiente desligando rotas, varredura e envio do `communications` | D-097 | Desligado: rotas recusadas, nenhuma varredura, nenhum envio | **Concluída em 10/11/2026** (E3, seção 9) |
 | E6 Integridade | P2 | Cascata de exclusão (DV-08); `updateMany` com `tenantId` (DV-11); mapeamento P2002 compatível com o adaptador do Prisma 7 | DV-08 | Testes de cascata e de repositório | **Concluída** (DV-08 pela D-098 em 10/11; DV-11 e P2002 em 12/11/2026, seção 9) |
-| E7 Preparação para produção | P3 | Playwright do fluxo do MVP (D-020; **fluxo principal e acessibilidade entregues em 12/11/2026**, ver §9), Sentry (DV-10), teste de carga (D-049), runbook de permissões F4.2/F4.4/F4.6 para empresas existentes (**comando e runbook entregues em 13/11/2026**, ver §9; execução em ambiente real pendente), proteção de branch (D-021/D-052) | D-025, D-027 a D-029, D-036, D-047 | Fluxo do MVP automatizado no CI | Parcialmente bloqueada |
+| E7 Preparação para produção | P3 | Playwright do fluxo do MVP (D-020; **fluxo principal e acessibilidade entregues em 12/11/2026**, ver §9), Sentry (DV-10; **implementado e desligado por padrão em 13/11/2026**, ver §9; ligar depende do responsável, D-101), teste de carga (D-049), runbook de permissões F4.2/F4.4/F4.6 para empresas existentes (**comando e runbook entregues em 13/11/2026**, ver §9; execução em ambiente real pendente), proteção de branch (D-021/D-052) | D-025, D-027 a D-029, D-036, D-047 | Fluxo do MVP automatizado no CI | Parcialmente bloqueada |
 | E8 Experiência visual | P4 | Textos sem acento na UI ("Historico", "Nao foi possivel"...), hierarquia e navegação | E1–E7 | — | **Em andamento**: textos, ficha de registro, Follow-ups, filtros e acessibilidade em 12/11/2026 (seção 9) |
 
 ## 9. Registro de entregas
@@ -238,3 +238,10 @@
 - **Spec**: [runbook-tenant-access-regularization.md](../08-devops/runbook-tenant-access-regularization.md); [D-100](../00-governance/decision-register.md#d-100--regularização-de-acesso-das-empresas-existentes-regras-do-passo) (`PROPOSTO`).
 - **Testes (local, banco descartável):** `tenant-access-regularization.e2e-spec.ts` **33/33**; com `rbac-tenant-domains` e `tenant-catalogs`, 63/63 (antes do teste de reversão); unitários 460/460; lint e `tsc` OK. Suíte e2e completa: só no CI.
 - **Não cobre:** execução em ambiente real, volume grande de empresas, MATs; `access_exceptions:manage` e marcadores do F4.7 (runbook próprio); demais divergências dos papéis de fábrica fora do escopo (só relatadas).
+
+### Captura de erros (DV-10, D-101; plano E7, parte) — 13/11/2026
+- **Backend** (`feat/error-monitoring`): `src/common/monitoring` com a interface `ErrorReporter` (Sentry e nula; só `sentry-error-reporter.ts` importa `@sentry/node` 10.x). Reporta 5xx que não é de domínio no `AllExceptionsFilter`, a falha definitiva do lote da importação de Leads e erro fatal do processo; `beforeSend` por lista de permissão, reaproveitando a lista de redação dos logs. Variáveis `SENTRY_DSN`, `SENTRY_ENVIRONMENT`, `SENTRY_RELEASE`, `SENTRY_TRACES_SAMPLE_RATE` (padrão 0). Sem migration, sem mudança de contrato.
+- **Frontend** (`feat/error-monitoring`): `features/monitoring`, SDK `@sentry/react` por import dinâmico e fora do precache do PWA; tela de erro "Algo deu errado" com "Recarregar" no `errorElement` das rotas de topo e num boundary externo; erros não tratados da janela; `ApiError` 4xx nunca reportado; fragmento (`#token=`) e query string nunca saem. Variáveis `VITE_SENTRY_DSN`, `VITE_SENTRY_ENVIRONMENT`, `VITE_SENTRY_RELEASE`. Bundle inicial 627,54 → 630,59 kB (gzip 172,82 → 173,93 kB); o SDK (88,5 kB, gzip 30,2 kB) só é baixado com DSN.
+- **Spec**: [D-101](../00-governance/decision-register.md#d-101--captura-de-erros-sentry-desligada-por-padrão-e-regras-de-privacidade) (`PROPOSTO`) e [runbook](../08-devops/runbook-error-monitoring.md).
+- **Testes:** backend unitários 506/506 e e2e `error-monitoring` 10/10 (com `health`, `auth`, `lead-imports` e `session-lifecycle`, 57/57); frontend 487/487 (18 novos). Sem rede: transporte falso, SDK real com transporte em memória e coletor HTTP local (API e navegador com e sem DSN: sem DSN, nenhuma requisição ao SDK nem ao coletor).
+- **Não cobre:** envio a um Sentry real (sem conta), ligação em qualquer ambiente, Playwright (nada do que a suíte cobre mudou).
