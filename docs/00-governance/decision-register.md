@@ -1139,6 +1139,18 @@ WHERE rp.role_id = r.id AND rp.permission_id = p.id
 
 **Implementação (12/11/2026, crm-backend e crm-frontend `feat/d099-reason-catalogs`)**: tabela `closing_reasons` (duas listas por empresa; `system_key = other` marca o "Outro"); `GET /v1/closing-reasons?kind=` para todo usuário autenticado e criar/renomear/excluir com `tenant_settings:update` (Admin); perder e desqualificar recebem `{ reason_id, note }` (texto livre no lugar do motivo: 400; motivo de outra lista, excluído ou de outra empresa: `422 CLOSING_REASON_INVALID`; "Outro" sem justificativa: `422 CLOSING_REASON_NOTE_REQUIRED`). O Lead e a Oportunidade guardam o id, o **nome do motivo naquele momento** e a observação, então renomear ou excluir um motivo não muda o histórico. Os textos livres já gravados ficam intactos em `disqualify_reason`/`lost_reason`, com o id nulo. A migration cria "Outro" nas duas listas de toda empresa existente; os demais motivos padrão entram em empresa nova e, nas existentes, pelo `tenant:seed-catalogs` (só numa lista que a empresa ainda não mexeu). Tela em Configurações > Motivos. **Mudança de contrato incompatível, decidida aqui**: `reason` (texto) deixou de ser aceito em `/lose` e `/disqualify`.
 
+### D-100 — Regularização de acesso das empresas existentes: regras do passo
+**Status**: `PROPOSTO` (2026-11-13; aguarda confirmação do responsável antes da primeira execução em ambiente real) · **Fase**: transversal (operação; item do plano E7) · complementa [D-059](#d-059--provisionamento-de-tenant-permanece-manual-fase-2).
+
+Regras adotadas pelo comando `tenant:regularize-access` (crm-backend), que concede `availability:*`, `interactions:*` e `conversations:*` aos papéis de fábrica das empresas criadas antes do F4.2/F4.4/F4.6 ([runbook](../08-devops/runbook-tenant-access-regularization.md)):
+
+1. **Empresa suspensa** é simulada e listada, mas só é alterada com `--include-suspended`. Excluída logicamente nunca é alterada. Trial, inclusive expirado, é tratado como empresa ativa.
+2. **Catálogo global de permissões** incompleto só é completado com `--create-missing-permissions`; sem a opção, a empresa que depende da chave ausente fica como inconsistência.
+3. **Inconsistência estrutural** (papel de fábrica duplicado, empresa sem papéis de fábrica) bloqueia a empresa inteira e é resolvida manualmente; papel de fábrica ausente ou excluído gera aviso e não é criado nem restaurado.
+4. **Plano e `crm.availability.enabled` não são tocados**: as permissões são concedidas mesmo quando o plano não inclui Conversas (como no provisionamento de empresa nova), e a disponibilidade continua sendo ligada só pelo Admin.
+
+**Por que não bloqueia**: o comando simula por padrão e nada foi executado em ambiente real. **Quando decidir**: antes da primeira aplicação em empresa real.
+
 ## Regras de negócio validadas pelo responsável pelo produto (Fase 3)
 
 Estas decisões **não devem ser inventadas por nenhum agente** — foram validadas diretamente com o responsável pelo produto em 2026-09-16, no fechamento do Decision Gate da Fase 3. Os documentos correspondentes deixam de carregar `[VALIDAÇÃO DE NEGÓCIO NECESSÁRIA]` e passam a refletir a regra decidida abaixo.
@@ -1222,3 +1234,4 @@ Toda exclusão continua sendo **soft delete** (BR-22) e continua sendo auditada 
 | 2026-11-12 | **D-099 implementada** (listas de motivos por empresa; contrato de `/lose` e `/disqualify` passa a `{ reason_id, note }`); motivos padrão das empresas novas seguem **pendentes de confirmação** (item 5). DV-11 resolvida (escritas dos repositórios com `tenantId`). |
 | 2026-11-12 | **D-099, item 5**: motivos padrão das empresas novas **confirmados pelo responsável em 12/11/2026**, iguais aos já implementados (sem mudança de código além de comentário). |
 | 2026-11-10 | **D-096 implementada**: importação de Leads em fila BullMQ, em lotes, com acompanhamento, Leads criados e erros por linha; consulta em `/lead-imports` fora da restrição por horário, como o envio (PN-3 atualizada). |
+| 2026-11-13 | **D-100 (`PROPOSTO`)**: regras do passo de regularização de acesso das empresas existentes (suspensa só com opção explícita; catálogo global só com opção explícita; inconsistência estrutural não é corrigida; plano e `crm.availability.enabled` intocados). Comando `tenant:regularize-access` e runbook escritos; nada executado em ambiente real. |
