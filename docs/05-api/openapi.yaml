@@ -884,6 +884,11 @@ paths:
           in: query
           required: false
           schema: { type: string, format: uuid }
+        - name: unassigned
+          in: query
+          required: false
+          description: true = apenas Leads sem responsável. Prevalece sobre owner_id.
+          schema: { type: boolean }
         - name: source_id
           in: query
           required: false
