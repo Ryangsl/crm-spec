@@ -314,6 +314,8 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/User" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
 
   /users/me/password:
     post:
@@ -540,6 +542,23 @@ paths:
           description: Permissões (sem as reservadas e as exclusivas do admin)
 
   /roles/{id}:
+    get:
+      summary: Detalhe de um papel do tenant (roles:read)
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Papel com as chaves de permissão
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Role" }
+        "403":
+          description: Sem a permissão `roles:read` (FORBIDDEN)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          $ref: "#/components/responses/NotFound"
     patch:
       summary: Altera papel personalizado (roles:manage); papéis de sistema são imutáveis
       description: >
@@ -914,6 +933,11 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Lead"
+        "400":
+          description: Corpo inválido (VALIDATION_ERROR, com os campos em details)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
         "404":
           description: source_id (ou owner_id, quando informado) não encontrado no tenant
           content:
@@ -1773,21 +1797,17 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Opportunity" }
-        "422":
-          description: >
-            D-099 — CLOSING_REASON_INVALID (motivo fora da lista certa da empresa, excluído ou
-            inexistente) ou CLOSING_REASON_NOTE_REQUIRED ("Outro" sem justificativa de ao menos 3
-            caracteres).
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
         "409":
           description: Oportunidade já encerrada (OPPORTUNITY_TERMINAL)
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
         "422":
-          description: Valor exigido pela etapa de perda ou pipeline sem etapa de perda
+          description: >
+            D-099 — CLOSING_REASON_INVALID (motivo fora da lista certa da empresa, excluído ou
+            inexistente) ou CLOSING_REASON_NOTE_REQUIRED ("Outro" sem justificativa de ao menos 3
+            caracteres); valor exigido pela etapa de perda; ou pipeline sem etapa de perda
+            (PIPELINE_WITHOUT_LOST_STAGE).
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -3445,6 +3465,8 @@ components:
           description: Responsável pelo cliente; padrão — usuário autenticado.
         tags: { type: array, items: { type: string } }
         custom_fields: { type: object }
+        birth_date: { type: string, format: date, description: "Data de nascimento (AAAA-MM-DD)" }
+        last_interaction_at: { type: string, format: date-time }
 
     CustomerUpdate:
       type: object
@@ -3460,6 +3482,8 @@ components:
         owner_id: { type: string, format: uuid, nullable: true }
         tags: { type: array, items: { type: string } }
         custom_fields: { type: object, nullable: true }
+        birth_date: { type: string, format: date, nullable: true }
+        last_interaction_at: { type: string, format: date-time, nullable: true }
 
     Customer:
       type: object
@@ -3472,6 +3496,8 @@ components:
         owner_id: { type: string, format: uuid, nullable: true }
         tags: { type: array, items: { type: string } }
         custom_fields: { type: object, nullable: true }
+        birth_date: { type: string, format: date, nullable: true }
+        last_interaction_at: { type: string, format: date-time, nullable: true }
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
 
@@ -3551,7 +3577,16 @@ components:
             owner_id null quando nao ha vendedor elegivel (D-069). Com a flag
             de disponibilidade do tenant ligada, so usuarios DISPONIVEL sao
             elegiveis (F4.3, D-078); o owner_id explicito nao e restringido.
+        name: { type: string, minLength: 2 }
+        document:
+          type: string
+          description: CPF (11 dígitos) ou CNPJ (14 dígitos); a máscara é removida antes de gravar.
+        phone: { type: string, pattern: "^\\+[1-9]\\d{7,14}$", description: "Formato E.164" }
+        email: { type: string, format: email }
+        custom_fields: { type: object }
       description: >
+        A API aceita Lead sem nome, telefone ou e-mail (importação, D-094); a
+        tela exige nome e telefone ou e-mail.
         customer_id nao faz parte do contrato de criacao — so e preenchido
         via POST /leads/{id}/convert (BR-04/D-065).
 
@@ -3563,7 +3598,12 @@ components:
         (qualify/disqualify/reopen/convert).
       properties:
         source_id: { type: string, format: uuid }
-        owner_id: { type: string, format: uuid, nullable: true }
+        owner_id: { type: string, format: uuid, nullable: true, description: "`null` remove o responsável" }
+        name: { type: string, minLength: 2 }
+        document: { type: string, nullable: true }
+        phone: { type: string, nullable: true, description: "Formato E.164" }
+        email: { type: string, format: email, nullable: true }
+        custom_fields: { type: object, nullable: true }
 
     Lead:
       type: object
@@ -3575,6 +3615,11 @@ components:
         source_id: { type: string, format: uuid }
         customer_id: { type: string, format: uuid, nullable: true }
         owner_id: { type: string, format: uuid, nullable: true }
+        name: { type: string, nullable: true }
+        document: { type: string, nullable: true, description: "CPF (11) ou CNPJ (14 dígitos), só números" }
+        phone: { type: string, nullable: true, description: "Formato E.164" }
+        email: { type: string, nullable: true }
+        custom_fields: { type: object, nullable: true }
         disqualify_reason:
           type: string
           nullable: true
