@@ -12,7 +12,7 @@ O `seed.ts` aplica os papéis de fábrica (`FACTORY_ROLES`) somente ao tenant de
 
 **Não rode o `seed.ts` inteiro em ambiente real**: ele também cria/atualiza o tenant "Empresa Exemplo" e um usuário admin com senha conhecida. Use os scripts abaixo, que só **inserem** as linhas necessárias.
 
-**Escopo**: este runbook cobre **apenas** `access_exceptions:manage` e os dois marcadores do F4.7. As permissões `availability:*` (F4.2), `interactions:*` (F4.4) e `conversations:*` (F4.6) dos tenants existentes seguem **sem procedimento escrito**, e a mesma regra vale para elas: em ambiente real, passo manual de dados, nunca o `seed.ts` completo. Aplicar as migrations (`prisma migrate deploy`) e ligar a restrição global do tenant são procedimentos distintos, fora deste runbook.
+**Escopo**: este runbook cobre **apenas** `access_exceptions:manage` e os dois marcadores do F4.7. As permissões `availability:*` (F4.2), `interactions:*` (F4.4) e `conversations:*` (F4.6) dos tenants existentes têm procedimento próprio desde 13/11/2026: [runbook-tenant-access-regularization.md](runbook-tenant-access-regularization.md). A mesma regra vale para elas: em ambiente real, passo manual de dados, nunca o `seed.ts` completo. Aplicar as migrations (`prisma migrate deploy`) e ligar a restrição global do tenant são procedimentos distintos, fora deste runbook.
 
 ## 2. O que é concedido (mapeamento)
 
